@@ -32,7 +32,13 @@ import { Path as DatabasePath } from "@/storage/db" // kilocode_change
 const log = Log.create({ service: "plugin" })
 
 type State = {
+  entries: PluginEntry[]
   hooks: Hooks[]
+}
+
+type PluginEntry = {
+  id: string
+  hooks: Hooks
 }
 
 // Hook names that follow the (input, output) => Promise<void> trigger pattern
@@ -51,6 +57,7 @@ export interface Interface {
     output: Output,
   ) => Effect.Effect<Output>
   readonly list: () => Effect.Effect<Hooks[]>
+  readonly settingsRpc: (id: string, method: string, params?: unknown) => Effect.Effect<unknown>
   readonly init: () => Effect.Effect<void>
 }
 
@@ -94,17 +101,18 @@ function getLegacyPlugins(mod: Record<string, unknown>) {
   return result
 }
 
-async function applyPlugin(load: PluginLoader.Loaded, input: PluginInput, hooks: Hooks[]) {
+async function applyPlugin(load: PluginLoader.Loaded, input: PluginInput): Promise<PluginEntry[]> {
   const plugin = readV1Plugin(load.mod, load.spec, "server", "detect")
   if (plugin) {
-    await resolvePluginId(load.source, load.spec, load.target, readPluginId(plugin.id, load.spec), load.pkg)
-    hooks.push(await (plugin as PluginModule).server(input, load.options))
-    return
+    const id = await resolvePluginId(load.source, load.spec, load.target, readPluginId(plugin.id, load.spec), load.pkg)
+    return [{ id, hooks: await (plugin as PluginModule).server(input, load.options) }]
   }
 
+  const entries: PluginEntry[] = []
   for (const server of getLegacyPlugins(load.mod)) {
-    hooks.push(await server(input, load.options))
+    entries.push({ id: load.pkg?.json.name?.toString() || load.spec, hooks: await server(input, load.options) })
   }
+  return entries
 }
 
 export const layer = Layer.effect(
@@ -116,6 +124,7 @@ export const layer = Layer.effect(
     const state = yield* InstanceState.make<State>(
       Effect.fn("Plugin.state")(function* (ctx) {
         const hooks: Hooks[] = []
+        const entries: PluginEntry[] = []
         const bridge = yield* EffectBridge.make()
 
         function publishPluginError(message: string) {
@@ -175,7 +184,10 @@ export const layer = Layer.effect(
               log.error("failed to load internal plugin", { name: plugin.name, error: err })
             },
           }).pipe(Effect.option)
-          if (init._tag === "Some") hooks.push(init.value)
+          if (init._tag === "Some") {
+            hooks.push(init.value)
+            entries.push({ id: plugin.name || "internal", hooks: init.value })
+          }
         }
 
         const plugins = Flag.KILO_PURE ? [] : (cfg.plugin_origins ?? [])
@@ -231,7 +243,13 @@ export const layer = Layer.effect(
           // Keep plugin execution sequential so hook registration and execution
           // order remains deterministic across plugin runs.
           yield* Effect.tryPromise({
-            try: () => applyPlugin(load, input, hooks),
+            try: async () => {
+              const loadedEntries = await applyPlugin(load, input)
+              for (const entry of loadedEntries) {
+                hooks.push(entry.hooks)
+                entries.push(entry)
+              }
+            },
             catch: (err) => {
               const message = errorMessage(err)
               log.error("failed to load plugin", { path: load.spec, error: message })
@@ -272,7 +290,7 @@ export const layer = Layer.effect(
           Effect.forkScoped,
         )
 
-        return { hooks }
+        return { hooks, entries }
       }),
     )
 
@@ -296,11 +314,20 @@ export const layer = Layer.effect(
       return s.hooks
     })
 
+    const settingsRpc = Effect.fn("Plugin.settingsRpc")(function* (id: string, method: string, params?: unknown) {
+      const s = yield* InstanceState.get(state)
+      const entry = s.entries.find((item) => item.id === id)
+      if (!entry) throw new Error(`Plugin ${id} is not loaded`)
+      const rpc = entry.hooks.settings?.rpc
+      if (!rpc) throw new Error(`Plugin ${id} does not expose settings RPC`)
+      return yield* Effect.promise(() => rpc({ method, params }))
+    })
+
     const init = Effect.fn("Plugin.init")(function* () {
       yield* InstanceState.get(state)
     })
 
-    return Service.of({ trigger, list, init })
+    return Service.of({ trigger, list, settingsRpc, init })
   }),
 )
 

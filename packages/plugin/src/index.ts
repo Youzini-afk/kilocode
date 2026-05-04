@@ -237,6 +237,9 @@ export type AuthOuathResult = AuthOAuthResult
 export interface Hooks {
   event?: (input: { event: Event }) => Promise<void>
   config?: (input: Config) => Promise<void>
+  settings?: {
+    rpc?: (input: { method: string; params?: unknown }) => Promise<unknown>
+  }
   tool?: {
     [key: string]: ToolDefinition
   }

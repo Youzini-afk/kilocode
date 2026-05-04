@@ -11,6 +11,7 @@ import type { ModelSelection, Provider, ProviderAuthState } from "./providers"
 import type { AgentInfo, SkillInfo, SlashCommandInfo } from "./agents"
 import type { BrowserSettings, Config, FeatureFlags, IndexingStatus } from "./config"
 import type { KilocodeNotification, ProfileData } from "./profile"
+import type { PluginListItem } from "./plugins"
 import type {
   AgentManagerApplyWorktreeDiffConflict,
   AgentManagerApplyWorktreeDiffStatus,
@@ -409,6 +410,34 @@ export interface ConfigUpdatedMessage {
   type: "configUpdated"
   config: Config
   features: FeatureFlags
+}
+
+export interface PluginsLoadedMessage {
+  type: "pluginsLoaded"
+  plugins: PluginListItem[]
+}
+
+export interface PluginActionResultMessage {
+  type: "pluginActionResult"
+  requestId: string
+  action: "install" | "enable" | "remove" | "update"
+  success: boolean
+  error?: string
+}
+
+export interface OpenPluginSettingsPanelMessage {
+  type: "openPluginSettingsPanel"
+  pluginId: string
+  url: string
+  title: string
+}
+
+export interface PluginSettingsRpcResultMessage {
+  type: "pluginSettingsRpcResult"
+  pluginId: string
+  requestId: string
+  result?: unknown
+  error?: string
 }
 
 export interface ConfigUpdateFailedMessage {
@@ -871,6 +900,10 @@ export type ExtensionMessage =
   | ClaudeCompatSettingLoadedMessage
   | ConfigLoadedMessage
   | ConfigUpdatedMessage
+  | PluginsLoadedMessage
+  | PluginActionResultMessage
+  | OpenPluginSettingsPanelMessage
+  | PluginSettingsRpcResultMessage
   | ConfigUpdateFailedMessage
   | GlobalConfigLoadedMessage
   | NotificationSettingsLoadedMessage

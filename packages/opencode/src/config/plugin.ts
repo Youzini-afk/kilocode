@@ -49,6 +49,45 @@ export function pluginOptions(plugin: Spec): Options | undefined {
   return Array.isArray(plugin) ? plugin[1] : undefined
 }
 
+export const KILO_META_KEY = "$kilo"
+
+export type KiloInstallMetadata =
+  | {
+      type: "git"
+      url: string
+      ref?: string
+      path?: string
+      directory?: string
+      managedDir?: string
+    }
+  | {
+      type: "npm" | "path"
+      value?: string
+    }
+
+export type KiloMetadata = {
+  enabled?: boolean
+  install?: KiloInstallMetadata
+}
+
+export function pluginKiloMetadata(options: Options | undefined): KiloMetadata | undefined {
+  const value = options?.[KILO_META_KEY]
+  if (!value || typeof value !== "object" || Array.isArray(value)) return
+  return value as KiloMetadata
+}
+
+export function pluginEnabled(plugin: Spec): boolean {
+  return pluginKiloMetadata(pluginOptions(plugin))?.enabled !== false
+}
+
+export function runtimePluginOptions(plugin: Spec): Options | undefined {
+  const options = pluginOptions(plugin)
+  if (!options) return
+  if (!(KILO_META_KEY in options)) return options
+  const { [KILO_META_KEY]: _meta, ...rest } = options
+  return Object.keys(rest).length ? rest : undefined
+}
+
 // Path-like specs are resolved relative to the config file that declared them so merges later on do not
 // accidentally reinterpret `./plugin.ts` relative to some other directory.
 export async function resolvePluginSpec(plugin: Spec, configFilepath: string): Promise<Spec> {

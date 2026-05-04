@@ -123,6 +123,7 @@ export interface Config {
   auto_collapse_reasoning?: boolean
   experimental?: ExperimentalConfig
   indexing?: IndexingConfig
+  plugin?: Array<string | [string, Record<string, unknown>]>
 }
 
 export interface FeatureFlags {

@@ -122,6 +122,26 @@ import type { Agent } from "@kilocode/sdk/v2/client"
 import { configFeatures } from "./features"
 import { createAutoApproveBridge } from "./kilo-provider/auto-approve"
 
+type PluginListItem = {
+  id: string
+  spec: string
+  displayName: string
+  description?: string
+  version?: string
+  kinds: Array<"server" | "tui">
+  scope: "global" | "local" | "builtin"
+  source: "git" | "npm" | "file" | "builtin"
+  configSource: string
+  enabled: boolean
+  managed: boolean
+  target?: string
+  packageDir?: string
+  error?: string
+  install?: { type: "git"; url: string; ref?: string; path?: string; directory?: string; managedDir?: string } | { type: "npm" | "path"; value?: string }
+  config?: { file?: string; schema?: string }
+  settings?: { title?: string; icon?: string; entry?: string; available: boolean }
+}
+
 type KiloProviderOptions = { projectDirectory?: string | null; slimEditMetadata?: boolean }
 
 type MessageLoadMode = "replace" | "prepend" | "focus" | "reconcile"
@@ -169,6 +189,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private cachedCommandsMessage: unknown = null
   /** Cached configLoaded payload so requestConfig can be served before client is ready */
   private cachedConfigMessage: unknown = null
+  /** Cached pluginsLoaded payload so Settings can render before a fresh backend round-trip. */
+  private cachedPluginsMessage: unknown = null
   /** Cached indexingStatusLoaded payload so requestIndexingStatus can be served before client is ready */
   private cachedIndexingStatusMessage: unknown = null
   /** Cached mcpStatusLoaded payload so requestMcpStatus can be served before client is ready */
@@ -842,6 +864,30 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         case "requestConfig":
           this.fetchAndSendConfig().catch((e) => console.error("[Kilo New] fetchAndSendConfig failed:", e))
           break
+        case "requestPlugins":
+          this.fetchAndSendPlugins().catch((e) => console.error("[Kilo New] fetchAndSendPlugins failed:", e))
+          break
+        case "installPlugin":
+          this.handleInstallPlugin(message).catch((e) => console.error("[Kilo New] installPlugin failed:", e))
+          break
+        case "setPluginEnabled":
+          this.handleSetPluginEnabled(message).catch((e) => console.error("[Kilo New] setPluginEnabled failed:", e))
+          break
+        case "removePlugin":
+          this.handleRemovePlugin(message).catch((e) => console.error("[Kilo New] removePlugin failed:", e))
+          break
+        case "updatePlugin":
+          this.handleUpdatePlugin(message).catch((e) => console.error("[Kilo New] updatePlugin failed:", e))
+          break
+        case "openPluginConfig":
+          await this.handleOpenPluginConfig(message.id, message.scope)
+          break
+        case "openPluginSettings":
+          await this.handleOpenPluginSettings(message.pluginId)
+          break
+        case "pluginSettingsRpc":
+          await this.handlePluginSettingsRpc(message)
+          break
         case "requestGlobalConfig":
           this.fetchAndSendGlobalConfig().catch((e) => console.error("[Kilo New] fetchAndSendGlobalConfig failed:", e))
           break
@@ -1270,6 +1316,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         this.fetchAndSendSkills(),
         this.fetchAndSendCommands(),
         this.fetchAndSendConfig(),
+        this.fetchAndSendPlugins(),
         this.fetchAndSendIndexingStatus(),
         this.fetchAndSendNotifications(),
         this.seedSessionStatusMap(),
@@ -2038,7 +2085,257 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     })
     this.cachedAgentsMessage = null
     this.cachedConfigMessage = null
-    await Promise.all([this.fetchAndSendAgents(), this.fetchAndSendConfig()])
+    this.cachedPluginsMessage = null
+    await Promise.all([this.fetchAndSendAgents(), this.fetchAndSendConfig(), this.fetchAndSendPlugins()])
+  }
+
+  private pluginAuthHeaders(): { baseUrl: string; headers: Record<string, string> } | null {
+    const config = this.connectionService.getServerConfig()
+    if (!config) return null
+    return {
+      baseUrl: config.baseUrl,
+      headers: {
+        Authorization: `Basic ${Buffer.from(`kilo:${config.password}`).toString("base64")}`,
+        "Content-Type": "application/json",
+        "x-kilo-directory": this.getWorkspaceDirectory(this.currentSession?.id),
+      },
+    }
+  }
+
+  private async pluginFetch<T>(path: string, init?: RequestInit): Promise<T> {
+    const cfg = this.pluginAuthHeaders()
+    if (!cfg) throw new Error("Not connected to CLI backend")
+    const headers = {
+      ...cfg.headers,
+      ...(init?.headers as Record<string, string> | undefined),
+    }
+    const res = await fetch(`${cfg.baseUrl}${path}`, { ...init, headers })
+    if (!res.ok) {
+      const text = await res.text().catch(() => "")
+      throw new Error(text || `HTTP ${res.status}`)
+    }
+    return (await res.json()) as T
+  }
+
+  private async refreshAfterPluginChange(): Promise<void> {
+    this.cachedAgentsMessage = null
+    this.cachedCommandsMessage = null
+    this.cachedConfigMessage = null
+    this.cachedPluginsMessage = null
+    await Promise.all([
+      this.fetchAndSendPlugins(),
+      this.fetchAndSendConfig(),
+      this.fetchAndSendAgents(),
+      this.fetchAndSendCommands(),
+    ])
+  }
+
+  private async fetchAndSendPlugins(): Promise<void> {
+    if (this.connectionState !== "connected") {
+      if (this.cachedPluginsMessage) this.postMessage(this.cachedPluginsMessage)
+      return
+    }
+    try {
+      const plugins = await this.pluginFetch<PluginListItem[]>("/plugin")
+      const msg = { type: "pluginsLoaded" as const, plugins }
+      this.cachedPluginsMessage = msg
+      this.postMessage(msg)
+    } catch (error) {
+      console.error("[Kilo New] KiloProvider: Failed to fetch plugins:", error)
+      this.postMessage({ type: "error", message: getErrorMessage(error) || "Failed to fetch plugins" })
+    }
+  }
+
+  private async handleInstallPlugin(message: {
+    requestId: string
+    url: string
+    ref?: string
+    path?: string
+    scope: "global" | "local"
+    force?: boolean
+    trusted: boolean
+  }): Promise<void> {
+    if (!message.trusted) {
+      this.postMessage({
+        type: "pluginActionResult",
+        requestId: message.requestId,
+        action: "install",
+        success: false,
+        error: "Install cancelled: trust confirmation is required.",
+      })
+      return
+    }
+    try {
+      await this.pluginFetch("/plugin/install", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "git",
+          url: message.url,
+          ref: message.ref || undefined,
+          path: message.path || undefined,
+          scope: message.scope,
+          force: message.force,
+        }),
+      })
+      await this.refreshAfterPluginChange()
+      this.postMessage({ type: "pluginActionResult", requestId: message.requestId, action: "install", success: true })
+    } catch (error) {
+      this.postMessage({
+        type: "pluginActionResult",
+        requestId: message.requestId,
+        action: "install",
+        success: false,
+        error: getErrorMessage(error),
+      })
+    }
+  }
+
+  private async handleSetPluginEnabled(message: { requestId: string; id: string; enabled: boolean }): Promise<void> {
+    try {
+      await this.pluginFetch("/plugin/enabled", {
+        method: "POST",
+        body: JSON.stringify({ id: message.id, enabled: message.enabled }),
+      })
+      await this.refreshAfterPluginChange()
+      this.postMessage({ type: "pluginActionResult", requestId: message.requestId, action: "enable", success: true })
+    } catch (error) {
+      this.postMessage({
+        type: "pluginActionResult",
+        requestId: message.requestId,
+        action: "enable",
+        success: false,
+        error: getErrorMessage(error),
+      })
+    }
+  }
+
+  private async handleRemovePlugin(message: { requestId: string; id: string; deleteManaged?: boolean }): Promise<void> {
+    try {
+      await this.pluginFetch("/plugin/remove", {
+        method: "POST",
+        body: JSON.stringify({ id: message.id, deleteManaged: message.deleteManaged }),
+      })
+      await this.refreshAfterPluginChange()
+      this.postMessage({ type: "pluginActionResult", requestId: message.requestId, action: "remove", success: true })
+    } catch (error) {
+      this.postMessage({
+        type: "pluginActionResult",
+        requestId: message.requestId,
+        action: "remove",
+        success: false,
+        error: getErrorMessage(error),
+      })
+    }
+  }
+
+  private async handleUpdatePlugin(message: { requestId: string; id: string }): Promise<void> {
+    try {
+      await this.pluginFetch("/plugin/update", {
+        method: "POST",
+        body: JSON.stringify({ id: message.id }),
+      })
+      await this.refreshAfterPluginChange()
+      this.postMessage({ type: "pluginActionResult", requestId: message.requestId, action: "update", success: true })
+    } catch (error) {
+      this.postMessage({
+        type: "pluginActionResult",
+        requestId: message.requestId,
+        action: "update",
+        success: false,
+        error: getErrorMessage(error),
+      })
+    }
+  }
+
+  private async handleOpenPluginConfig(id: string, scope?: "global" | "local"): Promise<void> {
+    const plugins = (this.cachedPluginsMessage as { plugins?: PluginListItem[] } | null)?.plugins
+    const plugin = plugins?.find((item) => item.id === id)
+    const file = plugin?.config?.file
+    if (file) {
+      const filePath = path.isAbsolute(file)
+        ? file
+        : plugin?.scope === "local"
+          ? path.join(this.getWorkspaceDirectory(this.currentSession?.id), ".kilo", file)
+          : file
+      this.handleOpenFile(filePath)
+      return
+    }
+    await openConfig(scope ?? (plugin?.scope === "local" ? "local" : "global"), {
+      scope: plugin?.scope === "local" ? "Local" : "Global",
+      statusLoaded: "loaded",
+      statusLoadedLegacy: "loaded legacy config",
+      statusNotLoaded: "not loaded",
+      statusCreate: "not found - create this file",
+      title: "Open Kilo config file",
+      placeholder: "Config files are merged in order.",
+      noWorkspace: "Open a workspace folder to edit the local Kilo config file.",
+      openFailed: "Failed to open Kilo config file: {{message}}",
+      sourceXdg: "XDG global config",
+      sourceHomeKilo: "Home .kilo config",
+      sourceHomeKilocode: "Home .kilocode config",
+      sourceHomeOpencode: "Home .opencode config",
+      sourceEnvFile: "KILO_CONFIG environment file",
+      sourceEnvDir: "KILO_CONFIG_DIR",
+      sourceEnvContent: "Inline environment config",
+      sourceProjectKilo: "Project .kilo config",
+      sourceProjectRoot: "Project root config",
+      sourceProjectKilocode: "Legacy .kilocode config",
+      sourceProjectOpencode: "Legacy .opencode config",
+    }, this.getProjectDirectory(this.currentSession?.id))
+  }
+
+  private async handleOpenPluginSettings(pluginId: string): Promise<void> {
+    const cfg = this.pluginAuthHeaders()
+    if (!cfg) {
+      this.postMessage({ type: "error", message: "Not connected to CLI backend" })
+      return
+    }
+    const plugins = (this.cachedPluginsMessage as { plugins?: PluginListItem[] } | null)?.plugins
+    const plugin = plugins?.find((item) => item.id === pluginId)
+    if (!plugin?.settings?.available) {
+      this.postMessage({ type: "error", message: `Plugin ${pluginId} has no settings UI` })
+      return
+    }
+    const auth = Buffer.from(`kilo:${this.connectionService.getServerConfig()!.password}`).toString("base64")
+    const url = `${cfg.baseUrl}/plugin/settings/${encodeURIComponent(pluginId)}?auth_token=${encodeURIComponent(auth)}&directory=${encodeURIComponent(this.getWorkspaceDirectory(this.currentSession?.id))}`
+    this.postMessage({
+      type: "openPluginSettingsPanel",
+      pluginId,
+      url,
+      title: plugin.settings.title ?? plugin.displayName,
+    })
+  }
+
+  private async handlePluginSettingsRpc(message: {
+    pluginId: string
+    requestId: string
+    method: string
+    params?: unknown
+  }): Promise<void> {
+    try {
+      const data = await this.pluginFetch<{ result?: unknown }>("/plugin/settings/rpc", {
+        method: "POST",
+        body: JSON.stringify({
+          id: message.pluginId,
+          requestId: message.requestId,
+          method: message.method,
+          params: message.params,
+        }),
+      })
+      this.postMessage({
+        type: "pluginSettingsRpcResult",
+        pluginId: message.pluginId,
+        requestId: message.requestId,
+        result: data.result,
+      })
+    } catch (error) {
+      this.postMessage({
+        type: "pluginSettingsRpcResult",
+        pluginId: message.pluginId,
+        requestId: message.requestId,
+        error: getErrorMessage(error),
+      })
+    }
   }
 
   /**

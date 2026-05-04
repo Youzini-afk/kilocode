@@ -24,6 +24,7 @@ import { ExperimentalRoutes } from "./experimental"
 import { ProviderRoutes } from "./provider"
 import { EventRoutes } from "./event"
 import { SyncRoutes } from "./sync"
+import { PluginRoutes } from "./plugin"
 import { InstanceMiddleware } from "./middleware"
 import { jsonRequest } from "./trace"
 import { register as registerKiloRoutes } from "@/kilocode/server/instance" // kilocode_change
@@ -41,6 +42,7 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket): Hono => {
     .route("/permission", PermissionRoutes())
     .route("/question", QuestionRoutes())
     .route("/provider", ProviderRoutes())
+    .route("/plugin", PluginRoutes())
     .route("/sync", SyncRoutes())
     .route("/", FileRoutes())
     .route("/", EventRoutes())

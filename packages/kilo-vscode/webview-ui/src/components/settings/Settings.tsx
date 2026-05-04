@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, on, Show } from "solid-js"
+import { Component, createSignal, createEffect, on, Show, For } from "solid-js"
 import { Icon } from "@kilocode/kilo-ui/icon"
 import { Tabs } from "@kilocode/kilo-ui/tabs"
 import { Button } from "@kilocode/kilo-ui/button"
@@ -17,6 +17,9 @@ import DisplayTab from "./DisplayTab"
 import AutocompleteTab from "./AutocompleteTab"
 import NotificationsTab from "./NotificationsTab"
 import ContextTab from "./ContextTab"
+import PluginsTab from "./PluginsTab"
+import PluginSettingsFrame from "./PluginSettingsFrame"
+import { usePlugins } from "../../context/plugins"
 
 import CommitMessageTab from "./CommitMessageTab"
 import ExperimentalTab from "./ExperimentalTab"
@@ -36,6 +39,7 @@ const Settings: Component<SettingsProps> = (props) => {
   const language = useLanguage()
   const vscode = useVSCode()
   const { isDirty, saving, saveError, saveConfig, discardConfig, features } = useConfig()
+  const plugins = usePlugins()
   const session = useSession()
   const [active, setActive] = createSignal(props.tab ?? "models")
   const [errorExpanded, setErrorExpanded] = createSignal(false)
@@ -185,6 +189,18 @@ const Settings: Component<SettingsProps> = (props) => {
             <Icon name="server" />
             <span class="label">{language.t("settings.context.title")}</span>
           </Tabs.Trigger>
+          <Tabs.Trigger value="plugins">
+            <Icon name="mcp" />
+            <span class="label">Plugins</span>
+          </Tabs.Trigger>
+          <For each={plugins.plugins().filter((plugin) => plugin.settings?.available)}>
+            {(plugin) => (
+              <Tabs.Trigger value={`plugin:${plugin.id}`}>
+                <Icon name="settings-gear" />
+                <span class="label">{plugin.settings?.title ?? plugin.displayName}</span>
+              </Tabs.Trigger>
+            )}
+          </For>
 
           <Tabs.Trigger value="commitMessage">
             <Icon name="edit" />
@@ -250,6 +266,18 @@ const Settings: Component<SettingsProps> = (props) => {
           <h3>{language.t("settings.context.title")}</h3>
           <ContextTab />
         </Tabs.Content>
+        <Tabs.Content value="plugins">
+          <h3>Plugins</h3>
+          <PluginsTab />
+        </Tabs.Content>
+        <For each={plugins.plugins().filter((plugin) => plugin.settings?.available)}>
+          {(plugin) => (
+            <Tabs.Content value={`plugin:${plugin.id}`}>
+              <h3>{plugin.settings?.title ?? plugin.displayName}</h3>
+              <PluginSettingsFrame pluginId={plugin.id} />
+            </Tabs.Content>
+          )}
+        </For>
 
         <Tabs.Content value="commitMessage">
           <h3>{language.t("settings.commitMessage.title")}</h3>

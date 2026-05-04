@@ -368,6 +368,60 @@ export interface RequestConfigMessage {
   type: "requestConfig"
 }
 
+export interface RequestPluginsMessage {
+  type: "requestPlugins"
+}
+
+export interface InstallPluginMessage {
+  type: "installPlugin"
+  requestId: string
+  url: string
+  ref?: string
+  path?: string
+  scope: "global" | "local"
+  force?: boolean
+  trusted: boolean
+}
+
+export interface SetPluginEnabledMessage {
+  type: "setPluginEnabled"
+  requestId: string
+  id: string
+  enabled: boolean
+}
+
+export interface RemovePluginMessage {
+  type: "removePlugin"
+  requestId: string
+  id: string
+  deleteManaged?: boolean
+}
+
+export interface UpdatePluginMessage {
+  type: "updatePlugin"
+  requestId: string
+  id: string
+}
+
+export interface OpenPluginConfigMessage {
+  type: "openPluginConfig"
+  id: string
+  scope?: "global" | "local"
+}
+
+export interface OpenPluginSettingsMessage {
+  type: "openPluginSettings"
+  pluginId: string
+}
+
+export interface PluginSettingsRpcMessage {
+  type: "pluginSettingsRpc"
+  pluginId: string
+  requestId: string
+  method: string
+  params?: unknown
+}
+
 export interface RequestGlobalConfigMessage {
   type: "requestGlobalConfig"
 }
@@ -1040,6 +1094,14 @@ export type WebviewMessage =
   | RequestBrowserSettingsMessage
   | RequestClaudeCompatSettingMessage
   | RequestConfigMessage
+  | RequestPluginsMessage
+  | InstallPluginMessage
+  | SetPluginEnabledMessage
+  | RemovePluginMessage
+  | UpdatePluginMessage
+  | OpenPluginConfigMessage
+  | OpenPluginSettingsMessage
+  | PluginSettingsRpcMessage
   | RequestGlobalConfigMessage
   | RequestIndexingStatusMessage
   | UpdateConfigMessage
