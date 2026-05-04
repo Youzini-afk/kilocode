@@ -26,6 +26,8 @@ import { parsePluginSpecifier, readPluginId, readV1Plugin, resolvePluginId } fro
 import { registerAdaptor } from "@/control-plane/adaptors"
 import type { WorkspaceAdaptor } from "@/control-plane/types"
 import { KiloAuthPlugin } from "@kilocode/kilo-gateway" // kilocode_change
+import { Global } from "@opencode-ai/core/global" // kilocode_change
+import { Path as DatabasePath } from "@/storage/db" // kilocode_change
 
 const log = Log.create({ service: "plugin" })
 
@@ -138,6 +140,21 @@ export const layer = Layer.effect(
           project: ctx.project,
           worktree: ctx.worktree,
           directory: ctx.directory,
+          // kilocode_change start - expose stable runtime paths to Kilo plugins
+          experimental_runtime: {
+            app: "kilo",
+            paths: {
+              config: Global.Path.config,
+              data: Global.Path.data,
+              cache: Global.Path.cache,
+              state: Global.Path.state,
+              log: Global.Path.log,
+            },
+            database: {
+              path: DatabasePath,
+            },
+          },
+          // kilocode_change end
           experimental_workspace: {
             register(type: string, adaptor: PluginWorkspaceAdaptor) {
               registerAdaptor(ctx.project.id, type, adaptor as WorkspaceAdaptor)

@@ -59,6 +59,21 @@ export type PluginInput = {
   project: Project
   directory: string
   worktree: string
+  // kilocode_change start
+  experimental_runtime?: {
+    app: "kilo"
+    paths: {
+      config: string
+      data: string
+      cache: string
+      state: string
+      log: string
+    }
+    database: {
+      path: string
+    }
+  }
+  // kilocode_change end
   experimental_workspace: {
     register(type: string, adaptor: WorkspaceAdaptor): void
   }
