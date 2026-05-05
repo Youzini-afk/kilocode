@@ -48,6 +48,7 @@ import { ZodOverride } from "@/util/effect-zod"
 import { KilocodeConfig } from "../kilocode/config/config"
 import { KilocodeDefaultPlugins } from "@/kilocode/config/default-plugins"
 import { IndexingConfig as KiloIndexingConfig } from "@kilocode/kilo-indexing/config"
+import { ContextEngineMigration } from "@/kilocode/context-engine"
 import { makeRuntime } from "@/effect/run-service"
 import { unique } from "remeda"
 // kilocode_change end
@@ -175,6 +176,7 @@ export const Info = Schema.Struct({
     description: "Automatically collapse reasoning blocks after the agent finishes writing them",
   }),
   indexing: Schema.optional(IndexingRef).annotate({ description: "Codebase indexing configuration" }), // kilocode_change
+  contextEngine: Schema.optional(Schema.Any).annotate({ description: "Native Context Engine configuration" }), // kilocode_change
   terminal_command_display: Schema.optional(Schema.Literals(["expanded", "collapsed"])).annotate({
     description: "Controls whether terminal command blocks are expanded or collapsed by default in the VS Code chat UI",
   }),
@@ -500,6 +502,21 @@ export const layer = Layer.effect(
             .catch(() => {}),
         )
       }
+
+      // kilocode_change start - migrate legacy Magic Context config into native Context Engine config
+      if (result.contextEngine === undefined) {
+        const migrated = yield* Effect.promise(() =>
+          ContextEngineMigration.fromLegacyFile(path.join(Global.Path.config, "kilo-magic-context.jsonc")),
+        )
+        if (migrated) {
+          result.contextEngine = migrated
+          const file = globalConfigFile()
+          const before = (yield* readConfigFile(file)) ?? "{}"
+          const updated = patchJsonc(before, { contextEngine: migrated })
+          yield* fs.writeFileString(file, updated).pipe(Effect.catch(() => Effect.void))
+        }
+      }
+      // kilocode_change end
 
       return result
     })

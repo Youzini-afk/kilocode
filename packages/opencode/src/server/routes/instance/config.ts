@@ -11,6 +11,48 @@ import { fetchDefaultModel } from "@kilocode/kilo-gateway"
 import { Auth } from "@/auth"
 import { Effect } from "effect"
 import { ModelID, ProviderID } from "@/provider/schema"
+import { ContextEngineConfig, ContextEngineModelOptions } from "@/kilocode/context-engine"
+// kilocode_change end
+
+// kilocode_change start
+const ContextEngineSaveInput = z.object({ config: z.unknown() })
+const ContextEngineAgentOutput = z.object({
+  enabled: z.boolean(),
+  model: z.string(),
+  fallbackModels: z.array(z.string()),
+  variant: z.string(),
+  thinkingLevel: z.string(),
+})
+const ContextEngineConfigOutput = z.object({
+  enabled: z.boolean(),
+  mode: z.enum(["recommended", "light", "advanced"]),
+  historian: ContextEngineAgentOutput.extend({ twoPass: z.boolean() }),
+  dreamer: ContextEngineAgentOutput,
+  sidekick: ContextEngineAgentOutput,
+  memory: z.object({
+    enabled: z.boolean(),
+    injectionBudgetTokens: z.number(),
+    autoPromote: z.boolean(),
+    retrievalCountPromotionThreshold: z.number(),
+    embedding: z.object({
+      provider: z.enum(["local", "openai-compatible", "off"]),
+      model: z.string(),
+      endpoint: z.string(),
+      apiKey: z.string(),
+    }),
+  }),
+})
+const ContextEngineModelOutput = z.object({
+  value: z.string(),
+  label: z.string(),
+  provider: z.string(),
+  model: z.string(),
+})
+const ContextEngineSettingsOutput = z.object({
+  config: ContextEngineConfigOutput,
+  models: z.array(ContextEngineModelOutput),
+})
+const ContextEngineSaveOutput = z.object({ config: ContextEngineConfigOutput })
 // kilocode_change end
 
 export const ConfigRoutes = lazy(() =>
@@ -66,6 +108,64 @@ export const ConfigRoutes = lazy(() =>
         }),
     )
     // kilocode_change start
+    .get(
+      "/context-engine",
+      describeRoute({
+        summary: "Get Context Engine settings",
+        description: "Get normalized native Context Engine configuration and configured Kilo provider models.",
+        operationId: "config.contextEngine.get",
+        responses: {
+          200: {
+            description: "Context Engine settings",
+            content: {
+              "application/json": {
+                schema: resolver(ContextEngineSettingsOutput),
+              },
+            },
+          },
+        },
+      }),
+      async (c) =>
+        jsonRequest("ConfigRoutes.contextEngine.get", c, function* () {
+          const cfg = yield* Config.Service
+          const svc = yield* Provider.Service
+          const current = yield* cfg.get()
+          const providers = yield* svc.list()
+          return {
+            config: ContextEngineConfig.normalize(current.contextEngine),
+            models: ContextEngineModelOptions.fromProviders(providers),
+          }
+        }),
+    )
+    .post(
+      "/context-engine",
+      describeRoute({
+        summary: "Save Context Engine settings",
+        description: "Save native Context Engine configuration.",
+        operationId: "config.contextEngine.save",
+        responses: {
+          200: {
+            description: "Context Engine settings saved",
+            content: {
+              "application/json": {
+                schema: resolver(ContextEngineSaveOutput),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator("json", ContextEngineSaveInput),
+      async (c) =>
+        jsonRequest("ConfigRoutes.contextEngine.save", c, function* () {
+          const input = c.req.valid("json")
+          const cfg = yield* Config.Service
+          const config = ContextEngineConfig.normalize(input.config)
+          yield* cfg.update({ contextEngine: config }, { dispose: false })
+          yield* cfg.invalidate(true)
+          return { config }
+        }),
+    )
     .get(
       "/warnings",
       describeRoute({

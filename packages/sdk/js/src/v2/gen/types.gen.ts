@@ -1903,6 +1903,10 @@ export type Config = {
   auto_collapse_reasoning?: boolean
   indexing?: IndexingConfig
   /**
+   * Native Context Engine configuration
+   */
+  contextEngine?: unknown
+  /**
    * Controls whether terminal command blocks are expanded or collapsed by default in the VS Code chat UI
    */
   terminal_command_display?: "expanded" | "collapsed"
@@ -3416,6 +3420,139 @@ export type ConfigUpdateResponses = {
 }
 
 export type ConfigUpdateResponse = ConfigUpdateResponses[keyof ConfigUpdateResponses]
+
+export type ConfigContextEngineGetData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/context-engine"
+}
+
+export type ConfigContextEngineGetResponses = {
+  /**
+   * Context Engine settings
+   */
+  200: {
+    config: {
+      enabled: boolean
+      mode: "recommended" | "light" | "advanced"
+      historian: {
+        enabled: boolean
+        model: string
+        fallbackModels: Array<string>
+        variant: string
+        thinkingLevel: string
+        twoPass: boolean
+      }
+      dreamer: {
+        enabled: boolean
+        model: string
+        fallbackModels: Array<string>
+        variant: string
+        thinkingLevel: string
+      }
+      sidekick: {
+        enabled: boolean
+        model: string
+        fallbackModels: Array<string>
+        variant: string
+        thinkingLevel: string
+      }
+      memory: {
+        enabled: boolean
+        injectionBudgetTokens: number
+        autoPromote: boolean
+        retrievalCountPromotionThreshold: number
+        embedding: {
+          provider: "local" | "openai-compatible" | "off"
+          model: string
+          endpoint: string
+          apiKey: string
+        }
+      }
+    }
+    models: Array<{
+      value: string
+      label: string
+      provider: string
+      model: string
+    }>
+  }
+}
+
+export type ConfigContextEngineGetResponse = ConfigContextEngineGetResponses[keyof ConfigContextEngineGetResponses]
+
+export type ConfigContextEngineSaveData = {
+  body?: {
+    config: unknown
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/context-engine"
+}
+
+export type ConfigContextEngineSaveErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ConfigContextEngineSaveError = ConfigContextEngineSaveErrors[keyof ConfigContextEngineSaveErrors]
+
+export type ConfigContextEngineSaveResponses = {
+  /**
+   * Context Engine settings saved
+   */
+  200: {
+    config: {
+      enabled: boolean
+      mode: "recommended" | "light" | "advanced"
+      historian: {
+        enabled: boolean
+        model: string
+        fallbackModels: Array<string>
+        variant: string
+        thinkingLevel: string
+        twoPass: boolean
+      }
+      dreamer: {
+        enabled: boolean
+        model: string
+        fallbackModels: Array<string>
+        variant: string
+        thinkingLevel: string
+      }
+      sidekick: {
+        enabled: boolean
+        model: string
+        fallbackModels: Array<string>
+        variant: string
+        thinkingLevel: string
+      }
+      memory: {
+        enabled: boolean
+        injectionBudgetTokens: number
+        autoPromote: boolean
+        retrievalCountPromotionThreshold: number
+        embedding: {
+          provider: "local" | "openai-compatible" | "off"
+          model: string
+          endpoint: string
+          apiKey: string
+        }
+      }
+    }
+  }
+}
+
+export type ConfigContextEngineSaveResponse = ConfigContextEngineSaveResponses[keyof ConfigContextEngineSaveResponses]
 
 export type ConfigWarningsData = {
   body?: never

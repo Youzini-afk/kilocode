@@ -17,6 +17,7 @@ import DisplayTab from "./DisplayTab"
 import AutocompleteTab from "./AutocompleteTab"
 import NotificationsTab from "./NotificationsTab"
 import ContextTab from "./ContextTab"
+import { ContextEngineTab } from "./ContextEngineTab"
 import PluginsTab from "./PluginsTab"
 import PluginSettingsFrame from "./PluginSettingsFrame"
 import { usePlugins } from "../../context/plugins"
@@ -189,6 +190,10 @@ const Settings: Component<SettingsProps> = (props) => {
             <Icon name="server" />
             <span class="label">{language.t("settings.context.title")}</span>
           </Tabs.Trigger>
+          <Tabs.Trigger value="contextEngine">
+            <Icon name="brain" />
+            <span class="label">{language.t("settings.contextEngine.title")}</span>
+          </Tabs.Trigger>
           <Tabs.Trigger value="plugins">
             <Icon name="mcp" />
             <span class="label">{language.t("settings.plugins.title")}</span>
@@ -265,6 +270,9 @@ const Settings: Component<SettingsProps> = (props) => {
         <Tabs.Content value="context">
           <h3>{language.t("settings.context.title")}</h3>
           <ContextTab />
+        </Tabs.Content>
+        <Tabs.Content value="contextEngine">
+          <ContextEngineTab />
         </Tabs.Content>
         <Tabs.Content value="plugins">
           <h3>{language.t("settings.plugins.title")}</h3>

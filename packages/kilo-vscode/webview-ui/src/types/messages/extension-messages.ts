@@ -9,7 +9,14 @@ import type { PermissionRequest } from "./permissions"
 import type { QuestionRequest, SuggestionRequest, TodoItem } from "./questions"
 import type { ModelSelection, Provider, ProviderAuthState } from "./providers"
 import type { AgentInfo, SkillInfo, SlashCommandInfo } from "./agents"
-import type { BrowserSettings, Config, FeatureFlags, IndexingStatus } from "./config"
+import type {
+  BrowserSettings,
+  Config,
+  ContextEngineConfig,
+  ContextEngineModelOption,
+  FeatureFlags,
+  IndexingStatus,
+} from "./config"
 import type { KilocodeNotification, ProfileData } from "./profile"
 import type { PluginListItem } from "./plugins"
 import type {
@@ -410,6 +417,17 @@ export interface ConfigUpdatedMessage {
   type: "configUpdated"
   config: Config
   features: FeatureFlags
+}
+
+export interface ContextEngineSettingsLoadedMessage {
+  type: "contextEngineSettingsLoaded"
+  config: ContextEngineConfig
+  models: ContextEngineModelOption[]
+}
+
+export interface ContextEngineSettingsSavedMessage {
+  type: "contextEngineSettingsSaved"
+  config: ContextEngineConfig
 }
 
 export interface PluginsLoadedMessage {
@@ -900,6 +918,8 @@ export type ExtensionMessage =
   | ClaudeCompatSettingLoadedMessage
   | ConfigLoadedMessage
   | ConfigUpdatedMessage
+  | ContextEngineSettingsLoadedMessage
+  | ContextEngineSettingsSavedMessage
   | PluginsLoadedMessage
   | PluginActionResultMessage
   | OpenPluginSettingsPanelMessage

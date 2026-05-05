@@ -87,6 +87,43 @@ export interface IndexingConfig {
 
 export type IndexingStatus = SdkIndexingStatus
 
+export type ContextEngineMode = "recommended" | "light" | "advanced"
+
+export interface ContextEngineAgentConfig {
+  enabled?: boolean
+  model?: string
+  fallbackModels?: string[]
+  variant?: string
+  thinkingLevel?: string
+}
+
+export interface ContextEngineConfig {
+  enabled?: boolean
+  mode?: ContextEngineMode
+  historian?: ContextEngineAgentConfig & { twoPass?: boolean }
+  dreamer?: ContextEngineAgentConfig
+  sidekick?: ContextEngineAgentConfig
+  memory?: {
+    enabled?: boolean
+    injectionBudgetTokens?: number
+    autoPromote?: boolean
+    retrievalCountPromotionThreshold?: number
+    embedding?: {
+      provider?: "local" | "openai-compatible" | "off"
+      model?: string
+      endpoint?: string
+      apiKey?: string
+    }
+  }
+}
+
+export interface ContextEngineModelOption {
+  value: string
+  label: string
+  provider: string
+  model: string
+}
+
 export interface BrowserSettings {
   enabled: boolean
   useSystemChrome: boolean
@@ -123,6 +160,7 @@ export interface Config {
   auto_collapse_reasoning?: boolean
   experimental?: ExperimentalConfig
   indexing?: IndexingConfig
+  contextEngine?: ContextEngineConfig
   plugin?: Array<string | [string, Record<string, unknown>]>
 }
 

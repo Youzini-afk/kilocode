@@ -17,7 +17,7 @@ import { deepMerge, stripNulls, resolveConfig } from "../utils/config-utils"
 // Top-level config keys that persist to the project's kilo.json rather than the
 // global one. Settings that are inherently per-repository (e.g. commit message
 // conventions) belong here so they don't leak across workspaces.
-const PROJECT_SCOPED_KEYS: ReadonlySet<string> = new Set(["commit_message"])
+const PROJECT_SCOPED_KEYS: ReadonlySet<string> = new Set(["commit_message", "contextEngine"])
 
 function splitByScope(draft: Partial<Config>) {
   const global: Record<string, unknown> = {}
@@ -78,6 +78,25 @@ export const ConfigProvider: ParentComponent = (props) => {
       setFeatures(message.features)
       setSaved(message.config)
       setLoading(false)
+      return
+    }
+    if (message.type === "contextEngineSettingsLoaded") {
+      const next = { ...saved(), contextEngine: message.config }
+      setConfig(resolveConfig(next, draft(), isDirty()))
+      setSaved(next)
+      setLoading(false)
+      return
+    }
+    if (message.type === "contextEngineSettingsSaved") {
+      setConfig((prev) => ({ ...prev, contextEngine: message.config }))
+      setSaved((prev) => ({ ...prev, contextEngine: message.config }))
+      setDraft((prev) => {
+        const next = { ...prev }
+        delete next.contextEngine
+        setIsDirty(Object.keys(next).length > 0)
+        return next
+      })
+      setSaveError(null)
       return
     }
     if (message.type === "configUpdated") {

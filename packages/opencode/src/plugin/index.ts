@@ -79,9 +79,11 @@ const INTERNAL_PLUGINS: PluginInstance[] = [
   CloudflareAIGatewayAuthPlugin as unknown as PluginInstance,
 ] // kilocode_change end
 
+// kilocode_change start
 const OPTIONAL_INTERNAL_PLUGINS = new Map<PluginInstance, () => boolean>([
   [MagicContextPlugin, () => Flag.KILO_DISABLE_MAGIC_CONTEXT],
 ])
+// kilocode_change end
 
 function isServerPlugin(value: unknown): value is PluginInstance {
   return typeof value === "function"
@@ -184,11 +186,13 @@ export const layer = Layer.effect(
           $: typeof Bun === "undefined" ? undefined : Bun.$,
         }
 
-        for (const plugin of INTERNAL_PLUGINS) {
+        for (const plugin of INTERNAL_PLUGINS) { // kilocode_change - optional internal plugin filtering
+          // kilocode_change start
           if (OPTIONAL_INTERNAL_PLUGINS.get(plugin)?.()) {
             log.info("skipping disabled internal plugin", { name: plugin.name })
             continue
           }
+          // kilocode_change end
           log.info("loading internal plugin", { name: plugin.name })
           const init = yield* Effect.tryPromise({
             try: () => plugin(input),
@@ -221,6 +225,15 @@ export const layer = Layer.effect(
                 return undefined
               })
               if (!manifest) return true
+              // kilocode_change start - avoid running legacy Magic Context beside native Context Engine
+              if (!PluginManager.shouldLoadLegacyMagicContextPlugin(cfg, manifest.id)) {
+                log.info("skipping legacy Magic Context plugin for native Context Engine runtime", {
+                  id: manifest.id,
+                  path: resolved.spec,
+                })
+                return false
+              }
+              // kilocode_change end
               const conflict = PluginConflict.report({ config: cfg, spec: origin.spec, manifest })
               if (conflict.status === "blocked" || conflict.status === "pending-resolution") {
                 log.warn("skipping plugin with unresolved blocking conflicts", {

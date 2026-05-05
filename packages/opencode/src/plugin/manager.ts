@@ -118,6 +118,18 @@ type PatchTarget = {
 const KILO_PLUGIN_FIELD = "kilo-plugin"
 const GIT_ROOT = () => path.join(Global.Path.data, "storage", "plugin", "git")
 
+// kilocode_change start
+export function isLegacyMagicContextPlugin(id: string) {
+  return id === "kilocode-magic-context" || id === "magic-context" || id.endsWith("/kilocode-magic-context")
+}
+
+export function shouldLoadLegacyMagicContextPlugin(config: Pick<Config.Info, "contextEngine">, id: string) {
+  if (!isLegacyMagicContextPlugin(id)) return true
+  const engine = isRecord(config.contextEngine) ? config.contextEngine : {}
+  return engine.runtime !== "native"
+}
+// kilocode_change end
+
 function cleanString(value: unknown): string | undefined {
   if (typeof value !== "string") return
   const text = value.trim()

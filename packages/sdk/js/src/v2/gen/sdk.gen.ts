@@ -17,6 +17,9 @@ import type {
   CommitMessageGenerateErrors,
   CommitMessageGenerateResponses,
   Config as Config3,
+  ConfigContextEngineGetResponses,
+  ConfigContextEngineSaveErrors,
+  ConfigContextEngineSaveResponses,
   ConfigGetResponses,
   ConfigProvidersResponses,
   ConfigUpdateErrors,
@@ -1408,6 +1411,79 @@ export class Pty extends HeyApiClient {
   }
 }
 
+export class ContextEngine extends HeyApiClient {
+  /**
+   * Get Context Engine settings
+   *
+   * Get normalized native Context Engine configuration and configured Kilo provider models.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigContextEngineGetResponses, unknown, ThrowOnError>({
+      url: "/config/context-engine",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Save Context Engine settings
+   *
+   * Save native Context Engine configuration.
+   */
+  public save<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      config?: unknown
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "config" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      ConfigContextEngineSaveResponses,
+      ConfigContextEngineSaveErrors,
+      ThrowOnError
+    >({
+      url: "/config/context-engine",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class Config2 extends HeyApiClient {
   /**
    * Get configuration
@@ -1534,6 +1610,11 @@ export class Config2 extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  private _contextEngine?: ContextEngine
+  get contextEngine(): ContextEngine {
+    return (this._contextEngine ??= new ContextEngine({ client: this.client }))
   }
 }
 

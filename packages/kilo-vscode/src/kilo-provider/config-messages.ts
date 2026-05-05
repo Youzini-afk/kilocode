@@ -1,0 +1,57 @@
+import type { KiloClient } from "@kilocode/sdk/v2/client"
+import { configFeatures } from "../features"
+import { retry } from "../services/cli-backend/retry"
+
+export type ConfigMessageContext = {
+  client: () => KiloClient | null
+  state: () => "connecting" | "connected" | "disconnected" | "error"
+  pending: () => number
+  cached: () => unknown
+  setCached: (msg: unknown) => void
+  workspace: () => string
+  post: (msg: unknown) => void
+}
+
+export async function fetchConfig(ctx: ConfigMessageContext) {
+  const client = ctx.client()
+  if (!client || ctx.state() !== "connected") {
+    const cached = ctx.cached()
+    if (cached) ctx.post(cached)
+    return
+  }
+  if (ctx.pending() > 0) return
+
+  try {
+    const dir = ctx.workspace()
+    const { data: config } = await retry(() => client.config.get({ directory: dir }, { throwOnError: true }))
+    const msg = { type: "configLoaded" as const, config, features: configFeatures(config) }
+    ctx.setCached(msg)
+    ctx.post(msg)
+  } catch (error) {
+    console.error("[Kilo New] KiloProvider: Failed to fetch config:", error)
+  }
+}
+
+export async function fetchGlobalConfig(ctx: Pick<ConfigMessageContext, "client" | "state" | "post">) {
+  const client = ctx.client()
+  if (!client || ctx.state() !== "connected") return
+  try {
+    const { data: config } = await client.global.config.get({ throwOnError: true })
+    ctx.post({ type: "globalConfigLoaded", config })
+  } catch (error) {
+    console.error("[Kilo New] KiloProvider: Failed to fetch global config:", error)
+  }
+}
+
+export async function fetchConfigUpdated(ctx: Omit<ConfigMessageContext, "pending" | "cached">) {
+  const client = ctx.client()
+  if (!client || ctx.state() !== "connected") return
+  try {
+    const dir = ctx.workspace()
+    const { data: config } = await retry(() => client.config.get({ directory: dir }, { throwOnError: true }))
+    ctx.setCached({ type: "configLoaded", config, features: configFeatures(config) })
+    ctx.post({ type: "configUpdated", config, features: configFeatures(config) })
+  } catch (error) {
+    console.error("[Kilo New] KiloProvider: Failed to fetch config after update:", error)
+  }
+}

@@ -1577,6 +1577,398 @@
         ]
       }
     },
+    "/config/context-engine": {
+      "get": {
+        "operationId": "config.contextEngine.get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Get Context Engine settings",
+        "description": "Get normalized native Context Engine configuration and configured Kilo provider models.",
+        "responses": {
+          "200": {
+            "description": "Context Engine settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "config": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": ["recommended", "light", "advanced"]
+                        },
+                        "historian": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "model": {
+                              "type": "string"
+                            },
+                            "fallbackModels": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "variant": {
+                              "type": "string"
+                            },
+                            "thinkingLevel": {
+                              "type": "string"
+                            },
+                            "twoPass": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["enabled", "model", "fallbackModels", "variant", "thinkingLevel", "twoPass"]
+                        },
+                        "dreamer": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "model": {
+                              "type": "string"
+                            },
+                            "fallbackModels": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "variant": {
+                              "type": "string"
+                            },
+                            "thinkingLevel": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["enabled", "model", "fallbackModels", "variant", "thinkingLevel"]
+                        },
+                        "sidekick": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "model": {
+                              "type": "string"
+                            },
+                            "fallbackModels": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "variant": {
+                              "type": "string"
+                            },
+                            "thinkingLevel": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["enabled", "model", "fallbackModels", "variant", "thinkingLevel"]
+                        },
+                        "memory": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "injectionBudgetTokens": {
+                              "type": "number"
+                            },
+                            "autoPromote": {
+                              "type": "boolean"
+                            },
+                            "retrievalCountPromotionThreshold": {
+                              "type": "number"
+                            },
+                            "embedding": {
+                              "type": "object",
+                              "properties": {
+                                "provider": {
+                                  "type": "string",
+                                  "enum": ["local", "openai-compatible", "off"]
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "endpoint": {
+                                  "type": "string"
+                                },
+                                "apiKey": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["provider", "model", "endpoint", "apiKey"]
+                            }
+                          },
+                          "required": [
+                            "enabled",
+                            "injectionBudgetTokens",
+                            "autoPromote",
+                            "retrievalCountPromotionThreshold",
+                            "embedding"
+                          ]
+                        }
+                      },
+                      "required": ["enabled", "mode", "historian", "dreamer", "sidekick", "memory"]
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "value": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["value", "label", "provider", "model"]
+                      }
+                    }
+                  },
+                  "required": ["config", "models"]
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.contextEngine.get({\n  ...\n})"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "config.contextEngine.save",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Save Context Engine settings",
+        "description": "Save native Context Engine configuration.",
+        "responses": {
+          "200": {
+            "description": "Context Engine settings saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "config": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": ["recommended", "light", "advanced"]
+                        },
+                        "historian": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "model": {
+                              "type": "string"
+                            },
+                            "fallbackModels": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "variant": {
+                              "type": "string"
+                            },
+                            "thinkingLevel": {
+                              "type": "string"
+                            },
+                            "twoPass": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["enabled", "model", "fallbackModels", "variant", "thinkingLevel", "twoPass"]
+                        },
+                        "dreamer": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "model": {
+                              "type": "string"
+                            },
+                            "fallbackModels": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "variant": {
+                              "type": "string"
+                            },
+                            "thinkingLevel": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["enabled", "model", "fallbackModels", "variant", "thinkingLevel"]
+                        },
+                        "sidekick": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "model": {
+                              "type": "string"
+                            },
+                            "fallbackModels": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "variant": {
+                              "type": "string"
+                            },
+                            "thinkingLevel": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["enabled", "model", "fallbackModels", "variant", "thinkingLevel"]
+                        },
+                        "memory": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "injectionBudgetTokens": {
+                              "type": "number"
+                            },
+                            "autoPromote": {
+                              "type": "boolean"
+                            },
+                            "retrievalCountPromotionThreshold": {
+                              "type": "number"
+                            },
+                            "embedding": {
+                              "type": "object",
+                              "properties": {
+                                "provider": {
+                                  "type": "string",
+                                  "enum": ["local", "openai-compatible", "off"]
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "endpoint": {
+                                  "type": "string"
+                                },
+                                "apiKey": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["provider", "model", "endpoint", "apiKey"]
+                            }
+                          },
+                          "required": [
+                            "enabled",
+                            "injectionBudgetTokens",
+                            "autoPromote",
+                            "retrievalCountPromotionThreshold",
+                            "embedding"
+                          ]
+                        }
+                      },
+                      "required": ["enabled", "mode", "historian", "dreamer", "sidekick", "memory"]
+                    }
+                  },
+                  "required": ["config"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "config": {}
+                },
+                "required": ["config"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.contextEngine.save({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/config/warnings": {
       "get": {
         "operationId": "config.warnings",
@@ -5756,6 +6148,837 @@
           {
             "lang": "js",
             "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.provider.oauth.callback({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/plugin": {
+      "get": {
+        "operationId": "plugin.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "List plugins",
+        "description": "List configured Kilo plugins and their management metadata.",
+        "responses": {
+          "200": {
+            "description": "Configured plugins",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "spec": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "kinds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["server", "tui"]
+                        }
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": ["global", "local", "builtin"]
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": ["git", "npm", "file", "builtin"]
+                      },
+                      "configSource": {
+                        "type": "string"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "managed": {
+                        "type": "boolean"
+                      },
+                      "target": {
+                        "type": "string"
+                      },
+                      "packageDir": {
+                        "type": "string"
+                      },
+                      "error": {
+                        "type": "string"
+                      },
+                      "install": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "git"
+                              },
+                              "url": {
+                                "type": "string"
+                              },
+                              "ref": {
+                                "type": "string"
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "directory": {
+                                "type": "string"
+                              },
+                              "managedDir": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["type", "url"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["npm", "path"]
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["type"]
+                          }
+                        ]
+                      },
+                      "config": {
+                        "type": "object",
+                        "properties": {
+                          "file": {
+                            "type": "string"
+                          },
+                          "schema": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "settings": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "icon": {
+                            "type": "string"
+                          },
+                          "entry": {
+                            "type": "string"
+                          },
+                          "available": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": ["available"]
+                      },
+                      "capabilities": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "mode": {
+                              "type": "string",
+                              "const": "exclusive"
+                            }
+                          },
+                          "required": ["id"]
+                        }
+                      },
+                      "conflictStatus": {
+                        "type": "string",
+                        "enum": ["ok", "warning", "blocked", "pending-resolution"]
+                      },
+                      "conflicts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "const": "nativeFeature"
+                            },
+                            "feature": {
+                              "type": "string",
+                              "enum": ["native.compaction", "native.compaction.auto", "native.compaction.prune"]
+                            },
+                            "severity": {
+                              "type": "string",
+                              "enum": ["blocking", "warning"]
+                            },
+                            "reason": {
+                              "type": "string"
+                            },
+                            "resolutions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "recommended": {
+                                    "type": "boolean"
+                                  },
+                                  "actions": {
+                                    "type": "array",
+                                    "items": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string",
+                                              "const": "setNativeFeature"
+                                            },
+                                            "feature": {
+                                              "type": "string",
+                                              "enum": ["native.compaction.auto", "native.compaction.prune"]
+                                            },
+                                            "enabled": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": ["type", "feature", "enabled"]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string",
+                                              "const": "createPluginConfig"
+                                            }
+                                          },
+                                          "required": ["type"]
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string",
+                                              "const": "setPluginEnabled"
+                                            },
+                                            "enabled": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": ["type", "enabled"]
+                                        }
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": ["id", "label", "actions"]
+                              }
+                            },
+                            "active": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["id", "type", "feature", "severity", "reason", "resolutions", "active"]
+                        }
+                      },
+                      "managedChanges": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "conflictId": {
+                              "type": "string"
+                            },
+                            "resolutionId": {
+                              "type": "string"
+                            },
+                            "appliedAt": {
+                              "type": "string"
+                            },
+                            "changes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "nativeFeature"
+                                  },
+                                  "feature": {
+                                    "type": "string",
+                                    "enum": ["native.compaction.auto", "native.compaction.prune"]
+                                  },
+                                  "previous": {
+                                    "type": "object",
+                                    "properties": {
+                                      "exists": {
+                                        "type": "boolean"
+                                      },
+                                      "value": {}
+                                    },
+                                    "required": ["exists"]
+                                  },
+                                  "applied": {
+                                    "type": "object",
+                                    "properties": {
+                                      "exists": {
+                                        "type": "boolean"
+                                      },
+                                      "value": {}
+                                    },
+                                    "required": ["exists"]
+                                  }
+                                },
+                                "required": ["type", "feature", "previous", "applied"]
+                              }
+                            }
+                          },
+                          "required": ["id", "conflictId", "resolutionId", "appliedAt", "changes"]
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "spec",
+                      "displayName",
+                      "kinds",
+                      "scope",
+                      "source",
+                      "configSource",
+                      "enabled",
+                      "managed"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.plugin.list({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/plugin/install": {
+      "post": {
+        "operationId": "plugin.install",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Install plugin",
+        "description": "Install a plugin from a trusted Git repository and add it to Kilo config.",
+        "responses": {
+          "200": {
+            "description": "Installed plugin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {}
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "default": "git",
+                    "type": "string",
+                    "const": "git"
+                  },
+                  "url": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "default": "global",
+                    "type": "string",
+                    "enum": ["global", "local"]
+                  },
+                  "force": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["url"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.plugin.install({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/plugin/enabled": {
+      "post": {
+        "operationId": "plugin.setEnabled",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Enable or disable plugin",
+        "responses": {
+          "200": {
+            "description": "Plugin enabled state updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "restoreManagedChanges": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["id", "enabled"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.plugin.setEnabled({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/plugin/remove": {
+      "post": {
+        "operationId": "plugin.remove",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Remove plugin",
+        "responses": {
+          "200": {
+            "description": "Plugin removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "deleteManaged": {
+                    "type": "boolean"
+                  },
+                  "restoreManagedChanges": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["id"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.plugin.remove({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/plugin/update": {
+      "post": {
+        "operationId": "plugin.update",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Update plugin",
+        "responses": {
+          "200": {
+            "description": "Plugin updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {}
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["id"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.plugin.update({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/plugin/resolve-conflict": {
+      "post": {
+        "operationId": "plugin.resolveConflict",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Resolve plugin conflict",
+        "responses": {
+          "200": {
+            "description": "Plugin conflict resolved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "conflictId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "resolutionId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["id", "conflictId", "resolutionId"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.plugin.resolveConflict({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/plugin/settings/rpc": {
+      "post": {
+        "operationId": "plugin.settingsRpc",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Call plugin settings RPC",
+        "responses": {
+          "200": {
+            "description": "Plugin settings RPC result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "result": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "requestId": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "params": {}
+                },
+                "required": ["id", "method"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.plugin.settingsRpc({\n  ...\n})"
           }
         ]
       }
@@ -15788,6 +17011,9 @@
           },
           "indexing": {
             "$ref": "#/components/schemas/IndexingConfig"
+          },
+          "contextEngine": {
+            "description": "Native Context Engine configuration"
           },
           "terminal_command_display": {
             "description": "Controls whether terminal command blocks are expanded or collapsed by default in the VS Code chat UI",

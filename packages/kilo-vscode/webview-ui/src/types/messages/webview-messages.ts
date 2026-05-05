@@ -3,7 +3,7 @@ import type { FileAttachment } from "./parts"
 import type { MessageLoadMode } from "./sessions"
 import type { PermissionFileDiff } from "./permissions"
 import type { ModelSelection, ProviderConfig } from "./providers"
-import type { Config } from "./config"
+import type { Config, ContextEngineConfig } from "./config"
 import type { ModelAllocation, ReviewComment } from "./agent-manager"
 import type {
   ClearLegacyDataMessage,
@@ -368,6 +368,10 @@ export interface RequestConfigMessage {
   type: "requestConfig"
 }
 
+export interface LoadContextEngineSettingsMessage {
+  type: "loadContextEngineSettings"
+}
+
 export interface RequestPluginsMessage {
   type: "requestPlugins"
 }
@@ -451,6 +455,11 @@ export interface UpdateConfigMessage {
   config: Partial<Config>
   /** Project config patch written to the workspace's .kilo/kilo.json or existing project config. */
   projectConfig?: Partial<Config>
+}
+
+export interface SaveContextEngineSettingsMessage {
+  type: "saveContextEngineSettings"
+  config: ContextEngineConfig
 }
 
 export interface RequestNotificationSettingsMessage {
@@ -1104,6 +1113,7 @@ export type WebviewMessage =
   | RequestBrowserSettingsMessage
   | RequestClaudeCompatSettingMessage
   | RequestConfigMessage
+  | LoadContextEngineSettingsMessage
   | RequestPluginsMessage
   | InstallPluginMessage
   | SetPluginEnabledMessage
@@ -1116,6 +1126,7 @@ export type WebviewMessage =
   | RequestGlobalConfigMessage
   | RequestIndexingStatusMessage
   | UpdateConfigMessage
+  | SaveContextEngineSettingsMessage
   | OpenSettingsTabRequest
   | RequestNotificationSettingsMessage
   | ResetAllSettingsRequest
