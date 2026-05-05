@@ -271,12 +271,13 @@ const PluginsTab: Component = () => {
                 : language.t("settings.plugins.install.button")}
             </Button>
           </div>
-          <label style={{ display: "flex", gap: "8px", "align-items": "flex-start", "font-size": "12px" }}>
-            <Checkbox checked={trusted()} onChange={setTrusted} />
-            <span style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))" }}>
-              {language.t("settings.plugins.install.trust")}
-            </span>
-          </label>
+          <div style={{ "font-size": "12px" }}>
+            <Checkbox checked={trusted()} onChange={setTrusted}>
+              <span style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))" }}>
+                {language.t("settings.plugins.install.trust")}
+              </span>
+            </Checkbox>
+          </div>
         </div>
       </Card>
 
@@ -288,9 +289,7 @@ const PluginsTab: Component = () => {
                 <Switch
                   checked={plugin.enabled}
                   disabled={
-                    plugin.scope === "builtin" ||
-                    Boolean(busy()[plugin.id]) ||
-                    (!plugin.enabled && hasUnresolvedBlockingConflict(plugin))
+                    Boolean(busy()[plugin.id]) || (!plugin.enabled && hasUnresolvedBlockingConflict(plugin))
                   }
                   onChange={(enabled) =>
                     action(plugin, "enable", (id) =>

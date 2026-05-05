@@ -661,6 +661,16 @@ async function findPatchTarget(config: Config.Info, id: string): Promise<{ targe
   const items = await list(config)
   const item = items.find((candidate) => candidate.id === id || candidate.spec === id || identity(candidate.spec) === id)
   if (!item) throw new Error(`Plugin not found: ${id}`)
+  if (item.configSource === "builtin") {
+    const file = globalConfigFile()
+    return {
+      item,
+      target: {
+        file,
+        spec: item.spec,
+      },
+    }
+  }
   if (!editableSource(item.configSource)) throw new Error(`Plugin ${item.displayName} is not editable from this source`)
   const file = await patchFileForSource(item.configSource, item.spec)
   return {
@@ -728,7 +738,7 @@ export async function setEnabled(config: Config.Info, input: ToggleInput) {
           ]
         : current.resolvedConflicts,
     }))
-  })
+  }, () => metadataEntry(target.spec, {}, () => ({ enabled: input.enabled })))
 }
 
 export async function remove(config: Config.Info, input: RemoveInput) {
