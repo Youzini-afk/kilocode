@@ -289,14 +289,17 @@ async function preparePackage(repo: string, pluginDir: string) {
   if (typeof scripts.build === "string" && (await needsBuild(pluginDir, pkg))) await run(["bun", "run", "build"], pluginDir)
 }
 
+function installStamp() {
+  return `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`
+}
+
 async function prepareIsolatedPackage(managedDir: string, repo: string, pluginDir: string) {
   if (pluginDir === repo) {
     await preparePackage(repo, pluginDir)
     return pluginDir
   }
 
-  const preparedDir = path.join(managedDir, "package")
-  await fs.rm(preparedDir, { recursive: true, force: true })
+  const preparedDir = path.join(managedDir, `package-${installStamp()}`)
   await fs.mkdir(path.dirname(preparedDir), { recursive: true })
   await fs.cp(pluginDir, preparedDir, {
     recursive: true,
@@ -664,19 +667,14 @@ export async function installFromGit(input: InstallInput) {
   await fs.mkdir(GIT_ROOT(), { recursive: true })
 
   if (await Filesystem.exists(repo)) {
-    if (!input.force) {
-      const refreshed = await run(["git", "-C", repo, "fetch", "--all", "--tags", "--depth", "1"], repo)
-        .then(async () => {
-          if (input.ref) await run(["git", "-C", repo, "checkout", input.ref], repo)
-          await run(["git", "-C", repo, "pull", "--ff-only"], repo).catch(() => undefined)
-          return true
-        })
-        .catch(() => false)
-      if (!refreshed) await cloneGitRepo(url, input.ref, repo)
-    } else {
-      if (!Filesystem.contains(GIT_ROOT(), managedDir)) throw new Error("Refusing to delete unmanaged plugin directory")
-      await fs.rm(managedDir, { recursive: true, force: true })
-    }
+    const refreshed = await run(["git", "-C", repo, "fetch", "--all", "--tags", "--depth", "1"], repo)
+      .then(async () => {
+        if (input.ref) await run(["git", "-C", repo, "checkout", input.ref], repo)
+        await run(["git", "-C", repo, "pull", "--ff-only"], repo).catch(() => undefined)
+        return true
+      })
+      .catch(() => false)
+    if (!refreshed) await cloneGitRepo(url, input.ref, repo)
   }
 
   if (!(await Filesystem.exists(repo))) {
