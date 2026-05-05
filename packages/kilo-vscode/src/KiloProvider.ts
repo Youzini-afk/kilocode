@@ -2114,7 +2114,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       ...cfg.headers,
       ...(init?.headers as Record<string, string> | undefined),
     }
-    const res = await fetch(`${cfg.baseUrl}${path}`, { ...init, headers })
+    const res = await fetch(`${cfg.baseUrl}${path}`, { ...init, headers }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`Plugin request failed: ${message}. The CLI backend may still be starting or may have stopped.`)
+    })
     if (!res.ok) {
       const text = await res.text().catch(() => "")
       throw new Error(text || `HTTP ${res.status}`)

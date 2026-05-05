@@ -253,6 +253,7 @@ async function cloneGitRepo(url: string, ref: string | undefined, repo: string) 
   for (const attempt of [1, 2, 3]) {
     const tmp = `${repo}.clone-${process.pid}-${Date.now()}-${attempt}`
     if (!Filesystem.contains(root, tmp)) throw new Error("Refusing to clone outside plugin storage")
+    await fs.mkdir(path.dirname(tmp), { recursive: true })
     await fs.rm(tmp, { recursive: true, force: true })
     try {
       await run([...args, tmp], root)
