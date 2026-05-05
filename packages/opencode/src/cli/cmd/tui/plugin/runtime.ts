@@ -26,6 +26,8 @@ import {
   type PluginSource,
 } from "@/plugin/shared"
 import { PluginLoader } from "@/plugin/loader"
+import { PluginConflict } from "@/plugin/conflict"
+import { PluginManager } from "@/plugin/manager"
 import { PluginMeta } from "@/plugin/meta"
 import { installPlugin as installModulePlugin, patchPluginConfig, readPluginManifest } from "@/plugin/install"
 import { hasTheme, upsertTheme } from "../context/theme"
@@ -72,6 +74,7 @@ type PluginEntry = {
 
 type RuntimeState = {
   directory: string
+  config: TuiConfig.Info
   api: Api
   slots: HostSlots
   plugins: PluginEntry[]
@@ -589,7 +592,7 @@ function applyInitialPluginEnabledState(state: RuntimeState, config: TuiConfig.I
   }
 }
 
-async function resolveExternalPlugins(list: ConfigPlugin.Origin[], wait: () => Promise<void>) {
+async function resolveExternalPlugins(list: ConfigPlugin.Origin[], config: TuiConfig.Info, wait: () => Promise<void>) {
   return PluginLoader.loadExternal({
     items: list,
     kind: "tui",
@@ -597,6 +600,25 @@ async function resolveExternalPlugins(list: ConfigPlugin.Origin[], wait: () => P
       await wait().catch((error) => {
         log.warn("failed waiting for tui plugin dependencies", { error })
       })
+    },
+    gate: async (loaded, origin) => {
+      const manifest = await PluginManager.readKiloManifest(loaded.target).catch((error) => {
+        warn("failed to inspect tui plugin conflict manifest", {
+          path: loaded.spec,
+          error,
+        })
+        return undefined
+      })
+      if (!manifest) return true
+      const conflict = PluginConflict.report({ config, spec: origin.spec, manifest })
+      if (conflict.status === "blocked" || conflict.status === "pending-resolution") {
+        warn("tui plugin skipped due to unresolved blocking conflicts", {
+          path: loaded.spec,
+          conflicts: conflict.conflicts.map((item) => item.id),
+        })
+        return false
+      }
+      return true
     },
     finish: async (loaded, origin, retry) => {
       const mod = await Promise.resolve()
@@ -792,7 +814,7 @@ async function addPluginBySpec(state: RuntimeState | undefined, raw: string) {
   }
   const ready = await Instance.provide({
     directory: state.directory,
-    fn: () => resolveExternalPlugins([cfg], () => TuiConfig.waitForDependencies()),
+    fn: () => resolveExternalPlugins([cfg], state.config, () => TuiConfig.waitForDependencies()),
   }).catch((error) => {
     fail("failed to add tui plugin", { path: next, error })
     return [] as PluginLoad[]
@@ -978,6 +1000,7 @@ async function load(input: { api: Api; config: TuiConfig.Info }) {
   const slots = setupSlots(api)
   const next: RuntimeState = {
     directory: cwd,
+    config,
     api,
     slots,
     plugins: [],
@@ -1008,7 +1031,7 @@ async function load(input: { api: Api; config: TuiConfig.Info }) {
           })
         }
 
-        const ready = await resolveExternalPlugins(records, () => TuiConfig.waitForDependencies())
+        const ready = await resolveExternalPlugins(records, config, () => TuiConfig.waitForDependencies())
         await addExternalPluginEntries(next, ready)
 
         applyInitialPluginEnabledState(next, config)

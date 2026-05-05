@@ -39,6 +39,27 @@ function label(item: PluginListItem, t: Translate) {
   return bits.join(" · ")
 }
 
+function statusLabel(item: PluginListItem, t: Translate) {
+  if (item.conflictStatus === "pending-resolution") return t("settings.plugins.status.needsResolution")
+  if (item.conflictStatus === "blocked") return t("settings.plugins.status.blocked")
+  if (item.conflictStatus === "warning") return t("settings.plugins.status.warning")
+  return item.enabled ? t("settings.plugins.status.enabled") : t("settings.plugins.status.disabled")
+}
+
+function statusColor(item: PluginListItem) {
+  if (item.conflictStatus === "blocked" || item.conflictStatus === "pending-resolution") return "var(--vscode-errorForeground)"
+  if (item.conflictStatus === "warning") return "var(--vscode-editorWarning-foreground)"
+  return "var(--text-weak-base, var(--vscode-descriptionForeground))"
+}
+
+function hasManagedChanges(item: PluginListItem) {
+  return Boolean(item.managedChanges?.length)
+}
+
+function hasUnresolvedBlockingConflict(item: PluginListItem) {
+  return item.conflictStatus === "blocked" || item.conflictStatus === "pending-resolution"
+}
+
 const PluginsTab: Component = () => {
   const language = useLanguage()
   const vscode = useVSCode()
@@ -87,7 +108,16 @@ const PluginsTab: Component = () => {
     })
   }
 
-  const action = (plugin: PluginListItem, name: "enable" | "remove" | "update", fn: (id: string) => void) => {
+  const restoreManagedChanges = (plugin: PluginListItem) => {
+    if (!hasManagedChanges(plugin)) return false
+    return window.confirm(language.t("settings.plugins.restore.confirm", { plugin: plugin.displayName }))
+  }
+
+  const action = (
+    plugin: PluginListItem,
+    name: "enable" | "remove" | "update" | "resolve",
+    fn: (id: string) => void,
+  ) => {
     const id = requestId(`plugin-${name}`)
     setAction(id, name)
     setAction(plugin.id, name)
@@ -199,10 +229,20 @@ const PluginsTab: Component = () => {
               <div style={{ display: "flex", gap: "12px", "align-items": "flex-start" }}>
                 <Switch
                   checked={plugin.enabled}
-                  disabled={plugin.scope === "builtin" || Boolean(busy()[plugin.id])}
+                  disabled={
+                    plugin.scope === "builtin" ||
+                    Boolean(busy()[plugin.id]) ||
+                    (!plugin.enabled && hasUnresolvedBlockingConflict(plugin))
+                  }
                   onChange={(enabled) =>
                     action(plugin, "enable", (id) =>
-                      vscode.postMessage({ type: "setPluginEnabled", requestId: id, id: plugin.id, enabled }),
+                      vscode.postMessage({
+                        type: "setPluginEnabled",
+                        requestId: id,
+                        id: plugin.id,
+                        enabled,
+                        restoreManagedChanges: !enabled ? restoreManagedChanges(plugin) : undefined,
+                      }),
                     )
                   }
                   hideLabel
@@ -212,6 +252,17 @@ const PluginsTab: Component = () => {
                 <div style={{ flex: 1, "min-width": 0 }}>
                   <div style={{ display: "flex", gap: "8px", "align-items": "center", "flex-wrap": "wrap" }}>
                     <strong>{plugin.displayName}</strong>
+                    <span
+                      style={{
+                        color: statusColor(plugin),
+                        "font-size": "11px",
+                        border: "1px solid var(--border-weak-base)",
+                        "border-radius": "999px",
+                        padding: "1px 6px",
+                      }}
+                    >
+                      {statusLabel(plugin, language.t)}
+                    </span>
                     <span style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))", "font-size": "12px" }}>
                       {label(plugin, language.t)}
                     </span>
@@ -236,6 +287,51 @@ const PluginsTab: Component = () => {
                   >
                     {plugin.spec}
                   </div>
+                  <Show when={plugin.conflicts?.length}>
+                    <div style={{ display: "grid", gap: "8px", "margin-top": "10px" }}>
+                      <For each={plugin.conflicts ?? []}>
+                        {(conflict) => (
+                          <div
+                            style={{
+                              display: "grid",
+                              gap: "8px",
+                              padding: "10px",
+                              border: "1px solid var(--border-weak-base)",
+                              "border-radius": "6px",
+                            }}
+                          >
+                            <div style={{ "font-size": "12px", color: "var(--vscode-descriptionForeground)" }}>
+                              {conflict.reason}
+                            </div>
+                            <div style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}>
+                              <For each={conflict.resolutions}>
+                                {(resolution) => (
+                                  <Button
+                                    variant={resolution.recommended ? "primary" : "secondary"}
+                                    size="small"
+                                    disabled={Boolean(busy()[plugin.id])}
+                                    onClick={() =>
+                                      action(plugin, "resolve", (id) =>
+                                        vscode.postMessage({
+                                          type: "resolvePluginConflict",
+                                          requestId: id,
+                                          id: plugin.id,
+                                          conflictId: conflict.id,
+                                          resolutionId: resolution.id,
+                                        }),
+                                      )
+                                    }
+                                  >
+                                    {resolution.label}
+                                  </Button>
+                                )}
+                              </For>
+                            </div>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
                 </div>
                 <div style={{ display: "flex", gap: "4px", "align-items": "center" }}>
                   <IconButton
@@ -281,6 +377,7 @@ const PluginsTab: Component = () => {
                           requestId: id,
                           id: plugin.id,
                           deleteManaged: plugin.managed,
+                          restoreManagedChanges: restoreManagedChanges(plugin),
                         }),
                       )
                     }

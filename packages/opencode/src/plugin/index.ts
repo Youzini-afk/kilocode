@@ -22,6 +22,8 @@ import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
 import { errorMessage } from "@/util/error"
 import { PluginLoader } from "./loader"
+import { PluginConflict } from "./conflict"
+import { PluginManager } from "./manager"
 import { parsePluginSpecifier, readPluginId, readV1Plugin, resolvePluginId } from "./shared"
 import { registerAdaptor } from "@/control-plane/adaptors"
 import type { WorkspaceAdaptor } from "@/control-plane/types"
@@ -200,6 +202,25 @@ export const layer = Layer.effect(
           PluginLoader.loadExternal({
             items: plugins,
             kind: "server",
+            async gate(resolved, origin) {
+              const manifest = await PluginManager.readKiloManifest(resolved.target).catch((error) => {
+                log.warn("failed to inspect plugin conflict manifest", {
+                  path: resolved.spec,
+                  error: errorMessage(error),
+                })
+                return undefined
+              })
+              if (!manifest) return true
+              const conflict = PluginConflict.report({ config: cfg, spec: origin.spec, manifest })
+              if (conflict.status === "blocked" || conflict.status === "pending-resolution") {
+                log.warn("skipping plugin with unresolved blocking conflicts", {
+                  path: resolved.spec,
+                  conflicts: conflict.conflicts.map((item) => item.id),
+                })
+                return false
+              }
+              return true
+            },
             report: {
               start(candidate) {
                 log.info("loading plugin", { path: candidate.plan.spec })

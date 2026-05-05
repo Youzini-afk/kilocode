@@ -388,6 +388,7 @@ export interface SetPluginEnabledMessage {
   requestId: string
   id: string
   enabled: boolean
+  restoreManagedChanges?: boolean
 }
 
 export interface RemovePluginMessage {
@@ -395,12 +396,21 @@ export interface RemovePluginMessage {
   requestId: string
   id: string
   deleteManaged?: boolean
+  restoreManagedChanges?: boolean
 }
 
 export interface UpdatePluginMessage {
   type: "updatePlugin"
   requestId: string
   id: string
+}
+
+export interface ResolvePluginConflictMessage {
+  type: "resolvePluginConflict"
+  requestId: string
+  id: string
+  conflictId: string
+  resolutionId: string
 }
 
 export interface OpenPluginConfigMessage {
@@ -1099,6 +1109,7 @@ export type WebviewMessage =
   | SetPluginEnabledMessage
   | RemovePluginMessage
   | UpdatePluginMessage
+  | ResolvePluginConflictMessage
   | OpenPluginConfigMessage
   | OpenPluginSettingsMessage
   | PluginSettingsRpcMessage

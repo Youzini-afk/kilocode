@@ -12,6 +12,49 @@ import { errors } from "../../error"
 import { jsonRequest, runRequest } from "./trace"
 
 const PluginKind = z.enum(["server", "tui"])
+const PluginCapability = z.object({
+  id: z.string(),
+  label: z.string().optional(),
+  mode: z.literal("exclusive").optional(),
+})
+const PluginResolutionAction = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("setNativeFeature"),
+    feature: z.enum(["native.compaction.auto", "native.compaction.prune"]),
+    enabled: z.boolean(),
+  }),
+  z.object({ type: z.literal("createPluginConfig") }),
+  z.object({ type: z.literal("setPluginEnabled"), enabled: z.boolean() }),
+])
+const PluginConflictResolution = z.object({
+  id: z.string(),
+  label: z.string(),
+  recommended: z.boolean().optional(),
+  actions: z.array(PluginResolutionAction),
+})
+const PluginConflictItem = z.object({
+  id: z.string(),
+  type: z.literal("nativeFeature"),
+  feature: z.enum(["native.compaction", "native.compaction.auto", "native.compaction.prune"]),
+  severity: z.enum(["blocking", "warning"]),
+  reason: z.string(),
+  resolutions: z.array(PluginConflictResolution),
+  active: z.boolean(),
+})
+const PluginManagedChangeSet = z.object({
+  id: z.string(),
+  conflictId: z.string(),
+  resolutionId: z.string(),
+  appliedAt: z.string(),
+  changes: z.array(
+    z.object({
+      type: z.literal("nativeFeature"),
+      feature: z.enum(["native.compaction.auto", "native.compaction.prune"]),
+      previous: z.object({ exists: z.boolean(), value: z.unknown().optional() }),
+      applied: z.object({ exists: z.boolean(), value: z.unknown().optional() }),
+    }),
+  ),
+})
 const ManagedInstall = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("git"),
@@ -57,6 +100,10 @@ const PluginListItem = z.object({
       available: z.boolean(),
     })
     .optional(),
+  capabilities: z.array(PluginCapability).optional(),
+  conflictStatus: z.enum(["ok", "warning", "blocked", "pending-resolution"]).optional(),
+  conflicts: z.array(PluginConflictItem).optional(),
+  managedChanges: z.array(PluginManagedChangeSet).optional(),
 })
 
 const InstallInput = z.object({
@@ -71,15 +118,23 @@ const InstallInput = z.object({
 const ToggleInput = z.object({
   id: z.string().min(1),
   enabled: z.boolean(),
+  restoreManagedChanges: z.boolean().optional(),
 })
 
 const RemoveInput = z.object({
   id: z.string().min(1),
   deleteManaged: z.boolean().optional(),
+  restoreManagedChanges: z.boolean().optional(),
 })
 
 const UpdateInput = z.object({
   id: z.string().min(1),
+})
+
+const ResolveConflictInput = z.object({
+  id: z.string().min(1),
+  conflictId: z.string().min(1),
+  resolutionId: z.string().min(1),
 })
 
 const SettingsRpcInput = z.object({
@@ -151,10 +206,12 @@ export const PluginRoutes = () =>
         jsonRequest("PluginRoutes.install", c, function* () {
           const input = c.req.valid("json")
           const cfg = yield* Config.Service
+          const current = yield* cfg.get()
           const out = yield* Effect.promise(() =>
             PluginManager.installFromGit({
               ...input,
               directory: Instance.directory,
+              config: current,
             }),
           )
           yield* cfg.invalidate(true)
@@ -240,7 +297,39 @@ export const PluginRoutes = () =>
           const input = c.req.valid("json")
           const cfg = yield* Config.Service
           const current = yield* cfg.get()
-          const out = yield* Effect.promise(() => PluginManager.update(current, { ...input, directory: Instance.directory }))
+          const out = yield* Effect.promise(() =>
+            PluginManager.update(current, { ...input, directory: Instance.directory, config: current }),
+          )
+          yield* cfg.invalidate(true)
+          return out
+        }),
+    )
+    .post(
+      "/resolve-conflict",
+      describeRoute({
+        summary: "Resolve plugin conflict",
+        operationId: "plugin.resolveConflict",
+        responses: {
+          200: {
+            description: "Plugin conflict resolved",
+            content: {
+              "application/json": {
+                schema: resolver(z.object({ ok: z.literal(true) })),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator("json", ResolveConflictInput),
+      async (c) =>
+        jsonRequest("PluginRoutes.resolveConflict", c, function* () {
+          const input = c.req.valid("json")
+          const cfg = yield* Config.Service
+          const current = yield* cfg.get()
+          const out = yield* Effect.promise(() =>
+            PluginManager.resolveConflict(current, { ...input, directory: Instance.directory }),
+          )
           yield* cfg.invalidate(true)
           return out
         }),

@@ -420,7 +420,7 @@ export interface PluginsLoadedMessage {
 export interface PluginActionResultMessage {
   type: "pluginActionResult"
   requestId: string
-  action: "install" | "enable" | "remove" | "update"
+  action: "install" | "enable" | "remove" | "update" | "resolve"
   success: boolean
   error?: string
 }

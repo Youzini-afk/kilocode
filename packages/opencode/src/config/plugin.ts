@@ -68,6 +68,23 @@ export type KiloInstallMetadata =
 export type KiloMetadata = {
   enabled?: boolean
   install?: KiloInstallMetadata
+  managedChanges?: Array<{
+    id: string
+    conflictId: string
+    resolutionId: string
+    appliedAt: string
+    changes: Array<{
+      type: "nativeFeature"
+      feature: string
+      previous: { exists: boolean; value?: unknown }
+      applied: { exists: boolean; value?: unknown }
+    }>
+  }>
+  resolvedConflicts?: Array<{
+    conflictId: string
+    resolutionId: string
+    resolvedAt: string
+  }>
 }
 
 export function pluginKiloMetadata(options: Options | undefined): KiloMetadata | undefined {

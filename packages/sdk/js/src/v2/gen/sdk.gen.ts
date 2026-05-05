@@ -130,6 +130,19 @@ import type {
   PermissionRuleset,
   PermissionSaveAlwaysRulesErrors,
   PermissionSaveAlwaysRulesResponses,
+  PluginInstallErrors,
+  PluginInstallResponses,
+  PluginListResponses,
+  PluginRemoveErrors,
+  PluginRemoveResponses,
+  PluginResolveConflictErrors,
+  PluginResolveConflictResponses,
+  PluginSetEnabledErrors,
+  PluginSetEnabledResponses,
+  PluginSettingsRpcErrors,
+  PluginSettingsRpcResponses,
+  PluginUpdateErrors,
+  PluginUpdateResponses,
   ProjectCurrentResponses,
   ProjectInitGitResponses,
   ProjectListResponses,
@@ -3381,6 +3394,282 @@ export class Provider extends HeyApiClient {
   }
 }
 
+export class Plugin extends HeyApiClient {
+  /**
+   * List plugins
+   *
+   * List configured Kilo plugins and their management metadata.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<PluginListResponses, unknown, ThrowOnError>({
+      url: "/plugin",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Install plugin
+   *
+   * Install a plugin from a trusted Git repository and add it to Kilo config.
+   */
+  public install<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      type?: "git"
+      url?: string
+      ref?: string
+      path?: string
+      scope?: "global" | "local"
+      force?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "type" },
+            { in: "body", key: "url" },
+            { in: "body", key: "ref" },
+            { in: "body", key: "path" },
+            { in: "body", key: "scope" },
+            { in: "body", key: "force" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<PluginInstallResponses, PluginInstallErrors, ThrowOnError>({
+      url: "/plugin/install",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Enable or disable plugin
+   */
+  public setEnabled<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      enabled?: boolean
+      restoreManagedChanges?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "enabled" },
+            { in: "body", key: "restoreManagedChanges" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<PluginSetEnabledResponses, PluginSetEnabledErrors, ThrowOnError>({
+      url: "/plugin/enabled",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Remove plugin
+   */
+  public remove<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      deleteManaged?: boolean
+      restoreManagedChanges?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "deleteManaged" },
+            { in: "body", key: "restoreManagedChanges" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<PluginRemoveResponses, PluginRemoveErrors, ThrowOnError>({
+      url: "/plugin/remove",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Update plugin
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<PluginUpdateResponses, PluginUpdateErrors, ThrowOnError>({
+      url: "/plugin/update",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Resolve plugin conflict
+   */
+  public resolveConflict<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      conflictId?: string
+      resolutionId?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "conflictId" },
+            { in: "body", key: "resolutionId" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      PluginResolveConflictResponses,
+      PluginResolveConflictErrors,
+      ThrowOnError
+    >({
+      url: "/plugin/resolve-conflict",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Call plugin settings RPC
+   */
+  public settingsRpc<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      requestId?: string
+      method?: string
+      params?: unknown
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "requestId" },
+            { in: "body", key: "method" },
+            { in: "body", key: "params" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<PluginSettingsRpcResponses, PluginSettingsRpcErrors, ThrowOnError>({
+      url: "/plugin/settings/rpc",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class History extends HeyApiClient {
   /**
    * List sync events
@@ -6075,6 +6364,11 @@ export class KiloClient extends HeyApiClient {
   private _provider?: Provider
   get provider(): Provider {
     return (this._provider ??= new Provider({ client: this.client }))
+  }
+
+  private _plugin?: Plugin
+  get plugin(): Plugin {
+    return (this._plugin ??= new Plugin({ client: this.client }))
   }
 
   private _sync?: Sync

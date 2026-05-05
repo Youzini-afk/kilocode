@@ -5224,6 +5224,321 @@ export type ProviderOauthCallbackResponses = {
 
 export type ProviderOauthCallbackResponse = ProviderOauthCallbackResponses[keyof ProviderOauthCallbackResponses]
 
+export type PluginListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/plugin"
+}
+
+export type PluginListResponses = {
+  /**
+   * Configured plugins
+   */
+  200: Array<{
+    id: string
+    spec: string
+    displayName: string
+    description?: string
+    version?: string
+    kinds: Array<"server" | "tui">
+    scope: "global" | "local" | "builtin"
+    source: "git" | "npm" | "file" | "builtin"
+    configSource: string
+    enabled: boolean
+    managed: boolean
+    target?: string
+    packageDir?: string
+    error?: string
+    install?:
+      | {
+          type: "git"
+          url: string
+          ref?: string
+          path?: string
+          directory?: string
+          managedDir?: string
+        }
+      | {
+          type: "npm" | "path"
+          value?: string
+        }
+    config?: {
+      file?: string
+      schema?: string
+    }
+    settings?: {
+      title?: string
+      icon?: string
+      entry?: string
+      available: boolean
+    }
+    capabilities?: Array<{
+      id: string
+      label?: string
+      mode?: "exclusive"
+    }>
+    conflictStatus?: "ok" | "warning" | "blocked" | "pending-resolution"
+    conflicts?: Array<{
+      id: string
+      type: "nativeFeature"
+      feature: "native.compaction" | "native.compaction.auto" | "native.compaction.prune"
+      severity: "blocking" | "warning"
+      reason: string
+      resolutions: Array<{
+        id: string
+        label: string
+        recommended?: boolean
+        actions: Array<
+          | {
+              type: "setNativeFeature"
+              feature: "native.compaction.auto" | "native.compaction.prune"
+              enabled: boolean
+            }
+          | {
+              type: "createPluginConfig"
+            }
+          | {
+              type: "setPluginEnabled"
+              enabled: boolean
+            }
+        >
+      }>
+      active: boolean
+    }>
+    managedChanges?: Array<{
+      id: string
+      conflictId: string
+      resolutionId: string
+      appliedAt: string
+      changes: Array<{
+        type: "nativeFeature"
+        feature: "native.compaction.auto" | "native.compaction.prune"
+        previous: {
+          exists: boolean
+          value?: unknown
+        }
+        applied: {
+          exists: boolean
+          value?: unknown
+        }
+      }>
+    }>
+  }>
+}
+
+export type PluginListResponse = PluginListResponses[keyof PluginListResponses]
+
+export type PluginInstallData = {
+  body?: {
+    type?: "git"
+    url: string
+    ref?: string
+    path?: string
+    scope?: "global" | "local"
+    force?: boolean
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/plugin/install"
+}
+
+export type PluginInstallErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type PluginInstallError = PluginInstallErrors[keyof PluginInstallErrors]
+
+export type PluginInstallResponses = {
+  /**
+   * Installed plugin
+   */
+  200: {
+    item: unknown
+  }
+}
+
+export type PluginInstallResponse = PluginInstallResponses[keyof PluginInstallResponses]
+
+export type PluginSetEnabledData = {
+  body?: {
+    id: string
+    enabled: boolean
+    restoreManagedChanges?: boolean
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/plugin/enabled"
+}
+
+export type PluginSetEnabledErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type PluginSetEnabledError = PluginSetEnabledErrors[keyof PluginSetEnabledErrors]
+
+export type PluginSetEnabledResponses = {
+  /**
+   * Plugin enabled state updated
+   */
+  200: {
+    ok: true
+  }
+}
+
+export type PluginSetEnabledResponse = PluginSetEnabledResponses[keyof PluginSetEnabledResponses]
+
+export type PluginRemoveData = {
+  body?: {
+    id: string
+    deleteManaged?: boolean
+    restoreManagedChanges?: boolean
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/plugin/remove"
+}
+
+export type PluginRemoveErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type PluginRemoveError = PluginRemoveErrors[keyof PluginRemoveErrors]
+
+export type PluginRemoveResponses = {
+  /**
+   * Plugin removed
+   */
+  200: {
+    ok: true
+  }
+}
+
+export type PluginRemoveResponse = PluginRemoveResponses[keyof PluginRemoveResponses]
+
+export type PluginUpdateData = {
+  body?: {
+    id: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/plugin/update"
+}
+
+export type PluginUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type PluginUpdateError = PluginUpdateErrors[keyof PluginUpdateErrors]
+
+export type PluginUpdateResponses = {
+  /**
+   * Plugin updated
+   */
+  200: {
+    item: unknown
+  }
+}
+
+export type PluginUpdateResponse = PluginUpdateResponses[keyof PluginUpdateResponses]
+
+export type PluginResolveConflictData = {
+  body?: {
+    id: string
+    conflictId: string
+    resolutionId: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/plugin/resolve-conflict"
+}
+
+export type PluginResolveConflictErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type PluginResolveConflictError = PluginResolveConflictErrors[keyof PluginResolveConflictErrors]
+
+export type PluginResolveConflictResponses = {
+  /**
+   * Plugin conflict resolved
+   */
+  200: {
+    ok: true
+  }
+}
+
+export type PluginResolveConflictResponse = PluginResolveConflictResponses[keyof PluginResolveConflictResponses]
+
+export type PluginSettingsRpcData = {
+  body?: {
+    id: string
+    requestId?: string
+    method: string
+    params?: unknown
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/plugin/settings/rpc"
+}
+
+export type PluginSettingsRpcErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type PluginSettingsRpcError = PluginSettingsRpcErrors[keyof PluginSettingsRpcErrors]
+
+export type PluginSettingsRpcResponses = {
+  /**
+   * Plugin settings RPC result
+   */
+  200: {
+    requestId?: string
+    result?: unknown
+  }
+}
+
+export type PluginSettingsRpcResponse = PluginSettingsRpcResponses[keyof PluginSettingsRpcResponses]
+
 export type SyncStartData = {
   body?: never
   path?: never

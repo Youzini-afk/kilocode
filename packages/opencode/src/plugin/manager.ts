@@ -13,6 +13,13 @@ import { isRecord } from "@/util/record"
 import { parsePluginSpecifier, readPluginPackage, resolvePluginTarget } from "./shared"
 import { readPluginManifest } from "./install"
 import type { Config } from "@/config/config"
+import {
+  PluginConflict,
+  type PluginCapability,
+  type PluginConflictItem,
+  type PluginConflictStatus,
+  type PluginManagedChangeSet,
+} from "./conflict"
 
 export type PluginKind = "server" | "tui"
 export type PluginScope = "global" | "local" | "builtin"
@@ -60,6 +67,10 @@ export type PluginListItem = {
   install?: ManagedInstall
   config?: PluginConfigManifest
   settings?: PluginSettingsManifest & { available: boolean }
+  capabilities?: PluginCapability[]
+  conflictStatus?: PluginConflictStatus
+  conflicts?: PluginConflictItem[]
+  managedChanges?: PluginManagedChangeSet[]
 }
 
 export type InstallInput = {
@@ -69,22 +80,33 @@ export type InstallInput = {
   scope?: "global" | "local"
   force?: boolean
   directory: string
+  config?: Config.Info
 }
 
 export type ToggleInput = {
   id: string
   enabled: boolean
   directory: string
+  restoreManagedChanges?: boolean
 }
 
 export type RemoveInput = {
   id: string
   directory: string
   deleteManaged?: boolean
+  restoreManagedChanges?: boolean
 }
 
 export type UpdateInput = {
   id: string
+  directory: string
+  config?: Config.Info
+}
+
+export type ResolveConflictInput = {
+  id: string
+  conflictId: string
+  resolutionId: string
   directory: string
 }
 
@@ -346,6 +368,30 @@ function enabledEntry(spec: string, options: Record<string, unknown>, enabled: b
   return Object.keys(next).length ? [spec, next] : spec
 }
 
+function withKiloMetadata(
+  options: Record<string, unknown>,
+  update: (current: ConfigPlugin.KiloMetadata) => ConfigPlugin.KiloMetadata,
+) {
+  const current = ConfigPlugin.pluginKiloMetadata(options) ?? {}
+  const nextKilo = update(current)
+  return {
+    ...options,
+    [ConfigPlugin.KILO_META_KEY]: nextKilo,
+  }
+}
+
+function metadataEntry(
+  spec: string,
+  options: Record<string, unknown>,
+  update: (current: ConfigPlugin.KiloMetadata) => ConfigPlugin.KiloMetadata,
+) {
+  return [spec, withKiloMetadata(options, update)] as const
+}
+
+function resolvedConflicts(current: ConfigPlugin.KiloMetadata) {
+  return Array.isArray(current.resolvedConflicts) ? current.resolvedConflicts : []
+}
+
 async function addOrReplacePlugin(file: string, spec: string, options: Record<string, unknown>, force: boolean) {
   await updatePluginEntry(
     { file, spec },
@@ -355,6 +401,38 @@ async function addOrReplacePlugin(file: string, spec: string, options: Record<st
     },
     () => [spec, options],
   )
+}
+
+async function createPluginConfigFile(input: { targetFile: string; item: PluginListItem }) {
+  const configFile = input.item.config?.file
+  if (!configFile) return
+  const file = path.isAbsolute(configFile) ? configFile : path.join(path.dirname(input.targetFile), configFile)
+  if (existsSync(file)) return
+  const schema = PluginConflict.schemaReference({
+    packageDir: input.item.packageDir,
+    schema: input.item.config?.schema,
+  })
+  const body = schema ? JSON.stringify({ $schema: schema }, null, 2) : "{}"
+  await fs.mkdir(path.dirname(file), { recursive: true })
+  await fs.writeFile(file, `${body}\n`)
+}
+
+async function restoreManagedChanges(target: PatchTarget, item: PluginListItem) {
+  const skipped: string[] = []
+  for (const set of item.managedChanges ?? []) {
+    for (const change of set.changes) {
+      const result = await PluginConflict.restoreNativeFeature({ file: target.file, change })
+      if (!result.restored && result.reason) skipped.push(result.reason)
+    }
+  }
+  await updatePluginEntry(target, (entry) => {
+    const spec = entrySpec(entry) ?? target.spec
+    return metadataEntry(spec, entryOptions(entry), (current) => {
+      const { managedChanges: _managedChanges, ...rest } = current
+      return rest
+    })
+  })
+  return skipped
 }
 
 function safeManifestObject(value: unknown) {
@@ -398,6 +476,8 @@ export async function readKiloManifest(target: string) {
     kinds,
     config: configManifest(kilo.config),
     settings: settingsManifest(kilo.settings),
+    capabilities: PluginConflict.parseCapabilities(kilo.capabilities),
+    conflicts: PluginConflict.parseConflicts(kilo.conflicts),
   }
 }
 
@@ -448,6 +528,15 @@ export async function list(config: Config.Info): Promise<PluginListItem[]> {
       item.packageDir = manifest.packageDir
       item.config = manifest.config
       item.settings = manifest.settings ? { ...manifest.settings, available: true } : undefined
+      item.capabilities = manifest.capabilities
+      const conflictReport = PluginConflict.report({
+        config,
+        spec: origin.spec,
+        manifest,
+      })
+      item.conflictStatus = conflictReport.status
+      item.conflicts = conflictReport.conflicts
+      item.managedChanges = conflictReport.managedChanges
     } catch (error) {
       item.error = error instanceof Error ? error.message : String(error)
     }
@@ -490,19 +579,27 @@ export async function installFromGit(input: InstallInput) {
   const spec = pathToFileURL(pluginDir).href
   const manifest = await readKiloManifest(spec)
   const file = configFileForScope(input.scope ?? "global", input.directory)
-  const options = {
-    [ConfigPlugin.KILO_META_KEY]: {
-      enabled: true,
-      install: {
-        type: "git",
-        url,
-        ...(input.ref ? { ref: input.ref } : {}),
-        ...(detectedPath ? { path: detectedPath } : {}),
-        directory: repo,
-        managedDir,
-      },
+  const kiloMetadata: ConfigPlugin.KiloMetadata = {
+    enabled: true,
+    install: {
+      type: "git",
+      url,
+      ...(input.ref ? { ref: input.ref } : {}),
+      ...(detectedPath ? { path: detectedPath } : {}),
+      directory: repo,
+      managedDir,
     },
   }
+  const options = {
+    [ConfigPlugin.KILO_META_KEY]: kiloMetadata,
+  }
+  const conflictReport = PluginConflict.report({
+    config: input.config ?? {},
+    spec: [spec, options],
+    manifest,
+  })
+  const hasBlockingConflict = conflictReport.conflicts.some((conflict) => conflict.severity === "blocking")
+  if (hasBlockingConflict) kiloMetadata.enabled = false
 
   await addOrReplacePlugin(file, spec, options, input.force ?? true)
   return {
@@ -513,6 +610,7 @@ export async function installFromGit(input: InstallInput) {
       version: manifest.version,
       kinds: manifest.kinds,
       configSource: file,
+      conflictStatus: hasBlockingConflict ? "pending-resolution" : conflictReport.status,
     },
   }
 }
@@ -537,16 +635,70 @@ async function findPatchTarget(config: Config.Info, id: string): Promise<{ targe
   }
 }
 
+async function hasActiveBlockingConflict(config: Config.Info, item: PluginListItem) {
+  if (!item.target) return false
+  const manifest = await readKiloManifest(item.target).catch(() => undefined)
+  if (!manifest) return false
+  const conflict = PluginConflict.report({
+    config,
+    spec: item.spec,
+    manifest,
+    ignoreResolved: true,
+  })
+  return conflict.conflicts.some((candidate) => candidate.severity === "blocking")
+}
+
+async function disabledConflictResolutions(item: PluginListItem, resolvedAt: string) {
+  if (!item.target) return []
+  const manifest = await readKiloManifest(item.target).catch(() => undefined)
+  if (!manifest) return []
+  return manifest.conflicts.flatMap((conflict) => {
+    const resolution = conflict.resolutions.find((candidate) =>
+      candidate.actions.some((action) => action.type === "setPluginEnabled" && action.enabled === false),
+    )
+    return resolution
+      ? [
+          {
+            conflictId: conflict.id,
+            resolutionId: resolution.id,
+            resolvedAt,
+          },
+        ]
+      : []
+  })
+}
+
 export async function setEnabled(config: Config.Info, input: ToggleInput) {
-  const { target } = await findPatchTarget(config, input.id)
+  const { target, item } = await findPatchTarget(config, input.id)
+  if (input.enabled && (await hasActiveBlockingConflict(config, item))) {
+    throw new Error(`Plugin ${item.displayName} has unresolved blocking conflicts`)
+  }
+  if (!input.enabled && input.restoreManagedChanges) {
+    await restoreManagedChanges(target, item)
+  }
+  const disabledResolutions = input.enabled ? [] : await disabledConflictResolutions(item, new Date().toISOString())
   await updatePluginEntry(target, (entry) => {
     const spec = entrySpec(entry) ?? target.spec
-    return enabledEntry(spec, entryOptions(entry), input.enabled)
+    return metadataEntry(spec, entryOptions(entry), (current) => ({
+      ...current,
+      enabled: input.enabled,
+      resolvedConflicts: disabledResolutions.length
+        ? [
+            ...resolvedConflicts(current).filter(
+              (existing) => !disabledResolutions.some((resolution) => resolution.conflictId === existing.conflictId),
+            ),
+            ...disabledResolutions,
+          ]
+        : current.resolvedConflicts,
+    }))
   })
 }
 
 export async function remove(config: Config.Info, input: RemoveInput) {
   const { target, item } = await findPatchTarget(config, input.id)
+  if (input.restoreManagedChanges) {
+    await restoreManagedChanges(target, item)
+  }
   await removePluginEntry(target)
   if (input.deleteManaged !== false && item.install?.type === "git") {
     const managedDir = item.install.managedDir ?? (item.install.directory ? path.dirname(item.install.directory) : undefined)
@@ -566,7 +718,77 @@ export async function update(config: Config.Info, input: UpdateInput) {
     directory: input.directory,
     scope: item.scope === "local" ? "local" : "global",
     force: false,
+    config: input.config ?? config,
   })
+}
+
+export async function resolveConflict(config: Config.Info, input: ResolveConflictInput) {
+  const { target, item } = await findPatchTarget(config, input.id)
+  const conflict = item.conflicts?.find((candidate) => candidate.id === input.conflictId)
+  if (!conflict) throw new Error(`Conflict not found: ${input.conflictId}`)
+  const resolution = conflict.resolutions.find((candidate) => candidate.id === input.resolutionId)
+  if (!resolution) throw new Error(`Resolution not found: ${input.resolutionId}`)
+
+  const changes: PluginManagedChangeSet["changes"] = []
+  try {
+    for (const action of resolution.actions) {
+      if (action.type === "setNativeFeature") {
+        changes.push(
+          await PluginConflict.setNativeFeature({
+            file: target.file,
+            feature: action.feature,
+            enabled: action.enabled,
+          }),
+        )
+        continue
+      }
+      if (action.type === "createPluginConfig") {
+        await createPluginConfigFile({ targetFile: target.file, item })
+        continue
+      }
+      if (action.type === "setPluginEnabled") {
+        await updatePluginEntry(target, (entry) => {
+          const spec = entrySpec(entry) ?? target.spec
+          return enabledEntry(spec, entryOptions(entry), action.enabled)
+        })
+      }
+    }
+  } catch (error) {
+    for (const change of changes.toReversed()) {
+      await PluginConflict.restoreNativeFeature({ file: target.file, change }).catch(() => undefined)
+    }
+    throw error
+  }
+
+  const resolvedAt = new Date().toISOString()
+  const changeSet: PluginManagedChangeSet | undefined = changes.length
+    ? {
+        id: `${conflict.id}/${resolution.id}`,
+        conflictId: conflict.id,
+        resolutionId: resolution.id,
+        appliedAt: resolvedAt,
+        changes,
+      }
+    : undefined
+  await updatePluginEntry(target, (entry) => {
+    const spec = entrySpec(entry) ?? target.spec
+    return metadataEntry(spec, entryOptions(entry), (current) => ({
+      ...current,
+      managedChanges: changeSet
+        ? [...(current.managedChanges ?? []).filter((existing) => existing.id !== changeSet.id), changeSet]
+        : current.managedChanges,
+      resolvedConflicts: [
+        ...resolvedConflicts(current).filter((existing) => existing.conflictId !== conflict.id),
+        {
+          conflictId: conflict.id,
+          resolutionId: resolution.id,
+          resolvedAt,
+        },
+      ],
+    }))
+  })
+
+  return { ok: true as const }
 }
 
 export async function resolveSettingsAsset(config: Config.Info, id: string, assetPath: string | undefined) {

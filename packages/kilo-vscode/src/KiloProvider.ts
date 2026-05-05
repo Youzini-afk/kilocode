@@ -879,6 +879,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         case "updatePlugin":
           this.handleUpdatePlugin(message).catch((e) => console.error("[Kilo New] updatePlugin failed:", e))
           break
+        case "resolvePluginConflict":
+          this.handleResolvePluginConflict(message).catch((e) =>
+            console.error("[Kilo New] resolvePluginConflict failed:", e),
+          )
+          break
         case "openPluginConfig":
           await this.handleOpenPluginConfig(message.id, message.scope)
           break
@@ -2190,11 +2195,20 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     }
   }
 
-  private async handleSetPluginEnabled(message: { requestId: string; id: string; enabled: boolean }): Promise<void> {
+  private async handleSetPluginEnabled(message: {
+    requestId: string
+    id: string
+    enabled: boolean
+    restoreManagedChanges?: boolean
+  }): Promise<void> {
     try {
       await this.pluginFetch("/plugin/enabled", {
         method: "POST",
-        body: JSON.stringify({ id: message.id, enabled: message.enabled }),
+        body: JSON.stringify({
+          id: message.id,
+          enabled: message.enabled,
+          restoreManagedChanges: message.restoreManagedChanges,
+        }),
       })
       await this.refreshAfterPluginChange()
       this.postMessage({ type: "pluginActionResult", requestId: message.requestId, action: "enable", success: true })
@@ -2209,11 +2223,20 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     }
   }
 
-  private async handleRemovePlugin(message: { requestId: string; id: string; deleteManaged?: boolean }): Promise<void> {
+  private async handleRemovePlugin(message: {
+    requestId: string
+    id: string
+    deleteManaged?: boolean
+    restoreManagedChanges?: boolean
+  }): Promise<void> {
     try {
       await this.pluginFetch("/plugin/remove", {
         method: "POST",
-        body: JSON.stringify({ id: message.id, deleteManaged: message.deleteManaged }),
+        body: JSON.stringify({
+          id: message.id,
+          deleteManaged: message.deleteManaged,
+          restoreManagedChanges: message.restoreManagedChanges,
+        }),
       })
       await this.refreshAfterPluginChange()
       this.postMessage({ type: "pluginActionResult", requestId: message.requestId, action: "remove", success: true })
@@ -2241,6 +2264,34 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         type: "pluginActionResult",
         requestId: message.requestId,
         action: "update",
+        success: false,
+        error: getErrorMessage(error),
+      })
+    }
+  }
+
+  private async handleResolvePluginConflict(message: {
+    requestId: string
+    id: string
+    conflictId: string
+    resolutionId: string
+  }): Promise<void> {
+    try {
+      await this.pluginFetch("/plugin/resolve-conflict", {
+        method: "POST",
+        body: JSON.stringify({
+          id: message.id,
+          conflictId: message.conflictId,
+          resolutionId: message.resolutionId,
+        }),
+      })
+      await this.refreshAfterPluginChange()
+      this.postMessage({ type: "pluginActionResult", requestId: message.requestId, action: "resolve", success: true })
+    } catch (error) {
+      this.postMessage({
+        type: "pluginActionResult",
+        requestId: message.requestId,
+        action: "resolve",
         success: false,
         error: getErrorMessage(error),
       })

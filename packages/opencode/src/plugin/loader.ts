@@ -136,6 +136,7 @@ export namespace PluginLoader {
     retry: boolean,
     finish: ((load: Loaded, origin: ConfigPlugin.Origin, retry: boolean) => Promise<R | undefined>) | undefined,
     missing: ((value: Missing, origin: ConfigPlugin.Origin, retry: boolean) => Promise<R | undefined>) | undefined,
+    gate: ((value: Resolved, origin: ConfigPlugin.Origin, retry: boolean) => Promise<boolean>) | undefined,
     report: Report | undefined,
   ): Promise<R | undefined> {
     if (!ConfigPlugin.pluginEnabled(candidate.origin.spec)) return
@@ -162,6 +163,7 @@ export namespace PluginLoader {
       report?.error?.(candidate, retry, resolved.stage, resolved.error)
       return
     }
+    if (gate && !(await gate(resolved.value, candidate.origin, retry))) return
 
     const loaded = await load(resolved.value)
     if (!loaded.ok) {
@@ -181,6 +183,7 @@ export namespace PluginLoader {
     wait?: () => Promise<void>
     finish?: (load: Loaded, origin: ConfigPlugin.Origin, retry: boolean) => Promise<R | undefined>
     missing?: (value: Missing, origin: ConfigPlugin.Origin, retry: boolean) => Promise<R | undefined>
+    gate?: (value: Resolved, origin: ConfigPlugin.Origin, retry: boolean) => Promise<boolean>
     report?: Report
   }
 
@@ -193,7 +196,7 @@ export namespace PluginLoader {
     const candidates = input.items.map((origin) => ({ origin, plan: plan(origin.spec) }))
     const list: Array<Promise<R | undefined>> = []
     for (const candidate of candidates) {
-      list.push(attempt(candidate, input.kind, false, input.finish, input.missing, input.report))
+      list.push(attempt(candidate, input.kind, false, input.finish, input.missing, input.gate, input.report))
     }
     const out = await Promise.all(list)
     if (input.wait) {
@@ -207,7 +210,7 @@ export namespace PluginLoader {
         if (!candidate || pluginSource(candidate.plan.spec) !== "file") continue
         deps ??= input.wait()
         await deps
-        out[i] = await attempt(candidate, input.kind, true, input.finish, input.missing, input.report)
+        out[i] = await attempt(candidate, input.kind, true, input.finish, input.missing, input.gate, input.report)
       }
     }
 
