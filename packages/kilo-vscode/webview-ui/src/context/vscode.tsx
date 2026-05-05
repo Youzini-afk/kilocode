@@ -41,10 +41,25 @@ export const VSCodeProvider: ParentComponent = (props) => {
   const api = getVSCodeAPI()
   const handlers = new Set<(message: ExtensionMessage) => void>()
 
+  const isPluginSettingsRpc = (message: unknown): message is WebviewMessage => {
+    if (!message || typeof message !== "object") return false
+    const candidate = message as Record<string, unknown>
+    return (
+      candidate.type === "pluginSettingsRpc" &&
+      typeof candidate.pluginId === "string" &&
+      typeof candidate.requestId === "string" &&
+      typeof candidate.method === "string"
+    )
+  }
+
   // Listen for messages from the extension
   const messageListener = (event: MessageEvent) => {
-    const message = event.data as ExtensionMessage
-    handlers.forEach((handler) => handler(message))
+    const message = event.data
+    if (isPluginSettingsRpc(message)) {
+      api.postMessage(message)
+      return
+    }
+    handlers.forEach((handler) => handler(message as ExtensionMessage))
   }
 
   window.addEventListener("message", messageListener)

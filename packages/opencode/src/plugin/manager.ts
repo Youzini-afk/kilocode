@@ -250,6 +250,12 @@ function configFileForScope(scope: "global" | "local", directory: string) {
   return files.find((file) => existsSync(file)) ?? path.join(dir, "kilo.jsonc")
 }
 
+function configFilesInDirectory(dir: string) {
+  return ["kilo.jsonc", "kilo.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+    path.join(dir, file),
+  )
+}
+
 function parseConfigText(text: string, file: string) {
   const errors: ParseError[] = []
   const data = parseJsonc(text.trim() ? text : "{}", errors, { allowTrailingComma: true })
@@ -270,6 +276,13 @@ async function readConfigFile(file: string) {
     if (err.code === "ENOENT") return "{}"
     throw err
   })
+}
+
+async function isDirectory(file: string) {
+  return fs.stat(file).then(
+    (stat) => stat.isDirectory(),
+    () => false,
+  )
 }
 
 function patch(text: string, path: Array<string | number>, value: unknown, insert = false) {
@@ -349,6 +362,29 @@ async function removePluginEntry(target: PatchTarget) {
   if (index < 0) return false
   await fs.writeFile(target.file, patch(text.trim() ? text : "{}", ["plugin", index], undefined))
   return true
+}
+
+async function fileContainsPluginSpec(file: string, spec: string) {
+  const text = await readConfigFile(file)
+  const data = parseConfigText(text, file)
+  const list = pluginList(data)
+  return Boolean(
+    list?.some((item) => {
+      const next = entrySpec(item)
+      return next ? matchesSpec(next, spec) : false
+    }),
+  )
+}
+
+async function patchFileForSource(source: string, spec: string) {
+  if (!(await isDirectory(source))) return source
+
+  const candidates = configFilesInDirectory(source)
+  for (const file of candidates) {
+    if (!existsSync(file)) continue
+    if (await fileContainsPluginSpec(file, spec)) return file
+  }
+  return candidates.find((file) => existsSync(file)) ?? path.join(source, "kilo.jsonc")
 }
 
 function mergeKiloOptions(options: Record<string, unknown>, kilo: ConfigPlugin.KiloMetadata) {
@@ -626,10 +662,11 @@ async function findPatchTarget(config: Config.Info, id: string): Promise<{ targe
   const item = items.find((candidate) => candidate.id === id || candidate.spec === id || identity(candidate.spec) === id)
   if (!item) throw new Error(`Plugin not found: ${id}`)
   if (!editableSource(item.configSource)) throw new Error(`Plugin ${item.displayName} is not editable from this source`)
+  const file = await patchFileForSource(item.configSource, item.spec)
   return {
     item,
     target: {
-      file: item.configSource,
+      file,
       spec: item.spec,
     },
   }

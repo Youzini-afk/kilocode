@@ -237,6 +237,74 @@ describe("plugin.manager", () => {
     expect(restored.plugin[0]?.[1].$kilo.resolvedConflicts?.[0]?.resolutionId).toBe("keep-native")
   })
 
+  test("resolves conflicts when the plugin origin source is a config directory", async () => {
+    await using tmp = await tmpdir()
+    const pluginDir = path.join(tmp.path, "plugin")
+    const file = path.join(tmp.path, "kilo.jsonc")
+    await fs.mkdir(pluginDir, { recursive: true })
+    await Bun.write(
+      path.join(pluginDir, "package.json"),
+      JSON.stringify(
+        {
+          name: "kilocode-magic-context",
+          version: "1.2.3",
+          "kilo-plugin": {
+            id: "kilocode-magic-context",
+            displayName: "Magic Context",
+            config: { file: "kilo-magic-context.jsonc" },
+            conflicts: [
+              {
+                id: "native.compaction",
+                type: "nativeFeature",
+                feature: "native.compaction",
+                severity: "blocking",
+                reason: "Magic Context manages context.",
+                resolutions: [
+                  {
+                    id: "use-plugin",
+                    label: "Use Magic Context",
+                    actions: [
+                      { type: "setNativeFeature", feature: "native.compaction.auto", enabled: false },
+                      { type: "createPluginConfig" },
+                      { type: "setPluginEnabled", enabled: true },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+    const spec = pathToFileURL(pluginDir).href
+    const pluginSpec: ConfigPlugin.Spec = [spec, { $kilo: { enabled: false } }]
+    await Bun.write(file, JSON.stringify({ plugin: [pluginSpec], compaction: { auto: true } }, null, 2))
+
+    await PluginManager.resolveConflict(
+      {
+        plugin: [pluginSpec],
+        plugin_origins: [{ spec: pluginSpec, source: tmp.path, scope: "global" }],
+        compaction: { auto: true },
+      },
+      {
+        id: "kilocode-magic-context",
+        conflictId: "native.compaction",
+        resolutionId: "use-plugin",
+        directory: tmp.path,
+      },
+    )
+
+    const resolved = parseJsonc(await fs.readFile(file, "utf8")) as {
+      plugin: [string, { $kilo: { enabled: boolean } }][]
+      compaction: { auto?: boolean }
+    }
+    expect(resolved.compaction.auto).toBe(false)
+    expect(resolved.plugin[0]?.[1].$kilo.enabled).toBe(true)
+    expect(await fs.stat(path.join(tmp.path, "kilo-magic-context.jsonc")).then(() => true, () => false)).toBe(true)
+  })
+
   test("records keep-native conflict resolution without enabling the plugin", async () => {
     await using tmp = await tmpdir()
     const pluginDir = path.join(tmp.path, "plugin")

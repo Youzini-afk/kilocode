@@ -71,6 +71,7 @@ const PluginsTab: Component = () => {
   const [trusted, setTrusted] = createSignal(false)
   const [busy, setBusy] = createSignal<Record<string, string>>({})
   const [settingsPanel, setSettingsPanel] = createSignal<{ pluginId: string; url: string; title: string } | null>(null)
+  let settingsIframe: HTMLIFrameElement | undefined
 
   const scopeOptions = createMemo<ScopeOption[]>(() => [
     { value: "global", label: language.t("settings.plugins.scope.global") },
@@ -148,6 +149,12 @@ const PluginsTab: Component = () => {
     }
     if (message.type === "openPluginSettingsPanel") {
       setSettingsPanel({ pluginId: message.pluginId, url: message.url, title: message.title })
+      return
+    }
+    if (message.type === "pluginSettingsRpcResult") {
+      if (settingsPanel()?.pluginId === message.pluginId) {
+        settingsIframe?.contentWindow?.postMessage(message, "*")
+      }
     }
   })
   onCleanup(unsubscribe)
@@ -168,6 +175,7 @@ const PluginsTab: Component = () => {
               />
             </div>
             <iframe
+              ref={settingsIframe}
               title={panel().title}
               src={panel().url}
               sandbox="allow-scripts allow-forms"

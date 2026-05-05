@@ -10,10 +10,15 @@ const PluginSettingsFrame: Component<{ pluginId: string }> = (props) => {
   const vscode = useVSCode()
   const plugins = usePlugins()
   const [frame, setFrame] = createSignal<{ url: string; title: string } | null>(null)
+  let settingsIframe: HTMLIFrameElement | undefined
 
   onMount(() => vscode.postMessage({ type: "openPluginSettings", pluginId: props.pluginId }))
 
   const unsubscribe = vscode.onMessage((message: ExtensionMessage) => {
+    if (message.type === "pluginSettingsRpcResult" && message.pluginId === props.pluginId) {
+      settingsIframe?.contentWindow?.postMessage(message, "*")
+      return
+    }
     if (message.type !== "openPluginSettingsPanel") return
     if (message.pluginId !== props.pluginId) return
     setFrame({ url: message.url, title: message.title })
@@ -26,6 +31,7 @@ const PluginSettingsFrame: Component<{ pluginId: string }> = (props) => {
     <Card>
       {frame() ? (
         <iframe
+          ref={settingsIframe}
           title={frame()!.title}
           src={frame()!.url}
           sandbox="allow-scripts allow-forms"

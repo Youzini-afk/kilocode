@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { buildConnectSrc, buildCspString } from "../../src/webview-html-utils"
+import { buildConnectSrc, buildCspString, buildFrameSrc } from "../../src/webview-html-utils"
 
 describe("buildConnectSrc", () => {
   it("uses wildcard ports when no port specified", () => {
@@ -25,6 +25,22 @@ describe("buildConnectSrc", () => {
 
   it("uses the exact port number", () => {
     expect(buildConnectSrc(54321)).toContain(":54321")
+  })
+})
+
+describe("buildFrameSrc", () => {
+  it("uses wildcard local http ports when no port specified", () => {
+    const result = buildFrameSrc()
+    expect(result).toContain("http://127.0.0.1:*")
+    expect(result).toContain("http://localhost:*")
+    expect(result).not.toContain("ws://")
+  })
+
+  it("restricts local http frames to a specific port when provided", () => {
+    const result = buildFrameSrc(3000)
+    expect(result).toContain("http://127.0.0.1:3000")
+    expect(result).toContain("http://localhost:3000")
+    expect(result).not.toContain(":*")
   })
 })
 
@@ -65,6 +81,12 @@ describe("buildCspString", () => {
     const result = buildCspString(cspSource, nonce, 9000)
     expect(result).toContain("http://127.0.0.1:9000")
     expect(result).not.toContain(":*")
+  })
+
+  it("allows local plugin settings iframes", () => {
+    const result = buildCspString(cspSource, nonce, 9000)
+    expect(result).toContain(`frame-src ${cspSource} http://127.0.0.1:9000 http://localhost:9000`)
+    expect(result).toContain(`child-src ${cspSource} http://127.0.0.1:9000 http://localhost:9000`)
   })
 
   it("includes cspSource in connect-src for source map loading", () => {
