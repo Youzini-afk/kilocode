@@ -437,6 +437,22 @@ export function topK(model: Provider.Model) {
 const WIDELY_SUPPORTED_EFFORTS = ["low", "medium", "high"]
 const OPENAI_EFFORTS = ["none", "minimal", ...WIDELY_SUPPORTED_EFFORTS, "xhigh"]
 
+function openAICompatibleEfforts(model: Provider.Model): string[] {
+  const id = model.id.toLowerCase()
+  const apiID = model.api.id.toLowerCase()
+  const efforts = [...WIDELY_SUPPORTED_EFFORTS]
+
+  if (id.includes("gpt-5") || apiID.includes("gpt-5") || id.includes("codex") || apiID.includes("codex")) {
+    efforts.push("xhigh", "max")
+  }
+
+  if (id.includes("deepseek-v4") || apiID.includes("deepseek-v4")) {
+    efforts.push("max")
+  }
+
+  return [...new Set(efforts)]
+}
+
 function anthropicAdaptiveEfforts(apiId: string): string[] | null {
   if (["opus-4-7", "opus-4.7"].some((v) => apiId.includes(v))) {
     return ["low", "medium", "high", "xhigh", "max"]
@@ -610,10 +626,8 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
     case "venice-ai-sdk-provider":
     // https://docs.venice.ai/overview/guides/reasoning-models#reasoning-effort
     case "@ai-sdk/openai-compatible":
-      const efforts = [...WIDELY_SUPPORTED_EFFORTS]
-      if (model.api.id.includes("deepseek-v4")) {
-        efforts.push("max")
-      }
+      const efforts =
+        model.api.npm === "@ai-sdk/openai-compatible" ? openAICompatibleEfforts(model) : WIDELY_SUPPORTED_EFFORTS
       return Object.fromEntries(efforts.map((effort) => [effort, { reasoningEffort: effort }]))
 
     case "@ai-sdk/azure":

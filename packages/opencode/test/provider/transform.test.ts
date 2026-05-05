@@ -2929,6 +2929,22 @@ describe("ProviderTransform.variants", () => {
     })
 
     // kilocode_change start
+    test("custom gpt-5 compatible models include xhigh and max efforts", () => {
+      const model = createMockModel({
+        id: "yuzu/gpt-5.5",
+        providerID: "yuzu",
+        api: {
+          id: "gpt-5.5",
+          url: "https://api.yuzu.example",
+          npm: "@ai-sdk/openai-compatible",
+        },
+      })
+      const result = ProviderTransform.variants(model)
+      expect(Object.keys(result)).toEqual(["low", "medium", "high", "xhigh", "max"])
+      expect(result.xhigh).toEqual({ reasoningEffort: "xhigh" })
+      expect(result.max).toEqual({ reasoningEffort: "max" })
+    })
+
     test("mercury-2 returns WIDELY_SUPPORTED_EFFORTS with reasoningEffort", () => {
       const model = createMockModel({
         id: "inception/mercury-2",
