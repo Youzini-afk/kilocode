@@ -13,6 +13,31 @@ This skill covers Kotlin/Swing UI code for the Kilo JetBrains plugin, including 
 
 This plugin is a split-mode JetBrains plugin. UI code belongs in `frontend` unless there is a specific split-mode reason to place it elsewhere.
 
+## IntelliJ Platform Source Lookup
+
+When looking for IntelliJ Platform API usage, implementation examples, extension points, services, actions, inspections, PSI/VFS/editor behavior, or plugin patterns, prefer real IntelliJ source code over Gradle caches, downloaded jars, generated parser artifacts, or decompiled classes.
+
+Use this priority order:
+
+1. Check whether `$INTELLIJ_REPO` is set and points to a readable IntelliJ Community checkout.
+   - If `$INTELLIJ_REPO` is set, search source files under that directory first.
+   - Prefer implementation source files from directories such as `platform/`, `plugins/`, `java/`, `xml/`, `json/`, `jvm/`, and related modules.
+   - Do not assume the IntelliJ checkout is a sibling of the current repo or worktree.
+2. If `$INTELLIJ_REPO` is unset, empty, unreadable, or does not appear to contain an IntelliJ source checkout, tell the user to set it up.
+   - Suggested instruction: `Set INTELLIJ_REPO to the path of a local intellij-community checkout, for example: export INTELLIJ_REPO=/path/to/intellij-community`
+   - Do not invent or hardcode a machine-specific absolute path.
+3. If a local checkout is unavailable, use the public IntelliJ Community repository as the fallback source:
+   - https://github.com/JetBrains/intellij-community
+4. Only inspect Gradle caches, downloaded jars, generated parser jars, decompiled classes, or dependency internals as a last resort when neither a local IntelliJ source checkout nor the public GitHub repository provides the needed information.
+
+Avoid starting searches in:
+
+- `~/.gradle/caches`
+- `.gradle/`
+- downloaded dependency jars
+- generated parser artifacts
+- decompiled library sources
+
 ## Primary Rules
 
 - Prefer Kotlin UI DSL v2 whenever the UI is a dialog, settings page, form, options panel, or structured component layout.
@@ -335,6 +360,19 @@ panel {
 - Left indent: `indent {}` for indented sub-content.
 - Vertical gaps: `.topGap(TopGap.MEDIUM)` / `.bottomGap(BottomGap.MEDIUM)` on rows to separate unrelated groups. Attach gaps to the related row so hiding rows does not break layout.
 
+Common Kotlin UI DSL spacing values from `IntelliJSpacingConfiguration`:
+
+| Constant | Unscaled px | Usage |
+|---|---|---|
+| `RightGap.SMALL` | 6 | Related inline components, such as field to button |
+| Default row/cell gap | 16 | Automatic gap between components in a row |
+| `RightGap.COLUMNS` | 60 | Logical column separation |
+| `TopGap.SMALL` / `BottomGap.SMALL` | 8 | Minor section separation |
+| `TopGap.MEDIUM` / `BottomGap.MEDIUM` | 20 | Major section or group separation |
+| `verticalComponentGap` | 6 | Automatic gap between rows |
+
+These are semantic IntelliJ spacing constants. They handle DPI scaling and the IntelliJ spacing model, but they are not theme keys and are not overridden by theme JSON.
+
 ```kotlin
 panel {
     group("Horizontal Gaps") {
@@ -528,6 +566,92 @@ Preferred manual Swing rules:
 - Keep custom components small and focused.
 - For painting, use theme-aware colors and `JBUI.scale(...)` for pixel values.
 
+## Swing Component State
+
+Swing is retained-mode UI, not React-style declarative rendering. For dynamic Swing surfaces such as session cards, transcript parts, hover rows, and collapsible panels, build a stable component tree once and then mutate existing components in response to model or interaction changes.
+
+- Do not use a React-style `state -> render()` loop for Swing components.
+- Avoid card-level `render()` methods that remove/recreate headers, text areas, markdown views, controls, or scroll panes after every click, hover, or model update.
+- Give each renderer an `update(model)` method that applies model changes directly to existing UI components.
+- In `update(model)`, compare before assigning when practical: label text, icons, foregrounds, fonts, body text, visibility, cursor, and containment.
+- Do not duplicate state in booleans when Swing component state already answers the question.
+- Derive expanded state from containment, such as `scroll.parent === root`, rather than maintaining an `open` boolean.
+- Derive hover state from the current header background or other component property, rather than maintaining a `hover` boolean.
+- Expand/collapse should attach or detach the existing body component and update controls only if attachment changed.
+- Hover should update only the affected component, usually the header background, and repaint only that component when the effective color changed.
+- Lazy-create expensive bodies such as `JBTextArea`, `JBScrollPane`, markdown panes, and HTML panes on first expansion or first direct access.
+- Keep source/model text separately only when needed to initialize a lazy component before it exists.
+- Store the current style snapshot so lazily-created children receive the latest `SessionStyle` when they are first created.
+- Parent containers should refresh for add/remove/reorder operations, not automatically after every delegated child update or streaming delta.
+- Child views should call `revalidate()`/`repaint()` only when they changed preferred size, visibility, containment, or paint output.
+- Empty deltas, identical text, unchanged styles, repeated hover values, and no-op toggles should not repaint the whole card.
+- Private helpers named `render()` in Swing views tend to invite full tree rebuilds. Prefer names that describe the mutation, such as `syncBody()`, `syncArrow()`, `syncHtml()`, or `applyModel()`.
+- It is fine for markdown internals to call library APIs such as `renderer.render(...)`; the problem is UI-level rerendering that rebuilds Swing component trees.
+
+Avoid this React-style pattern:
+
+```kotlin
+private var open = false
+
+fun toggle() {
+    open = !open
+    render()
+}
+
+private fun render() {
+    root.removeAll()
+    header.removeAll()
+    header.add(title)
+    if (open) root.add(JBScrollPane(JBTextArea(text)), BorderLayout.CENTER)
+    revalidate()
+    repaint()
+}
+```
+
+Prefer mutating stable Swing components and deriving state from the UI:
+
+```kotlin
+fun isExpanded(): Boolean = scroll?.parent === root
+
+fun toggle() {
+    if (!canExpand()) return
+    val changed = if (isExpanded()) collapse() else expand()
+    if (!changed) return
+    syncArrow()
+    revalidate()
+    repaint()
+}
+
+private fun expand(): Boolean {
+    if (isExpanded()) return false
+    root.add(scroll(), BorderLayout.CENTER)
+    return true
+}
+
+private fun collapse(): Boolean {
+    val pane = scroll ?: return false
+    if (pane.parent !== root) return false
+    root.remove(pane)
+    return true
+}
+
+private fun scroll(): JBScrollPane {
+    scroll?.let { return it }
+    val pane = JBScrollPane(body())
+    scroll = pane
+    return pane
+}
+```
+
+For tests around dynamic Swing components, assert retained component behavior instead of only final text:
+
+- Collapsed components start unattached, and expensive bodies are not created until first expansion.
+- First expansion creates the body once, collapse detaches it, and re-expansion reuses the same instance.
+- `isExpanded()` agrees with actual containment.
+- `update(model)` changes existing labels/body text without duplicating components.
+- Updates while collapsed do not eagerly create lazy bodies unless direct body access requires it.
+- No-op updates, empty deltas, repeated hover values, and toggling non-expandable cards do not repaint/revalidate the whole view.
+
 ## Platform Spacing and Insets
 
 Use semantic spacing APIs before inventing numbers. Do not copy fallback values from IntelliJ source into generated UI code; those values are defaults behind theme keys and may change by UI theme, New UI, OS, or IDE version.
@@ -544,6 +668,40 @@ Use semantic spacing APIs before inventing numbers. Do not copy fallback values 
 | Simple `BorderLayout` panels | `JBUI.Panels.simplePanel(...)`, `BorderLayoutPanel` |
 | Simple vertical custom Swing groups | `VerticalLayout` |
 | Fluent platform panels | `JBPanel.withBorder(...)`, `.andTransparent()`, `.andOpaque()`, `.withBackground(...)` |
+
+For themeable custom layouts, keep the `JBValue.UIInteger` object and call `.get()` during layout and size calculation. Do not cache the resolved `Int`, because that freezes the value from the current Look and Feel and scale context.
+
+```kotlin
+private val gap = JBValue.UIInteger("KiloComponent.gap", 16)
+
+override fun doLayout() {
+    val value = gap.get()
+    // layout using value
+}
+
+override fun getPreferredSize(): Dimension {
+    val value = gap.get()
+    // calculate using value
+}
+```
+
+Avoid resolving the value once in a constructor or property initializer:
+
+```kotlin
+private val gap = JBValue.UIInteger("KiloComponent.gap", 16).get()
+```
+
+When raw AWT layout constructors are unavoidable, legacy Swing defaults exist but must still be scaled before use:
+
+| Constant | Value |
+|---|---|
+| `UIUtil.DEFAULT_HGAP` | 10 |
+| `UIUtil.DEFAULT_VGAP` | 4 |
+| `UIUtil.LARGE_VGAP` | 12 |
+
+```kotlin
+val panel = JPanel(BorderLayout(JBUI.scale(UIUtil.DEFAULT_HGAP), 0))
+```
 
 Use `JBUI.CurrentTheme` for context-specific spacing and dimensions:
 
@@ -789,12 +947,110 @@ RelativeFont.BOLD.install(label)
 
 Avoid `Font("...")`, raw font sizes, and `deriveFont(14f)` style examples.
 
+## Kilo Session Styling
+
+For session/chat UI under `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/`, keep general UI chrome separate from transcript styling.
+
+- Use `ai.kilocode.client.ui.UiStyle` for general UI helpers: `Colors`, `Borders`, `Insets`, `Gap`, `Space`, `Size`, and `Buttons`.
+- Use `ai.kilocode.client.session.ui.SessionStyle` for session transcript/content styling that follows editor settings or live transcript configuration.
+- `SessionStyle` is for user/assistant transcript text, reasoning text, tool output, prompt editor text, and markdown renderer fields such as `font`, `codeFont`, and future link/code-block styles.
+- Long-lived session components should implement or propagate `SessionStyleTarget.applyStyle(style)` instead of reading editor globals once in constructors.
+- Do not call `EditorColorsManager.getInstance().globalScheme` directly from individual views unless extending `SessionStyle.current()`.
+- New transcript renderers must apply the current `SessionStyle` snapshot and ensure child parts created after a style change receive the queued style.
+- Keep non-transcript IDE chrome on platform/UI style unless it is intentionally part of the transcript reading experience.
+
+Use `UiStyle` for the surrounding card chrome and `SessionStyle` for transcript content inside it:
+
+```kotlin
+class ExamplePartView : PartView() {
+    override fun applyStyle(style: SessionStyle) {
+        var changed = false
+        if (md.font != style.transcriptFont) {
+            md.font = style.transcriptFont
+            changed = true
+        }
+        if (md.codeFont != style.editorFamily) {
+            md.codeFont = style.editorFamily
+            changed = true
+        }
+        if (!changed) return
+        revalidate()
+        repaint()
+    }
+}
+```
+
 ## Borders, Insets, and Spacing
 
 - Always create borders via `JBUI.Borders.empty(top, left, bottom, right)` and insets via `JBUI.insets()` so they are DPI-aware and auto-update on zoom.
 - Use `JBUI.scale(int)` for any pixel dimension to ensure proper HiDPI scaling.
 - Prefer Kotlin UI DSL gaps and row layout semantics over manually assigning borders or insets.
 - Do not use `EmptyBorder`, raw `Insets`, or raw `Dimension` unless there is no platform alternative and the reason is obvious.
+
+Theme-dependent borders, insets, colors, and corner arcs must be re-evaluated when the Look and Feel changes. Do not assign a theme-derived border once in a constructor for a long-lived component.
+
+Prefer overriding `updateUI()` for component-local updates:
+
+```kotlin
+class KiloPanel : JPanel() {
+    override fun updateUI() {
+        super.updateUI()
+        border = JBUI.Borders.customLine(
+            JBColor.namedColor("KiloPanel.borderColor", JBColor.border()),
+            1,
+        )
+    }
+}
+```
+
+For long-lived tool-window panels or components that need explicit Look and Feel handling outside normal Swing updates, subscribe to `LafManagerListener.TOPIC` and reapply theme-dependent borders or cached UI state there.
+
+Use `JBValue.UIInteger` for themeable arc values, because defaults differ by theme:
+
+| Key | Use |
+|---|---|
+| `Component.arc` | General component corners |
+| `Button.arc` | Button corners |
+| `Popup.Selection.arc` | Popup selection background |
+| `TabbedPane.tabSelectionArc` | Tab selection indicator |
+| `Tree.Selection.arc` | Tree selection background |
+
+```kotlin
+val arc = JBValue.UIInteger("Component.arc", 5).get()
+val button = JBValue.UIInteger("Button.arc", 6).get()
+```
+
+Only define plugin-owned theme keys when a platform key is not enough. Themeable insets can use `JBUI.insets("KiloPanel.insets", JBUI.insets(4, 8))`; themeable colors should use `JBColor.namedColor("KiloPanel.borderColor", fallback)`.
+
+Themes can override plugin-owned UI keys through the `ui` section:
+
+```json
+{
+  "ui": {
+    "KiloPanel.insets": "6,12,6,12",
+    "KiloPanel.gap": 20,
+    "KiloPanel.borderColor": "#FF0000",
+    "KiloPanel.arc": 10
+  }
+}
+```
+
+Expose intentional custom UI keys to theme authors with the `themeMetadataProvider` extension point and a `*.themeMetadata.json` file.
+
+```xml
+<themeMetadataProvider path="/META-INF/Kilo.themeMetadata.json"/>
+```
+
+```json
+{
+  "name": "Kilo Code",
+  "fixed": false,
+  "ui": [
+    { "key": "KiloPanel.borderColor", "description": "Panel border color" },
+    { "key": "KiloPanel.gap", "description": "Gap between panel items" }
+  ]
+}
+```
 
 ## Validation and Error UI
 
@@ -838,6 +1094,64 @@ override fun doValidate(): ValidationInfo? {
 - New UI support: place New UI icons in `expui/`, create `*IconMappings.json`, register via `com.intellij.iconMapper` extension point.
 - For SVG asset palette values, follow the IntelliJ icon asset guidelines. Do not copy guideline color literals into runtime Swing UI code.
 
+### SVG Assets
+
+IntelliJ does not theme SVG icons with `currentColor`, CSS classes, CSS variables, inherited styles, or `<style>` blocks. `SVGLoader` patches icon colors by matching literal hex values in `fill` and `stroke` attributes against the active theme palette.
+
+Use hardcoded palette hex values in SVG assets and provide dark variants. This exception applies to icon asset files only; runtime Swing UI code must still derive colors from theme APIs.
+
+| Do | Do not |
+|---|---|
+| `fill="#6E6E6E"` | `fill="currentColor"` |
+| `stroke="#3574F0"` | CSS variables or classes |
+| `icon.svg` plus `icon_dark.svg` | `<style>` blocks for theming |
+| `fill-opacity="0.5"` | Inherited styling |
+
+Classic icon palette examples:
+
+| Palette key | Light hex | Dark hex |
+|---|---|---|
+| `Actions.Grey` | `#6E6E6E` | `#AFB1B3` |
+| `Actions.Red` | `#DB5860` | `#C75450` |
+| `Actions.Green` | `#59A869` | `#499C54` |
+| `Actions.Blue` | `#389FD6` | `#3592C4` |
+| `Objects.Grey` | `#9AA7B0` |  |
+| `Objects.Blue` | `#40B6E0` |  |
+
+New UI palette examples:
+
+| Palette key | Light hex | Dark hex |
+|---|---|---|
+| `Gray.Stroke` | `#6C707E` | `#CED0D6` |
+| `Gray.Fill` | `#EBECF0` | `#43454A` |
+| `Gray.SecondaryStroke` | `#A8ADBD` | `#6F737A` |
+| `Blue.Stroke` | `#3574F0` | `#548AF7` |
+| `Blue.Fill` | `#EDF3FF` | `#25324D` |
+| `Blue.Solid` | `#4682FA` |  |
+| `Green.Stroke` | `#208A3C` | `#57965C` |
+| `Red.Stroke` | `#DB3B4B` | `#DB5C5C` |
+
+For checkbox, radio, or similar control SVGs that need independent fill and stroke theming, use an `id` in the `fillKey_strokeKey` format. The SVG patcher splits the ID on `_` and applies the keys independently.
+
+```xml
+<rect id="Checkbox.Background.Selected_Checkbox.Border.Selected"
+      x="4.5" y="4.5" width="15" height="15" rx="2.5"
+      fill="#3574F0" stroke="#3574F0"/>
+```
+
+Themes can override palette colors through `icons.ColorPalette`:
+
+```json
+{
+  "icons": {
+    "ColorPalette": {
+      "Actions.Grey": "#A8ADBD",
+      "Blue.Stroke": "#548AF7"
+    }
+  }
+}
+```
+
 ## Notifications
 
 - Declare in module XML: `<notificationGroup id="Kilo Code" displayType="BALLOON"/>`.
@@ -854,6 +1168,136 @@ override fun doValidate(): ValidationInfo? {
 - Use `createPopupChooserBuilder(list)` for item selection.
 - Use `createActionGroupPopup()` for action menus.
 - Show with `showInBestPositionFor(editor)`, `showUnderneathOf(component)`, or `showInCenterOf(component)`.
+
+## IntelliJ-Native List Pickers
+
+Use this guidance when building native list pickers that need richer presentation than a simple action menu. Common cases include two-line rows with title and description, active/current item checkmarks, inactive icon placeholders for alignment, hover behaving like selection, optional inline actions such as favorites, and optional filtering or search.
+
+`ListPopupImpl` / `BaseListPopupStep` are fine for simple menu-like lists. Do not make them the main abstraction for reusable rich list UIs because they are popup-first and action-step oriented.
+
+### Recommended Building Blocks
+
+- Use `JBList<T>` for the list.
+- Use `CollectionListModel<T>` for simple item storage.
+- Use `FilteringListModel<T>` or a small custom `AbstractListModel<T>` for filtering and ranking.
+- Use `TreeUIHelper.getInstance().installListSpeedSearch(list) { ... }` for speed search on current IntelliJ platform APIs.
+- Use `ListUtil.installAutoSelectOnMouseMove(list)` for IntelliJ popup-like hover selection.
+- Use `ScrollingUtil.installActions(list)` for keyboard navigation.
+- Use `JBPopupFactory.createComponentPopupBuilder(component, preferredFocusComponent)` for popup wrapping.
+- Use `ScrollPaneFactory.createScrollPane(list)` or `JBScrollPane` for scrolling.
+- Use `SimpleColoredComponent`, `SimpleTextAttributes`, `JBLabel`, and `JPanel` for custom renderers.
+- Use `AllIcons.Actions.Checked` and `EmptyIcon.create(...)` for active-item alignment.
+
+### Renderer Layout Pattern
+
+Use layout managers for sizing and alignment. Avoid `preferredSize`, `maximumSize`, and manual pixel sizing for normal badge or row layout. A good rich row renderer structure is:
+
+- Root renderer extends `JPanel(BorderLayout())`.
+- Root renderer is opaque and owns the selected/unselected background.
+- All child components are transparent unless there is a specific rendering reason.
+- West: `JBLabel` with icon centered horizontally and vertically.
+- Center: `JPanel(BorderLayout())`.
+- Center north: `FlowLayout(FlowLayout.LEFT, 0, 0)` with title first, then optional tag/badge.
+- Center center: description component.
+- Set the background once on the root renderer using list selection colors.
+- Use selected-safe foreground colors for text.
+- Do not import or use `java.awt.Component` as a renderer return type; return the concrete Swing component such as `JPanel`.
+
+```kotlin
+private class PickerRenderer<T>(
+    private val active: () -> T?,
+) : JPanel(BorderLayout()), ListCellRenderer<T> {
+    private val icon = JBLabel().apply {
+        isOpaque = false
+        horizontalAlignment = SwingConstants.CENTER
+        verticalAlignment = SwingConstants.CENTER
+    }
+    private val title = SimpleColoredComponent().apply { isOpaque = false }
+    private val description = SimpleColoredComponent().apply { isOpaque = false }
+    private val tag = JBLabel().apply { isOpaque = false }
+    private val header = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+        isOpaque = false
+        add(title)
+        add(tag)
+    }
+    private val body = JPanel(BorderLayout()).apply {
+        isOpaque = false
+        add(header, BorderLayout.NORTH)
+        add(description, BorderLayout.CENTER)
+    }
+
+    init {
+        isOpaque = true
+        add(icon, BorderLayout.WEST)
+        add(body, BorderLayout.CENTER)
+    }
+
+    override fun getListCellRendererComponent(
+        list: JList<out T>,
+        value: T,
+        index: Int,
+        selected: Boolean,
+        focused: Boolean,
+    ): JPanel {
+        val focus = list.hasFocus() || focused
+        background = UIUtil.getListBackground(selected, focus)
+        val fg = UIUtil.getListForeground(selected, focus)
+        val weak = if (selected) fg else UIUtil.getContextHelpForeground()
+        // Clear and append title/description fragments here.
+        return this
+    }
+}
+```
+
+### Active Icon Alignment
+
+- Use a check icon for the active item.
+- Use `EmptyIcon.create(checkIcon)` for inactive items so text aligns.
+- Prefer a single check icon if selected and unselected variants visually jump.
+- Only use selected-specific icons when contrast requires it and the icon dimensions/visual alignment remain stable.
+
+### Selection And Hover
+
+- Install `ListUtil.installAutoSelectOnMouseMove(list)` so hover and selection are the same UI state.
+- Do not implement a separate hover background in the renderer.
+- Set row selection background on the renderer root only.
+- Use `UIUtil.getListForeground(selected, focused)` and `UIUtil.getListBackground(selected, focused)`, or `ListUiUtil.WithTallRow` when available and appropriate.
+
+### Popup Wrapper
+
+- For rich reusable components, prefer `JBPopupFactory.createComponentPopupBuilder(component, focusComponent)`.
+- Configure `setRequestFocus(true)`, `setCancelOnClickOutside(true)`, `setCancelKeyEnabled(true)`, and usually `setMovable(false)`.
+- Close with `popup.closeOk(null)` after activation.
+- Use `showUnderneathOf(component)`, `showInBestPositionFor(editor)`, or `PopupShowOptions.aboveComponent(component)` depending on the trigger context.
+
+### Activation And Inline Actions
+
+- Enter should activate the selected item.
+- Mouse activation should bounds-check `locationToIndex` and `getCellBounds`.
+- Renderer child components are not real per-row components; do not add listeners to renderer labels.
+- For inline actions such as favorites, hit-test against a laid-out renderer component and consume the click before row activation.
+
+### Filtering
+
+- Use `ListWithFilter.wrap(...)` when a simple searchable text representation is enough.
+- Use `SearchTextField` plus `FilteringListModel` or a small custom `AbstractListModel` when custom matching/ranking is needed.
+- Clear selection when filtered results are empty and provide `list.emptyText.text`.
+
+### Avoid
+
+- Do not use `ListPopupImpl` as the main abstraction for reusable rich list components.
+- Do not use renderer `preferredSize` / `maximumSize` to force normal row or badge layout; fix the layout manager instead.
+- Do not set backgrounds on nested renderer children when the root row background should be continuous.
+- Do not hardcode runtime colors or raw Swing replacements where IntelliJ equivalents exist.
+- Do not sort or reorder items based on active selection unless explicitly required; keep popup ordering stable.
+
+### References
+
+- `ListUtil.installAutoSelectOnMouseMove`: https://github.com/JetBrains/intellij-community/blob/master/platform/platform-api/src/com/intellij/ui/ListUtil.java
+- `PopupChooserBuilder` flow: https://github.com/JetBrains/intellij-community/blob/master/platform/platform-api/src/com/intellij/openapi/ui/popup/PopupChooserBuilder.java
+- `ListWithFilter`: https://github.com/JetBrains/intellij-community/blob/master/platform/platform-api/src/com/intellij/ui/speedSearch/ListWithFilter.java
+- `PopupListElementRenderer`: https://github.com/JetBrains/intellij-community/blob/master/platform/platform-impl/src/com/intellij/ui/popup/list/PopupListElementRenderer.java
+- `ListUiUtil.WithTallRow`: https://github.com/JetBrains/intellij-community/blob/master/platform/util/ui/src/com/intellij/util/ui/ListUiUtil.kt
 
 ## Lists and Trees
 
@@ -877,6 +1321,9 @@ Review generated UI code and remove:
 - Raw Swing components where IntelliJ replacements exist
 - Manual layout code that Kotlin UI DSL can express cleanly
 - Hardcoded spacing that should be a DSL gap, row gap, or `JBUI` value
+- Cached `JBValue.UIInteger(...).get()` values in custom layouts; call `.get()` during layout and sizing instead
+- Theme-derived borders, insets, colors, or arcs assigned once in constructors without `updateUI()` or Look and Feel handling
+- SVG assets using `currentColor`, CSS variables, CSS classes, `<style>` blocks, or inherited styling for IntelliJ icon theming
 - Extra helpers that do not make the UI clearer or more reusable
 
 ## References

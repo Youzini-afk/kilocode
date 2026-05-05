@@ -1,28 +1,32 @@
 package ai.kilocode.client.session.ui
 
+import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.ui.UiStyle
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.ListPopup
 import com.intellij.openapi.ui.popup.PopupShowOptions
 import com.intellij.openapi.ui.popup.PopupStep
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
-import com.intellij.ui.JBColor
-import com.intellij.ui.RoundedLineBorder
-import com.intellij.ui.components.JBLabel
-import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.EmptyIcon
 import java.awt.Cursor
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.Icon
 
 /**
- * Clickable label-style dropdown picker with a rounded outline.
+ * Clickable label-style dropdown picker with a native filled background.
  *
  * Shows the selected item's display text with an up-arrow. On click,
  * opens a list popup above the picker. Disabled (greyed out, not
  * clickable) when no items are loaded.
  */
-class LabelPicker : JBLabel() {
+class ReasoningPicker : UiStyle.Pickers.Label() {
+
+    private companion object {
+        val checked: Icon = AllIcons.Actions.Checked
+        val empty: Icon = EmptyIcon.create(checked)
+    }
 
     data class Item(val id: String, val display: String, val group: String? = null) {
         override fun toString() = display
@@ -34,12 +38,10 @@ class LabelPicker : JBLabel() {
     private var selected: Item? = null
 
     init {
-        border = JBUI.Borders.compound(
-            RoundedLineBorder(JBColor.border(), JBUI.scale(6)),
-            JBUI.Borders.empty(2, 8),
-        )
         isEnabled = false
+        isVisible = false
         text = " "
+        toolTipText = KiloBundle.message("reasoning.picker.tooltip")
 
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -60,13 +62,19 @@ class LabelPicker : JBLabel() {
         refresh()
     }
 
+    internal fun selectedForTest(): Item? = selected
+
+    internal fun iconForTest(item: Item): Icon = icon(item)
+
     private fun refresh() {
         if (items.isEmpty()) {
             isEnabled = false
+            isVisible = false
             text = " "
             cursor = Cursor.getDefaultCursor()
             return
         }
+        isVisible = true
         val display = selected?.display ?: items.firstOrNull()?.display ?: ""
         text = "$display ▴"
         isEnabled = true
@@ -77,8 +85,7 @@ class LabelPicker : JBLabel() {
         val step = object : BaseListPopupStep<Item>("", items) {
             override fun getTextFor(value: Item) = value.display
 
-            override fun getIconFor(value: Item): Icon? =
-                if (value.id == selected?.id) AllIcons.Actions.Checked else null
+            override fun getIconFor(value: Item): Icon = icon(value)
 
             override fun onChosen(value: Item, final: Boolean): PopupStep<*>? {
                 selected = value
@@ -91,4 +98,6 @@ class LabelPicker : JBLabel() {
         val popup: ListPopup = JBPopupFactory.getInstance().createListPopup(step)
         popup.show(PopupShowOptions.aboveComponent(this))
     }
+
+    private fun icon(item: Item): Icon = if (item.id == selected?.id) checked else empty
 }
