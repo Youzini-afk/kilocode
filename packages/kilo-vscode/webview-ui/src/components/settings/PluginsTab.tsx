@@ -2,45 +2,64 @@ import { Component, For, Show, createMemo, createSignal, onCleanup } from "solid
 import { Button } from "@kilocode/kilo-ui/button"
 import { Card } from "@kilocode/kilo-ui/card"
 import { Checkbox } from "@kilocode/kilo-ui/checkbox"
+import type { UiI18nParams } from "@kilocode/kilo-ui/context"
 import { IconButton } from "@kilocode/kilo-ui/icon-button"
 import { Select } from "@kilocode/kilo-ui/select"
 import { Switch } from "@kilocode/kilo-ui/switch"
 import { TextField } from "@kilocode/kilo-ui/text-field"
 import { showToast } from "@kilocode/kilo-ui/toast"
+import { useLanguage } from "../../context/language"
 import { usePlugins } from "../../context/plugins"
 import { useVSCode } from "../../context/vscode"
 import type { ExtensionMessage, PluginListItem } from "../../types/messages"
 
 type ScopeOption = { value: "global" | "local"; label: string }
-
-const scopes: ScopeOption[] = [
-  { value: "global", label: "Global" },
-  { value: "local", label: "Project" },
-]
+type Translate = (key: string, params?: UiI18nParams) => string
 
 function requestId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-function label(item: PluginListItem) {
-  const bits: string[] = [item.source, item.scope]
-  if (item.version) bits.push(`v${item.version}`)
-  if (item.kinds.length) bits.push(item.kinds.join("+"))
+function sourceLabel(item: PluginListItem, t: Translate) {
+  return t(`settings.plugins.source.${item.source}`)
+}
+
+function scopeLabel(item: PluginListItem, t: Translate) {
+  return t(`settings.plugins.scope.${item.scope}`)
+}
+
+function kindLabel(kind: PluginListItem["kinds"][number], t: Translate) {
+  return t(`settings.plugins.kind.${kind}`)
+}
+
+function label(item: PluginListItem, t: Translate) {
+  const bits: string[] = [sourceLabel(item, t), scopeLabel(item, t)]
+  if (item.version) bits.push(t("settings.plugins.version", { version: item.version }))
+  if (item.kinds.length) bits.push(item.kinds.map((kind) => kindLabel(kind, t)).join("+"))
   return bits.join(" · ")
 }
 
 const PluginsTab: Component = () => {
+  const language = useLanguage()
   const vscode = useVSCode()
   const plugins = usePlugins()
   const [url, setUrl] = createSignal("")
   const [ref, setRef] = createSignal("")
   const [subpath, setSubpath] = createSignal("")
-  const [scope, setScope] = createSignal<ScopeOption>(scopes[0]!)
+  const [scope, setScope] = createSignal<"global" | "local">("global")
   const [trusted, setTrusted] = createSignal(false)
   const [busy, setBusy] = createSignal<Record<string, string>>({})
   const [settingsPanel, setSettingsPanel] = createSignal<{ pluginId: string; url: string; title: string } | null>(null)
 
-  const loadingLabel = createMemo(() => (plugins.loading() ? "Loading plugins..." : "No plugins configured."))
+  const scopeOptions = createMemo<ScopeOption[]>(() => [
+    { value: "global", label: language.t("settings.plugins.scope.global") },
+    { value: "local", label: language.t("settings.plugins.scope.local") },
+  ])
+  const selectedScope = createMemo(() => scopeOptions().find((item) => item.value === scope()) ?? scopeOptions()[0]!)
+  const loadingLabel = createMemo(() =>
+    plugins.loading() ? language.t("settings.plugins.loading") : language.t("settings.plugins.empty"),
+  )
+  const installing = createMemo(() => Object.values(busy()).includes("install"))
 
   const setAction = (id: string, action: string | null) => {
     setBusy((prev) => {
@@ -62,7 +81,7 @@ const PluginsTab: Component = () => {
       url: value,
       ref: ref().trim() || undefined,
       path: subpath().trim() || undefined,
-      scope: scope().value,
+      scope: scope(),
       trusted: trusted(),
       force: true,
     })
@@ -86,9 +105,13 @@ const PluginsTab: Component = () => {
           setSubpath("")
           setTrusted(false)
         }
-        showToast({ variant: "success", title: `Plugin ${message.action} complete` })
+        showToast({ variant: "success", title: language.t(`settings.plugins.toast.${message.action}.success`) })
       } else {
-        showToast({ variant: "error", title: `Plugin ${message.action} failed`, description: message.error })
+        showToast({
+          variant: "error",
+          title: language.t(`settings.plugins.toast.${message.action}.error`),
+          description: message.error,
+        })
       }
       plugins.refresh()
       return
@@ -106,7 +129,13 @@ const PluginsTab: Component = () => {
           <Card>
             <div style={{ display: "flex", "align-items": "center", gap: "8px", "margin-bottom": "8px" }}>
               <div style={{ flex: 1, "font-weight": 600 }}>{panel().title}</div>
-              <IconButton variant="ghost" size="small" icon="close" onClick={() => setSettingsPanel(null)} />
+              <IconButton
+                variant="ghost"
+                size="small"
+                icon="close"
+                title={language.t("settings.plugins.settings.close")}
+                onClick={() => setSettingsPanel(null)}
+              />
             </div>
             <iframe
               title={panel().title}
@@ -127,29 +156,37 @@ const PluginsTab: Component = () => {
       <Card>
         <div style={{ display: "grid", gap: "8px" }}>
           <div style={{ display: "grid", "grid-template-columns": "1fr 120px", gap: "8px" }}>
-            <TextField value={url()} placeholder="https://github.com/org/kilo-plugin.git" onChange={setUrl} />
+            <TextField
+              value={url()}
+              placeholder={language.t("settings.plugins.install.url.placeholder")}
+              onChange={setUrl}
+            />
             <Select
-              options={scopes}
-              current={scope()}
+              options={scopeOptions()}
+              current={selectedScope()}
               value={(item) => item.value}
               label={(item) => item.label}
-              onSelect={(item) => item && setScope(item)}
+              onSelect={(item) => item && setScope(item.value)}
               variant="secondary"
               size="small"
               triggerVariant="settings"
             />
           </div>
           <div style={{ display: "grid", "grid-template-columns": "1fr 1fr auto", gap: "8px", "align-items": "center" }}>
-            <TextField value={ref()} placeholder="ref/branch (optional)" onChange={setRef} />
-            <TextField value={subpath()} placeholder="packages/plugin (optional)" onChange={setSubpath} />
-            <Button variant="primary" onClick={install} disabled={!url().trim() || !trusted() || Boolean(busy()["plugin-install"])}>
-              Install
+            <TextField value={ref()} placeholder={language.t("settings.plugins.install.ref.placeholder")} onChange={setRef} />
+            <TextField
+              value={subpath()}
+              placeholder={language.t("settings.plugins.install.path.placeholder")}
+              onChange={setSubpath}
+            />
+            <Button variant="primary" onClick={install} disabled={!url().trim() || !trusted() || installing()}>
+              {language.t("settings.plugins.install.button")}
             </Button>
           </div>
           <label style={{ display: "flex", gap: "8px", "align-items": "flex-start", "font-size": "12px" }}>
             <Checkbox checked={trusted()} onChange={setTrusted} />
             <span style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))" }}>
-              I trust this plugin source. Git plugins can install dependencies, run build scripts, and execute code locally.
+              {language.t("settings.plugins.install.trust")}
             </span>
           </label>
         </div>
@@ -176,7 +213,7 @@ const PluginsTab: Component = () => {
                   <div style={{ display: "flex", gap: "8px", "align-items": "center", "flex-wrap": "wrap" }}>
                     <strong>{plugin.displayName}</strong>
                     <span style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))", "font-size": "12px" }}>
-                      {label(plugin)}
+                      {label(plugin, language.t)}
                     </span>
                   </div>
                   <Show when={plugin.description}>
@@ -205,7 +242,7 @@ const PluginsTab: Component = () => {
                     variant="ghost"
                     size="small"
                     icon="edit"
-                    title="Open config"
+                    title={language.t("settings.plugins.tooltip.openConfig")}
                     onClick={() => vscode.postMessage({ type: "openPluginConfig", id: plugin.id })}
                   />
                   <Show when={plugin.settings?.available}>
@@ -213,7 +250,7 @@ const PluginsTab: Component = () => {
                       variant="ghost"
                       size="small"
                       icon="settings-gear"
-                      title="Open plugin settings"
+                      title={language.t("settings.plugins.tooltip.openSettings")}
                       onClick={() => vscode.postMessage({ type: "openPluginSettings", pluginId: plugin.id })}
                     />
                   </Show>
@@ -222,7 +259,7 @@ const PluginsTab: Component = () => {
                       variant="ghost"
                       size="small"
                       icon="download"
-                      title="Update"
+                      title={language.t("settings.plugins.tooltip.update")}
                       disabled={Boolean(busy()[plugin.id])}
                       onClick={() =>
                         action(plugin, "update", (id) =>
@@ -235,7 +272,7 @@ const PluginsTab: Component = () => {
                     variant="ghost"
                     size="small"
                     icon="trash"
-                    title="Remove"
+                    title={language.t("settings.plugins.tooltip.remove")}
                     disabled={plugin.scope === "builtin" || Boolean(busy()[plugin.id])}
                     onClick={() =>
                       action(plugin, "remove", (id) =>

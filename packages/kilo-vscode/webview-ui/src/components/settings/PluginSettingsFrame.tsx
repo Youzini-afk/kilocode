@@ -1,10 +1,12 @@
 import { Component, createSignal, onCleanup, onMount } from "solid-js"
 import { Card } from "@kilocode/kilo-ui/card"
+import { useLanguage } from "../../context/language"
 import { usePlugins } from "../../context/plugins"
 import { useVSCode } from "../../context/vscode"
 import type { ExtensionMessage } from "../../types/messages"
 
 const PluginSettingsFrame: Component<{ pluginId: string }> = (props) => {
+  const language = useLanguage()
   const vscode = useVSCode()
   const plugins = usePlugins()
   const [frame, setFrame] = createSignal<{ url: string; title: string } | null>(null)
@@ -37,7 +39,7 @@ const PluginSettingsFrame: Component<{ pluginId: string }> = (props) => {
         />
       ) : (
         <div style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))" }}>
-          Loading {plugin()?.displayName ?? props.pluginId} settings...
+          {language.t("settings.plugins.settings.loading", { plugin: plugin()?.displayName ?? props.pluginId })}
         </div>
       )}
     </Card>

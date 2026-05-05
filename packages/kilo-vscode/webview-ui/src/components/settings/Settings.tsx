@@ -191,7 +191,7 @@ const Settings: Component<SettingsProps> = (props) => {
           </Tabs.Trigger>
           <Tabs.Trigger value="plugins">
             <Icon name="mcp" />
-            <span class="label">Plugins</span>
+            <span class="label">{language.t("settings.plugins.title")}</span>
           </Tabs.Trigger>
           <For each={plugins.plugins().filter((plugin) => plugin.settings?.available)}>
             {(plugin) => (
@@ -267,7 +267,7 @@ const Settings: Component<SettingsProps> = (props) => {
           <ContextTab />
         </Tabs.Content>
         <Tabs.Content value="plugins">
-          <h3>Plugins</h3>
+          <h3>{language.t("settings.plugins.title")}</h3>
           <PluginsTab />
         </Tabs.Content>
         <For each={plugins.plugins().filter((plugin) => plugin.settings?.available)}>
