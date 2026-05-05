@@ -57,8 +57,27 @@ function initialProgressStage(action: "install" | "enable" | "remove" | "update"
   return "applying"
 }
 
+function pluginActionError(error: string | undefined) {
+  if (!error) return undefined
+  try {
+    const parsed = JSON.parse(error) as { message?: unknown; data?: { message?: unknown } }
+    const message = typeof parsed.data?.message === "string" ? parsed.data.message : parsed.message
+    if (typeof message === "string") return pluginActionError(message)
+  } catch {}
+  const lines = error
+    .replaceAll("\\n", "\n")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("at "))
+  const important = lines.filter(
+    (line) => !line.startsWith("ProcessRunFailedError:") && !line.startsWith("Command failed"),
+  )
+  return (important.length ? important : lines).slice(0, 6).join("\n") || error
+}
+
 function statusColor(item: PluginListItem) {
-  if (item.conflictStatus === "blocked" || item.conflictStatus === "pending-resolution") return "var(--vscode-errorForeground)"
+  if (item.conflictStatus === "blocked" || item.conflictStatus === "pending-resolution")
+    return "var(--vscode-errorForeground)"
   if (item.conflictStatus === "warning") return "var(--vscode-editorWarning-foreground)"
   return "var(--text-weak-base, var(--vscode-descriptionForeground))"
 }
@@ -179,7 +198,7 @@ const PluginsTab: Component = () => {
         showToast({
           variant: "error",
           title: language.t(`settings.plugins.toast.${message.action}.error`),
-          description: message.error,
+          description: pluginActionError(message.error),
         })
       }
       plugins.refresh()
@@ -258,8 +277,14 @@ const PluginsTab: Component = () => {
               triggerVariant="settings"
             />
           </div>
-          <div style={{ display: "grid", "grid-template-columns": "1fr 1fr auto", gap: "8px", "align-items": "center" }}>
-            <TextField value={ref()} placeholder={language.t("settings.plugins.install.ref.placeholder")} onChange={setRef} />
+          <div
+            style={{ display: "grid", "grid-template-columns": "1fr 1fr auto", gap: "8px", "align-items": "center" }}
+          >
+            <TextField
+              value={ref()}
+              placeholder={language.t("settings.plugins.install.ref.placeholder")}
+              onChange={setRef}
+            />
             <TextField
               value={subpath()}
               placeholder={language.t("settings.plugins.install.path.placeholder")}
@@ -288,9 +313,7 @@ const PluginsTab: Component = () => {
               <div style={{ display: "flex", gap: "12px", "align-items": "flex-start" }}>
                 <Switch
                   checked={plugin.enabled}
-                  disabled={
-                    Boolean(busy()[plugin.id]) || (!plugin.enabled && hasUnresolvedBlockingConflict(plugin))
-                  }
+                  disabled={Boolean(busy()[plugin.id]) || (!plugin.enabled && hasUnresolvedBlockingConflict(plugin))}
                   onChange={(enabled) =>
                     action(plugin, "enable", (id) =>
                       vscode.postMessage({
@@ -320,7 +343,12 @@ const PluginsTab: Component = () => {
                     >
                       {statusLabel(plugin, language.t)}
                     </span>
-                    <span style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))", "font-size": "12px" }}>
+                    <span
+                      style={{
+                        color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
+                        "font-size": "12px",
+                      }}
+                    >
                       {label(plugin, language.t)}
                     </span>
                     <Show when={progress()[plugin.id]}>
@@ -332,7 +360,12 @@ const PluginsTab: Component = () => {
                     </Show>
                   </div>
                   <Show when={plugin.description}>
-                    <div style={{ "font-size": "12px", color: "var(--text-weak-base, var(--vscode-descriptionForeground))" }}>
+                    <div
+                      style={{
+                        "font-size": "12px",
+                        color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
+                      }}
+                    >
                       {plugin.description}
                     </div>
                   </Show>

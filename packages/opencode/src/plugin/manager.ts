@@ -229,6 +229,45 @@ async function run(cmd: string[], cwd: string) {
   await Process.run(cmd, { cwd })
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function pluginDownloadError(url: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  return new Error(
+    [
+      `Failed to download plugin from ${url}.`,
+      "The existing plugin was left unchanged. Please retry from the plugin panel.",
+      message,
+    ].join("\n"),
+  )
+}
+
+async function cloneGitRepo(url: string, ref: string | undefined, repo: string) {
+  const root = GIT_ROOT()
+  const args = ["git", "clone"]
+  if (ref) args.push("--branch", ref)
+  args.push("--depth", "1", url)
+  let lastError: unknown
+  for (const attempt of [1, 2, 3]) {
+    const tmp = `${repo}.clone-${process.pid}-${Date.now()}-${attempt}`
+    if (!Filesystem.contains(root, tmp)) throw new Error("Refusing to clone outside plugin storage")
+    await fs.rm(tmp, { recursive: true, force: true })
+    try {
+      await run([...args, tmp], root)
+      await fs.rm(repo, { recursive: true, force: true })
+      await fs.rename(tmp, repo)
+      return
+    } catch (error) {
+      lastError = error
+      await fs.rm(tmp, { recursive: true, force: true }).catch(() => undefined)
+      if (attempt < 3) await sleep(750 * attempt)
+    }
+  }
+  throw pluginDownloadError(url, lastError)
+}
+
 async function packageHasInstall(dir: string) {
   return await Filesystem.exists(path.join(dir, "node_modules"))
 }
@@ -625,9 +664,14 @@ export async function installFromGit(input: InstallInput) {
 
   if (await Filesystem.exists(repo)) {
     if (!input.force) {
-      await run(["git", "-C", repo, "fetch", "--all", "--tags"], repo)
-      if (input.ref) await run(["git", "-C", repo, "checkout", input.ref], repo)
-      await run(["git", "-C", repo, "pull", "--ff-only"], repo).catch(() => undefined)
+      const refreshed = await run(["git", "-C", repo, "fetch", "--all", "--tags", "--depth", "1"], repo)
+        .then(async () => {
+          if (input.ref) await run(["git", "-C", repo, "checkout", input.ref], repo)
+          await run(["git", "-C", repo, "pull", "--ff-only"], repo).catch(() => undefined)
+          return true
+        })
+        .catch(() => false)
+      if (!refreshed) await cloneGitRepo(url, input.ref, repo)
     } else {
       if (!Filesystem.contains(GIT_ROOT(), managedDir)) throw new Error("Refusing to delete unmanaged plugin directory")
       await fs.rm(managedDir, { recursive: true, force: true })
@@ -635,10 +679,7 @@ export async function installFromGit(input: InstallInput) {
   }
 
   if (!(await Filesystem.exists(repo))) {
-    const args = ["git", "clone"]
-    if (input.ref) args.push("--branch", input.ref)
-    args.push("--depth", "1", url, repo)
-    await run(args, GIT_ROOT())
+    await cloneGitRepo(url, input.ref, repo)
   }
 
   const sourcePluginDir = await findWorkspacePluginPackage(repo, subpath)
