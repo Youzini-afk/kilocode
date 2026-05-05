@@ -230,9 +230,8 @@ const PluginsTab: Component = () => {
     <div style={{ display: "flex", "flex-direction": "column", gap: "16px" }}>
       <Show when={settingsPanel()}>
         {(panel) => (
-          <Card>
-            <div style={{ display: "flex", "align-items": "center", gap: "8px", "margin-bottom": "8px" }}>
-              <div style={{ flex: 1, "font-weight": 600 }}>{panel().title}</div>
+          <div style={{ position: "relative" }}>
+            <div style={{ position: "absolute", top: "6px", right: "6px", "z-index": 1 }}>
               <IconButton
                 variant="ghost"
                 size="small"
@@ -249,12 +248,11 @@ const PluginsTab: Component = () => {
               style={{
                 width: "100%",
                 height: "560px",
-                border: "1px solid var(--border-weak-base)",
-                "border-radius": "6px",
+                border: "0",
                 background: "var(--vscode-editor-background)",
               }}
             />
-          </Card>
+          </div>
         )}
       </Show>
 
