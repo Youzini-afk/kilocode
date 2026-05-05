@@ -293,6 +293,19 @@ function installStamp() {
   return `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`
 }
 
+async function cleanupOldPreparedPackages(managedDir: string, currentDir: string) {
+  const entries = await fs.readdir(managedDir, { withFileTypes: true }).catch(() => [])
+  const old = entries
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith("package-") && path.join(managedDir, entry.name) !== currentDir)
+    .map((entry) => path.join(managedDir, entry.name))
+    .sort()
+    .slice(0, -1)
+  for (const dir of old) {
+    if (!Filesystem.contains(managedDir, dir)) continue
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined)
+  }
+}
+
 async function prepareIsolatedPackage(managedDir: string, repo: string, pluginDir: string) {
   if (pluginDir === repo) {
     await preparePackage(repo, pluginDir)
@@ -309,6 +322,7 @@ async function prepareIsolatedPackage(managedDir: string, repo: string, pluginDi
     },
   })
   await preparePackage(preparedDir, preparedDir)
+  await cleanupOldPreparedPackages(managedDir, preparedDir)
   return preparedDir
 }
 
