@@ -28,6 +28,7 @@ import { parsePluginSpecifier, readPluginId, readV1Plugin, resolvePluginId } fro
 import { registerAdaptor } from "@/control-plane/adaptors"
 import type { WorkspaceAdaptor } from "@/control-plane/types"
 import { KiloAuthPlugin } from "@kilocode/kilo-gateway" // kilocode_change
+import { server as MagicContextPlugin } from "@kilocode/magic-context" // kilocode_change
 import { Global } from "@opencode-ai/core/global" // kilocode_change
 import { Path as DatabasePath } from "@/storage/db" // kilocode_change
 
@@ -69,6 +70,7 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Pl
 // kilocode_change start
 const INTERNAL_PLUGINS: PluginInstance[] = [
   KiloAuthPlugin,
+  MagicContextPlugin,
   CodexAuthPlugin,
   CopilotAuthPlugin,
   GitlabAuthPlugin as unknown as PluginInstance,
@@ -76,6 +78,10 @@ const INTERNAL_PLUGINS: PluginInstance[] = [
   CloudflareWorkersAuthPlugin as unknown as PluginInstance,
   CloudflareAIGatewayAuthPlugin as unknown as PluginInstance,
 ] // kilocode_change end
+
+const OPTIONAL_INTERNAL_PLUGINS = new Map<PluginInstance, () => boolean>([
+  [MagicContextPlugin, () => Flag.KILO_DISABLE_MAGIC_CONTEXT],
+])
 
 function isServerPlugin(value: unknown): value is PluginInstance {
   return typeof value === "function"
@@ -179,6 +185,10 @@ export const layer = Layer.effect(
         }
 
         for (const plugin of INTERNAL_PLUGINS) {
+          if (OPTIONAL_INTERNAL_PLUGINS.get(plugin)?.()) {
+            log.info("skipping disabled internal plugin", { name: plugin.name })
+            continue
+          }
           log.info("loading internal plugin", { name: plugin.name })
           const init = yield* Effect.tryPromise({
             try: () => plugin(input),

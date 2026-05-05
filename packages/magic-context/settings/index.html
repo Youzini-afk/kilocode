@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Magic Context</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+        --bg: var(--vscode-editor-background, #1e1e1e);
+        --panel: var(--vscode-sideBar-background, #252526);
+        --panel-2: var(--vscode-input-background, #2b2b2b);
+        --text: var(--vscode-foreground, #e8e8e8);
+        --muted: var(--vscode-descriptionForeground, #a6a6a6);
+        --border: var(--vscode-widget-border, #3f3f46);
+        --accent: var(--vscode-button-background, #0e639c);
+        --accent-text: var(--vscode-button-foreground, #fff);
+        --danger: var(--vscode-errorForeground, #f87171);
+        --warn: var(--vscode-editorWarning-foreground, #fbbf24);
+        --ok: #4ade80;
+        font-family: var(--vscode-font-family, system-ui, sans-serif);
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        color: var(--text);
+        border-radius: 5px;
+        padding: 7px 10px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: var(--accent);
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-text);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        min-width: 0;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        background: var(--vscode-input-background, #1f1f1f);
+        color: var(--vscode-input-foreground, var(--text));
+        padding: 7px 9px;
+      }
+
+      textarea {
+        min-height: 72px;
+        resize: vertical;
+        font-family: var(--vscode-editor-font-family, ui-monospace, monospace);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 10px;
+        padding: 10px 14px 14px;
+      }
+
+      .topbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .title {
+        min-width: 0;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 19px;
+        font-weight: 650;
+      }
+
+      .hint,
+      .path,
+      .micro {
+        color: var(--muted);
+      }
+
+      .actions {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .metric,
+      .section,
+      .notice {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: 6px;
+      }
+
+      .metric {
+        min-height: 72px;
+        padding: 10px;
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0;
+      }
+
+      .metric-value {
+        margin-top: 7px;
+        font-size: 13px;
+        font-weight: 650;
+        word-break: break-word;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .tab {
+        border: 0;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 8px 10px;
+        white-space: nowrap;
+      }
+
+      .tab.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+      }
+
+      .content {
+        display: grid;
+        gap: 10px;
+      }
+
+      .section {
+        overflow: hidden;
+      }
+
+      details.section summary {
+        list-style: none;
+        cursor: pointer;
+      }
+
+      details.section summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.section:not([open]) .section-head {
+        border-bottom: 0;
+      }
+
+      .chevron {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+
+      details[open] .chevron {
+        transform: rotate(90deg);
+      }
+
+      .preset {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .preset-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .preset-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel-2);
+        padding: 10px;
+        text-align: left;
+      }
+
+      .preset-card.active {
+        border-color: var(--accent);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+
+      .section-head {
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .section-title {
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .section-desc {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .rows {
+        display: grid;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.8fr) minmax(240px, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 10px 12px;
+        border-top: 1px solid color-mix(in srgb, var(--border), transparent 35%);
+      }
+
+      .row:first-child {
+        border-top: 0;
+      }
+
+      .label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        min-width: 0;
+        font-size: 12px;
+        font-weight: 620;
+      }
+
+      .key {
+        color: var(--muted);
+        font-family: var(--vscode-editor-font-family, ui-monospace, monospace);
+        font-size: 11px;
+        word-break: break-word;
+      }
+
+      .hint {
+        margin-top: 4px;
+        font-size: 11px;
+        line-height: 1.35;
+      }
+
+      .control-line {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+      }
+
+      .control-line input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+      }
+
+      .control-line .grow {
+        flex: 1;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 2px 6px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .pill.ok {
+        color: var(--ok);
+        border-color: color-mix(in srgb, var(--ok), transparent 50%);
+      }
+
+      .pill.warn {
+        color: var(--warn);
+        border-color: color-mix(in srgb, var(--warn), transparent 50%);
+      }
+
+      .notice {
+        padding: 10px 12px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .notice.error {
+        color: var(--danger);
+        border-color: color-mix(in srgb, var(--danger), transparent 45%);
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .raw-editor {
+        min-height: 420px;
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: var(--vscode-editor-font-family, ui-monospace, monospace);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .path {
+        font-size: 11px;
+        word-break: break-word;
+      }
+
+      @media (max-width: 780px) {
+        .topbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .status-grid,
+        .split {
+          grid-template-columns: 1fr;
+        }
+
+        .row {
+          grid-template-columns: 1fr;
+        }
+
+        .actions {
+          justify-content: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="shell">
+      <div class="notice">Loading Magic Context...</div>
+    </div>
+
+    <script>
+      const pluginId = "kilocode-magic-context";
+      const tabs = ["overview", "core", "agents", "memory", "advanced"];
+      const locale = (() => {
+        const raw = (navigator.language || document.documentElement.lang || "en").toLowerCase();
+        if (raw.startsWith("zh-tw") || raw.startsWith("zh-hk") || raw.startsWith("zh-mo")) return "zhHant";
+        if (raw.startsWith("zh")) return "zhHans";
+        return "en";
+      })();
+      const messages = {
+        en: {
+          loading: "Loading Magic Context...",
+          refresh: "Refresh",
+          doctor: "Doctor",
+          save: "Save",
+          saveChanges: "Save changes",
+          saving: "Saving...",
+          discard: "Discard",
+          reset: "Reset",
+          ready: "Ready",
+          unsaved: "Unsaved changes",
+          inherit: "inherit/default",
+          projectOverride: "project override",
+          title: "Magic Context",
+          subtitle: "Context management, memory, historian, dreamer, sidekick, and model budget settings.",
+          tabOverview: "Overview",
+          tabCore: "Core",
+          tabAgents: "API",
+          tabMemory: "Memory",
+          tabAdvanced: "Advanced",
+          enabled: "Enabled",
+          configFile: "Config file",
+          storage: "Storage",
+          projectOverrideMetric: "Project override",
+          notCreated: "not created",
+          none: "none",
+          na: "n/a",
+          noticeDefault:
+            "Changes are written to the user-level Kilo Magic Context config. Reload Kilo or restart the active session for runtime hooks to pick up saved changes.",
+          savedNotice: "Saved. Reload Kilo or restart the active session to apply runtime changes.",
+          doctorFinished: "Doctor finished.",
+          doctorTitle: "Doctor",
+          doctorDesc: "Runtime checks from the plugin process.",
+          checks: "Checks",
+          checksHint: "Use refresh after resolving config or storage issues.",
+          coreTitle: "Core",
+          coreDesc: "Primary switches and context budget controls.",
+          cleanupTitle: "Cleanup",
+          cleanupDesc: "Tag protection, tool cleanup, reasoning cleanup, and history budget.",
+          cacheTtl: "Cache TTL",
+          cacheTtlHint: "Default TTL plus optional per-model overrides. Add one entry per line.",
+          executePct: "Execute threshold percentage",
+          executePctHint: "Default percentage plus optional per-model overrides. Runtime caps unsafe values above 80%.",
+          executeTokens: "Execute threshold tokens",
+          executeTokensHint: "Optional absolute token threshold overrides. Leave blank to use percentage thresholds.",
+          contextLimits: "Model context limits",
+          contextLimitsHint: "Optional context window overrides used by Magic Context budget math.",
+          agentTools: "Tools",
+          agentToolsHint: "Optional tool allow map. Use one line per tool, for example bash=false.",
+          kvPlaceholderString: "default=5m\nopenai/gpt-5.1=20m",
+          kvPlaceholderNumber: "default=150000\nopenai/gpt-5.1=200000",
+          kvPlaceholderBool: "bash=false\nedit=true",
+        },
+        zhHans: {
+          loading: "正在加载 Magic Context...",
+          refresh: "刷新",
+          doctor: "诊断",
+          save: "保存",
+          saveChanges: "保存更改",
+          saving: "正在保存...",
+          discard: "放弃更改",
+          reset: "重置",
+          ready: "就绪",
+          unsaved: "有未保存的更改",
+          inherit: "继承/默认",
+          projectOverride: "项目覆盖",
+          title: "Magic Context",
+          subtitle: "上下文管理、记忆、Historian、Dreamer、Sidekick 与模型预算设置。",
+          tabOverview: "概览",
+          tabCore: "核心",
+          tabAgents: "API",
+          tabMemory: "记忆",
+          tabAdvanced: "高级",
+          enabled: "已启用",
+          configFile: "配置文件",
+          storage: "存储位置",
+          projectOverrideMetric: "项目覆盖",
+          notCreated: "未创建",
+          none: "无",
+          na: "不可用",
+          noticeDefault: "更改会写入用户级 Kilo Magic Context 配置。请重载 Kilo 或重启当前会话以应用运行时更改。",
+          savedNotice: "已保存。请重载 Kilo 或重启当前会话以应用运行时更改。",
+          doctorFinished: "诊断完成。",
+          doctorTitle: "诊断",
+          doctorDesc: "来自插件进程的运行时检查。",
+          checks: "检查项",
+          checksHint: "修复配置或存储问题后请刷新。",
+          coreTitle: "核心",
+          coreDesc: "主要开关与上下文预算控制。",
+          cleanupTitle: "清理",
+          cleanupDesc: "标签保护、工具清理、推理清理与历史预算。",
+          cacheTtl: "缓存 TTL",
+          cacheTtlHint: "默认 TTL 和可选的模型覆盖。每行填写一个条目。",
+          executePct: "执行阈值百分比",
+          executePctHint: "默认百分比和可选的模型覆盖。运行时会限制超过 80% 的危险值。",
+          executeTokens: "执行阈值 token 数",
+          executeTokensHint: "可选的绝对 token 阈值覆盖。留空则使用百分比阈值。",
+          contextLimits: "模型上下文限制",
+          contextLimitsHint: "Magic Context 预算计算使用的可选上下文窗口覆盖。",
+          agentTools: "工具权限",
+          agentToolsHint: "可选工具开关映射。每行一个工具，例如 bash=false。",
+          kvPlaceholderString: "default=5m\nopenai/gpt-5.1=20m",
+          kvPlaceholderNumber: "default=150000\nopenai/gpt-5.1=200000",
+          kvPlaceholderBool: "bash=false\nedit=true",
+        },
+        zhHant: {
+          loading: "正在載入 Magic Context...",
+          refresh: "重新整理",
+          doctor: "診斷",
+          save: "儲存",
+          saveChanges: "儲存變更",
+          saving: "正在儲存...",
+          discard: "放棄變更",
+          reset: "重設",
+          ready: "就緒",
+          unsaved: "有未儲存的變更",
+          inherit: "繼承/預設",
+          projectOverride: "專案覆寫",
+          title: "Magic Context",
+          subtitle: "上下文管理、記憶、Historian、Dreamer、Sidekick 與模型預算設定。",
+          tabOverview: "概覽",
+          tabCore: "核心",
+          tabAgents: "API",
+          tabMemory: "記憶",
+          tabAdvanced: "進階",
+          enabled: "已啟用",
+          configFile: "設定檔",
+          storage: "儲存位置",
+          projectOverrideMetric: "專案覆寫",
+          notCreated: "未建立",
+          none: "無",
+          na: "不適用",
+          noticeDefault: "變更會寫入使用者層級 Kilo Magic Context 設定。請重新載入 Kilo 或重啟目前工作階段以套用執行階段變更。",
+          savedNotice: "已儲存。請重新載入 Kilo 或重啟目前工作階段以套用執行階段變更。",
+          doctorFinished: "診斷完成。",
+          doctorTitle: "診斷",
+          doctorDesc: "來自外掛程式程序的執行階段檢查。",
+          checks: "檢查項目",
+          checksHint: "修復設定或儲存問題後請重新整理。",
+          coreTitle: "核心",
+          coreDesc: "主要開關與上下文預算控制。",
+          cleanupTitle: "清理",
+          cleanupDesc: "標籤保護、工具清理、推理清理與歷史預算。",
+          cacheTtl: "快取 TTL",
+          cacheTtlHint: "預設 TTL 和可選模型覆寫。每行填寫一個項目。",
+          executePct: "執行閾值百分比",
+          executePctHint: "預設百分比和可選模型覆寫。執行時會限制超過 80% 的危險值。",
+          executeTokens: "執行閾值 token 數",
+          executeTokensHint: "可選的絕對 token 閾值覆寫。留空則使用百分比閾值。",
+          contextLimits: "模型上下文限制",
+          contextLimitsHint: "Magic Context 預算計算使用的可選上下文視窗覆寫。",
+          agentTools: "工具權限",
+          agentToolsHint: "可選工具開關映射。每行一個工具，例如 bash=false。",
+          kvPlaceholderString: "default=5m\nopenai/gpt-5.1=20m",
+          kvPlaceholderNumber: "default=150000\nopenai/gpt-5.1=200000",
+          kvPlaceholderBool: "bash=false\nedit=true",
+        },
+      };
+      const t = (key) => messages[locale]?.[key] ?? messages.en[key] ?? key;
+      const textMessages = {
+        zhHans: {
+          "Enabled": "启用",
+          "Turns Magic Context on or off.": "开启或关闭 Magic Context。",
+          "Agent controlled reduction": "由代理控制压缩",
+          "Shows ctx_reduce to the agent and enables reduction nudges.": "向代理暴露 ctx_reduce，并启用压缩提醒。",
+          "Nudge interval tokens": "提醒间隔 token 数",
+          "Minimum token growth between rolling nudges.": "两次滚动提醒之间的最小 token 增长量。",
+          "Protected tags": "受保护标签数",
+          "Recent tags protected from dropping.": "避免被丢弃的最近标签数量。",
+          "Auto drop tool age": "自动丢弃工具结果年龄",
+          "Tool outputs older than this tag age can be dropped.": "超过该标签年龄的工具输出可以被丢弃。",
+          "Drop tool structure": "丢弃工具结构",
+          "When false, tool call shape is preserved and contents are truncated.": "关闭后会保留工具调用形状，仅截断内容。",
+          "Clear reasoning age": "清理推理年龄",
+          "Reasoning blocks older than this tag age are cleared.": "超过该标签年龄的推理块会被清理。",
+          "Iteration nudge threshold": "迭代提醒阈值",
+          "Consecutive assistant/tool turns before an iteration nudge.": "触发迭代提醒前连续的助手/工具轮数。",
+          "History budget percentage": "历史预算比例",
+          "Fraction of usable context reserved for session history.": "为会话历史保留的可用上下文比例。",
+          "Historian timeout ms": "Historian 超时毫秒数",
+          "Timeout for each historian prompt call.": "每次 Historian 提示调用的超时时间。",
+          "Compaction markers": "压缩标记",
+          "Writes Kilo-compatible compaction markers after historian publishes.": "Historian 发布后写入兼容 Kilo 的压缩标记。",
+          "Historian": "Historian",
+          "Dreamer": "Dreamer",
+          "Sidekick": "Sidekick",
+          "Compartment and fact generation for older session history.": "为较旧会话历史生成分段和事实。",
+          "Idle maintenance, user memory promotion, key file pinning, and project hygiene.": "空闲维护、用户记忆提升、关键文件固定和项目整理。",
+          "Lightweight augmentation for memory/search oriented assistance.": "面向记忆/搜索辅助的轻量增强。",
+          "Primary model": "主模型",
+          "Provider/model id. Empty uses the built-in fallback chain.": "提供商/模型 ID。留空则使用内置回退链。",
+          "Fallback models": "回退模型",
+          "One model per line. Used when the primary model fails or is unset.": "每行一个模型。主模型失败或未设置时使用。",
+          "Variant": "变体",
+          "Provider variant or reasoning preset passthrough.": "提供商变体或推理预设透传。",
+          "Thinking level": "思考等级",
+          "Kilo-compatible reasoning level passthrough.": "兼容 Kilo 的推理等级透传。",
+          "Temperature": "温度",
+          "Optional sampling temperature.": "可选采样温度。",
+          "Top P": "Top P",
+          "Optional nucleus sampling value.": "可选 nucleus sampling 值。",
+          "Max tokens": "最大 token 数",
+          "Optional max output tokens.": "可选最大输出 token 数。",
+          "Max steps": "最大步骤数",
+          "Optional max tool/agent steps.": "可选最大工具/代理步骤数。",
+          "Permission": "权限",
+          "Optional permission override map. Use one line per tool, for example bash=ask.": "可选权限覆盖映射。每行一个工具，例如 bash=ask。",
+          "System prompt": "系统提示词",
+          "Optional historian system prompt override.": "可选 Historian 系统提示词覆盖。",
+          "Optional dreamer system prompt override.": "可选 Dreamer 系统提示词覆盖。",
+          "Optional sidekick system prompt override.": "可选 Sidekick 系统提示词覆盖。",
+          "Schedule": "计划时间",
+          "Dreaming window such as 02:00-06:00.": "Dreamer 运行窗口，例如 02:00-06:00。",
+          "Max runtime minutes": "最大运行分钟数",
+          "Max runtime for one dream session.": "单次 dream 会话的最长运行时间。",
+          "Task timeout minutes": "任务超时分钟数",
+          "Per-task timeout before moving on.": "进入下个任务前的单任务超时。",
+          "Tasks": "任务",
+          "One dreamer task per line.": "每行一个 Dreamer 任务。",
+          "Inject docs": "注入文档",
+          "Adds ARCHITECTURE.md and STRUCTURE.md to dreamer context.": "向 Dreamer 上下文加入 ARCHITECTURE.md 和 STRUCTURE.md。",
+          "User memories": "用户记忆",
+          "Promotes repeated behavior observations to stable user memory.": "将重复行为观察提升为稳定用户记忆。",
+          "Pin key files": "固定关键文件",
+          "Pins frequently-read files into the system prompt.": "将常读文件固定到系统提示词。",
+          "User memory promotion threshold": "用户记忆提升阈值",
+          "Candidate count before promotion review.": "进入提升评审前的候选数量。",
+          "Sidekick token budget": "Sidekick token 预算",
+          "Max tokens for sidekick augmentation.": "Sidekick 增强可用的最大 token 数。",
+          "Embedding": "嵌入",
+          "Semantic search provider used by memory and ctx_search.": "记忆和 ctx_search 使用的语义搜索提供商。",
+          "Provider": "提供商",
+          "local, openai-compatible, or off.": "local、openai-compatible 或 off。",
+          "Model": "模型",
+          "Local or remote embedding model.": "本地或远程嵌入模型。",
+          "Endpoint": "端点",
+          "OpenAI-compatible embeddings endpoint.": "OpenAI 兼容嵌入端点。",
+          "API key": "API 密钥",
+          "Supports raw value or config variables such as {env:OPENAI_API_KEY}.": "支持原始值或 {env:OPENAI_API_KEY} 这类配置变量。",
+          "Memory": "记忆",
+          "Project memory injection and promotion settings.": "项目记忆注入和提升设置。",
+          "Memory enabled": "启用记忆",
+          "Enables project memory and ctx_memory storage.": "启用项目记忆和 ctx_memory 存储。",
+          "Injection budget tokens": "注入预算 token 数",
+          "Max memory tokens injected into session history.": "注入会话历史的最大记忆 token 数。",
+          "Auto promote": "自动提升",
+          "Promotes frequently retrieved facts to project memory.": "将经常检索到的事实提升为项目记忆。",
+          "Retrieval promotion threshold": "检索提升阈值",
+          "Retrieval count before auto-promotion.": "自动提升前的检索次数。",
+          "Compressor": "压缩器",
+          "Multi-layer summary compression for older compartments.": "对较旧分段进行多层摘要压缩。",
+          "Min compartment ratio": "最小分段比例",
+          "Floor = raw message count divided by this ratio.": "下限 = 原始消息数除以该比例。",
+          "Max merge depth": "最大合并深度",
+          "Maximum compression depth from 1 to 5.": "最大压缩深度，范围 1 到 5。",
+          "Cooldown ms": "冷却毫秒数",
+          "Minimum interval between compressor runs.": "两次压缩器运行之间的最小间隔。",
+          "Max compartments per pass": "每轮最大分段数",
+          "Batch size sent to the LLM.": "发送给 LLM 的批量大小。",
+          "Grace compartments": "保护分段数",
+          "Newest compartments excluded from compression.": "排除在压缩外的最新分段数。",
+          "Triggers and experimental": "触发器与实验功能",
+          "Commit indexing, temporal hints, auto-search, and fallback compression.": "提交索引、时间提示、自动搜索和回退压缩。",
+          "Commit cluster trigger": "提交簇触发器",
+          "Runs historian after enough commit clusters accumulate.": "提交簇积累到足够数量后运行 Historian。",
+          "Min commit clusters": "最小提交簇数",
+          "Minimum clusters to trigger historian.": "触发 Historian 所需的最小提交簇数。",
+          "Temporal awareness": "时间感知",
+          "Adds elapsed-time and date hints to history.": "向历史加入经过时间和日期提示。",
+          "Git commit indexing": "Git 提交索引",
+          "Indexes recent commits as ctx_search source.": "将近期提交索引为 ctx_search 来源。",
+          "Git commit since days": "Git 提交历史天数",
+          "Days of commit history to index.": "要索引的提交历史天数。",
+          "Git commit max commits": "Git 最大提交数",
+          "Max commit rows retained per project.": "每个项目保留的最大提交记录数。",
+          "Auto search hint": "自动搜索提示",
+          "Adds compact hints when memories look relevant.": "当记忆看起来相关时加入简短提示。",
+          "Auto search score threshold": "自动搜索分数阈值",
+          "Top hit score required for hint.": "触发提示所需的最高命中分数。",
+          "Auto search min prompt chars": "自动搜索最小提示字符数",
+          "Skip hints for shorter user prompts.": "较短用户提示将跳过提示。",
+          "Caveman text compression": "Caveman 文本压缩",
+          "Age-tier compression when ctx_reduce is disabled.": "ctx_reduce 禁用时按年龄分层压缩。",
+          "Caveman min chars": "Caveman 最小字符数",
+          "Minimum text length for caveman compression.": "执行 caveman 压缩的最小文本长度。",
+          "Quick setup": "快速设置",
+          "Start from a sensible default. Most users only need to pick models/providers.": "从合理默认值开始。大多数用户只需要选择模型/提供商。",
+          "Recommended": "推荐",
+          "Balanced defaults. Choose providers/models and leave most settings alone.": "平衡的默认配置。选择模型/提供商后，其余设置通常不用改。",
+          "Light": "轻量",
+          "Memory and safe cleanup with fewer background features.": "保留记忆和安全清理，减少后台功能。",
+          "Advanced": "高级",
+          "Expose all controls for custom tuning.": "显示所有控制项，适合自定义调优。",
+        },
+      };
+      textMessages.zhHant = textMessages.zhHans;
+      const tx = (text) => (typeof text === "string" ? textMessages[locale]?.[text] ?? text : text);
+      const tabLabels = {
+        overview: "tabOverview",
+        core: "tabCore",
+        agents: "tabAgents",
+        memory: "tabMemory",
+        advanced: "tabAdvanced",
+      };
+      const state = {
+        activeTab: "overview",
+        requestSeq: 0,
+        pending: new Map(),
+        status: null,
+        configPayload: null,
+        modelOptions: [],
+        modelStatus: "",
+        preset: "recommended",
+        draft: {},
+        rawText: "{}",
+        doctor: null,
+        loading: true,
+        saving: false,
+        dirty: false,
+        error: "",
+        notice: "",
+      };
+
+      function rpc(method, params) {
+        const requestId = `${Date.now()}-${++state.requestSeq}`;
+        parent.postMessage({ type: "pluginSettingsRpc", pluginId, requestId, method, params }, "*");
+        return new Promise((resolve, reject) => {
+          state.pending.set(requestId, { resolve, reject });
+          setTimeout(() => {
+            const hit = state.pending.get(requestId);
+            if (!hit) return;
+            state.pending.delete(requestId);
+            reject(new Error("RPC timed out"));
+          }, 20000);
+        });
+      }
+
+      window.addEventListener("message", (event) => {
+        const msg = event.data;
+        if (!msg || msg.type !== "pluginSettingsRpcResult" || msg.pluginId !== pluginId) return;
+        const hit = state.pending.get(msg.requestId);
+        if (!hit) return;
+        state.pending.delete(msg.requestId);
+        if (msg.error) hit.reject(new Error(msg.error));
+        else hit.resolve(msg.result);
+      });
+
+      const app = document.getElementById("app");
+      const esc = (value) =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      const clone = (value) => JSON.parse(JSON.stringify(value ?? {}));
+      const isObject = (value) => value && typeof value === "object" && !Array.isArray(value);
+
+      function getPath(obj, path) {
+        return path.split(".").reduce((current, key) => (current == null ? undefined : current[key]), obj);
+      }
+
+      function setPath(path, value) {
+        const next = clone(state.draft);
+        const keys = path.split(".");
+        let current = next;
+        for (let i = 0; i < keys.length - 1; i++) {
+          const key = keys[i];
+          if (!isObject(current[key])) current[key] = {};
+          current = current[key];
+        }
+        const finalKey = keys[keys.length - 1];
+        if (value === undefined || value === "") delete current[finalKey];
+        else current[finalKey] = value;
+        state.draft = next;
+        state.rawText = JSON.stringify(state.draft, null, 2);
+        state.dirty = true;
+      }
+
+      function resetPath(path) {
+        setPath(path, undefined);
+        render();
+      }
+
+      function applyPreset(id) {
+        state.preset = id;
+        const next = clone(state.draft);
+        if (id === "recommended") {
+          next.enabled = true;
+          next.ctx_reduce_enabled = true;
+          next.memory = { ...(next.memory ?? {}), enabled: true, auto_promote: true };
+          next.compressor = { ...(next.compressor ?? {}), enabled: true };
+        }
+        if (id === "minimal") {
+          next.enabled = true;
+          next.ctx_reduce_enabled = true;
+          next.memory = { ...(next.memory ?? {}), enabled: true, auto_promote: false };
+          next.compressor = { ...(next.compressor ?? {}), enabled: false };
+          next.dreamer = { ...(next.dreamer ?? {}), enabled: false };
+          next.sidekick = { ...(next.sidekick ?? {}), enabled: false };
+        }
+        state.draft = next;
+        state.rawText = JSON.stringify(state.draft, null, 2);
+        state.dirty = true;
+        render();
+      }
+
+      function parseLooseJson(value) {
+        const text = value.trim();
+        if (!text) return undefined;
+        try {
+          return JSON.parse(text);
+        } catch {
+          return text;
+        }
+      }
+
+      function parseLines(value) {
+        const entries = value
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        return entries.length ? entries : undefined;
+      }
+
+      function parseKeyValueMap(value, valueKind) {
+        const entries = value
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (!entries.length) return undefined;
+        const output = {};
+        for (const entry of entries) {
+          const separator = entry.indexOf("=");
+          if (separator <= 0) throw new Error(`Use key=value format: ${entry}`);
+          const key = entry.slice(0, separator).trim();
+          const raw = entry.slice(separator + 1).trim();
+          if (!key) throw new Error(`Missing key: ${entry}`);
+          if (valueKind === "number") {
+            const numeric = Number(raw);
+            if (!Number.isFinite(numeric)) throw new Error(`Expected a number for ${key}`);
+            output[key] = numeric;
+          } else if (valueKind === "bool") {
+            if (!["true", "false"].includes(raw.toLowerCase())) throw new Error(`Expected true or false for ${key}`);
+            output[key] = raw.toLowerCase() === "true";
+          } else {
+            output[key] = raw;
+          }
+        }
+        return output;
+      }
+
+      function keyValueValue(path) {
+        const value = getPath(state.draft, path);
+        if (value === undefined) return "";
+        if (!isObject(value)) return `default=${String(value)}`;
+        return Object.entries(value)
+          .filter(([, item]) => item !== undefined)
+          .map(([key, item]) => `${key}=${String(item)}`)
+          .join("\n");
+      }
+
+      function jsonValue(path) {
+        const value = getPath(state.draft, path);
+        if (value === undefined) return "";
+        return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      }
+
+      function linesValue(path) {
+        const value = getPath(state.draft, path);
+        if (Array.isArray(value)) return value.join("\n");
+        if (typeof value === "string") return value;
+        return "";
+      }
+
+      function fieldMeta(path) {
+        const projectKeys = state.configPayload?.project?.overriddenKeys ?? [];
+        const top = path.split(".")[0];
+        return projectKeys.includes(top) ? `<span class="pill warn">${esc(t("projectOverride"))}</span>` : "";
+      }
+
+      function row(label, path, hint, control) {
+        return `
+          <div class="row">
+            <div>
+              <div class="label"><span>${esc(tx(label))}</span>${fieldMeta(path)}</div>
+              <div class="key">${esc(path)}</div>
+              ${hint ? `<div class="hint">${esc(tx(hint))}</div>` : ""}
+            </div>
+            <div>${control}</div>
+          </div>
+        `;
+      }
+
+      function toggle(label, path, hint) {
+        const checked = getPath(state.draft, path) === true ? "checked" : "";
+        return row(
+          label,
+          path,
+          hint,
+          `<div class="control-line"><input type="checkbox" data-kind="bool" data-path="${esc(path)}" ${checked} /><button data-reset="${esc(path)}">${esc(t("reset"))}</button></div>`,
+        );
+      }
+
+      function text(label, path, hint, placeholder = "") {
+        const value = getPath(state.draft, path) ?? "";
+        return row(
+          label,
+          path,
+          hint,
+          `<div class="control-line"><input class="grow" data-kind="text" data-path="${esc(path)}" value="${esc(value)}" placeholder="${esc(placeholder)}" /><button data-reset="${esc(path)}">${esc(t("reset"))}</button></div>`,
+        );
+      }
+
+      function number(label, path, hint, placeholder = "") {
+        const value = getPath(state.draft, path) ?? "";
+        return row(
+          label,
+          path,
+          hint,
+          `<div class="control-line"><input class="grow" type="number" data-kind="number" data-path="${esc(path)}" value="${esc(value)}" placeholder="${esc(placeholder)}" /><button data-reset="${esc(path)}">${esc(t("reset"))}</button></div>`,
+        );
+      }
+
+      function select(label, path, hint, options) {
+        const value = getPath(state.draft, path) ?? "";
+        const htmlOptions = [`<option value="">${esc(t("inherit"))}</option>`]
+          .concat(
+            options.map((option) => {
+              const item = typeof option === "string" ? { value: option, label: option } : option;
+              return `<option value="${esc(item.value)}" ${value === item.value ? "selected" : ""}>${esc(item.label)}</option>`;
+            }),
+          )
+          .join("");
+        return row(
+          label,
+          path,
+          hint,
+          `<div class="control-line"><select class="grow" data-kind="text" data-path="${esc(path)}">${htmlOptions}</select><button data-reset="${esc(path)}">${esc(t("reset"))}</button></div>`,
+        );
+      }
+
+      function modelSelect(label, path, hint) {
+        return state.modelOptions.length
+          ? select(label, path, hint, state.modelOptions)
+          : text(label, path, `${hint} Configure Kilo providers first to enable a model picker.`, "openai/gpt-5.1");
+      }
+
+      function json(label, path, hint, placeholder = "") {
+        return row(
+          label,
+          path,
+          hint,
+          `<div class="control-line"><textarea class="grow" data-kind="json" data-path="${esc(path)}" placeholder="${esc(placeholder)}">${esc(jsonValue(path))}</textarea><button data-reset="${esc(path)}">${esc(t("reset"))}</button></div>`,
+        );
+      }
+
+      function lines(label, path, hint, placeholder = "") {
+        return row(
+          label,
+          path,
+          hint,
+          `<div class="control-line"><textarea class="grow" data-kind="lines" data-path="${esc(path)}" placeholder="${esc(placeholder)}">${esc(linesValue(path))}</textarea><button data-reset="${esc(path)}">${esc(t("reset"))}</button></div>`,
+        );
+      }
+
+      function keyValue(label, path, hint, valueKind, placeholder = "") {
+        return row(
+          label,
+          path,
+          hint,
+          `<div class="control-line"><textarea class="grow" data-kind="keyvalue:${esc(valueKind)}" data-path="${esc(path)}" placeholder="${esc(placeholder)}">${esc(keyValueValue(path))}</textarea><button data-reset="${esc(path)}">${esc(t("reset"))}</button></div>`,
+        );
+      }
+
+      function section(title, desc, rows, options = {}) {
+        const open = options.open === false ? "" : "open";
+        return `
+          <details class="section" ${open}>
+            <summary class="section-head">
+              <div>
+                <div class="section-title">${esc(tx(title))}</div>
+                ${desc ? `<div class="section-desc">${esc(tx(desc))}</div>` : ""}
+              </div>
+              <div class="chevron">›</div>
+            </summary>
+            <div class="rows">${rows.join("")}</div>
+          </details>
+        `;
+      }
+
+      function metric(label, value, cls = "") {
+        return `<div class="metric"><div class="metric-label">${esc(tx(label))}</div><div class="metric-value ${cls}">${esc(value ?? t("na"))}</div></div>`;
+      }
+
+      function renderOverview() {
+        const status = state.status ?? {};
+        const config = state.configPayload;
+        const checks = state.doctor?.checks ?? [];
+        return `
+          <div class="status-grid">
+            ${metric(t("enabled"), status.enabled ?? config?.effective?.enabled)}
+            ${metric(t("configFile"), config?.target?.path ?? status.configFile ?? t("notCreated"))}
+            ${metric(t("storage"), status.storageDir ?? t("na"))}
+            ${metric(t("projectOverrideMetric"), config?.project?.exists ? config.project.path : t("none"))}
+          </div>
+          ${
+            state.notice
+              ? `<div class="notice">${esc(state.notice)}</div>`
+              : `<div class="notice">${esc(t("noticeDefault"))}</div>`
+          }
+          ${
+            state.error
+              ? `<div class="notice error">${esc(state.error)}</div>`
+              : ""
+          }
+          ${section(t("doctorTitle"), t("doctorDesc"), [
+            `<div class="row"><div><div class="label">${esc(t("checks"))}</div><div class="hint">${esc(t("checksHint"))}</div></div><div><pre>${esc(JSON.stringify(checks, null, 2))}</pre></div></div>`,
+          ])}
+        `;
+      }
+
+      function renderCore() {
+        return [
+          renderPresets(),
+          section(t("coreTitle"), t("coreDesc"), [
+            toggle("Enabled", "enabled", "Turns Magic Context on or off."),
+            toggle("Agent controlled reduction", "ctx_reduce_enabled", "Shows ctx_reduce to the agent and enables reduction nudges."),
+            keyValue(t("cacheTtl"), "cache_ttl", t("cacheTtlHint"), "string", t("kvPlaceholderString")),
+            keyValue(t("executePct"), "execute_threshold_percentage", t("executePctHint"), "number", "default=65"),
+            keyValue(t("executeTokens"), "execute_threshold_tokens", t("executeTokensHint"), "number", t("kvPlaceholderNumber")),
+            keyValue(t("contextLimits"), "model_context_limits", t("contextLimitsHint"), "number", t("kvPlaceholderNumber")),
+          ]),
+          section(t("cleanupTitle"), t("cleanupDesc"), [
+            number("Nudge interval tokens", "nudge_interval_tokens", "Minimum token growth between rolling nudges.", "10000"),
+            number("Protected tags", "protected_tags", "Recent tags protected from dropping.", "20"),
+            number("Auto drop tool age", "auto_drop_tool_age", "Tool outputs older than this tag age can be dropped.", "100"),
+            toggle("Drop tool structure", "drop_tool_structure", "When false, tool call shape is preserved and contents are truncated."),
+            number("Clear reasoning age", "clear_reasoning_age", "Reasoning blocks older than this tag age are cleared.", "50"),
+            number("Iteration nudge threshold", "iteration_nudge_threshold", "Consecutive assistant/tool turns before an iteration nudge.", "15"),
+            number("History budget percentage", "history_budget_percentage", "Fraction of usable context reserved for session history.", "0.15"),
+            number("Historian timeout ms", "historian_timeout_ms", "Timeout for each historian prompt call.", "300000"),
+            toggle("Compaction markers", "compaction_markers", "Writes Kilo-compatible compaction markers after historian publishes."),
+          ]),
+        ].join("");
+      }
+
+      function renderPresets() {
+        const mode = state.preset;
+        const cards = [
+          ["recommended", "Recommended", "Balanced defaults. Choose providers/models and leave most settings alone."],
+          ["minimal", "Light", "Memory and safe cleanup with fewer background features."],
+          ["advanced", "Advanced", "Expose all controls for custom tuning."],
+        ];
+        return `
+          <section class="section">
+            <div class="section-head">
+              <div>
+                <div class="section-title">${esc(tx("Quick setup"))}</div>
+                <div class="section-desc">${esc(tx("Start from a sensible default. Most users only need to pick models/providers."))}</div>
+              </div>
+            </div>
+            <div class="preset">
+              <div class="preset-grid">
+                ${cards
+                  .map(
+                    ([id, title, desc]) => `
+                      <button class="preset-card ${mode === id ? "active" : ""}" data-preset="${esc(id)}">
+                        <strong>${esc(tx(title))}</strong>
+                        <div class="hint">${esc(tx(desc))}</div>
+                      </button>
+                    `,
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function agentCard(id, title, desc) {
+        const reasoning = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+        const rows = [
+          id !== "historian" ? toggle(`${title} enabled`, `${id}.enabled`, `Enables ${title.toLowerCase()} background or augmentation flow.`) : "",
+          modelSelect("Primary model", `${id}.model`, "Provider/model id. Empty uses the built-in fallback chain."),
+          lines("Fallback models", `${id}.fallback_models`, "One model per line. Used when the primary model fails or is unset.", "github-copilot/claude-sonnet-4-5\nopenai/gpt-5.1"),
+          text("Variant", `${id}.variant`, "Provider variant or reasoning preset passthrough.", "thinking"),
+          select("Thinking level", `${id}.thinking_level`, "Kilo-compatible reasoning level passthrough.", reasoning),
+          number("Temperature", `${id}.temperature`, "Optional sampling temperature.", "0.2"),
+          number("Top P", `${id}.top_p`, "Optional nucleus sampling value.", "1"),
+          number("Max tokens", `${id}.maxTokens`, "Optional max output tokens.", "8192"),
+          number("Max steps", `${id}.maxSteps`, "Optional max tool/agent steps.", "10"),
+          keyValue(t("agentTools"), `${id}.tools`, t("agentToolsHint"), "bool", t("kvPlaceholderBool")),
+          keyValue("Permission", `${id}.permission`, "Optional permission override map. Use one line per tool, for example bash=ask.", "string", "bash=ask\nedit=allow"),
+        ];
+        if (id === "historian") rows.push(toggle("Two pass", "historian.two_pass", "Runs an editor pass after historian generation."));
+        if (id === "dreamer") {
+          rows.push(
+            text("Schedule", "dreamer.schedule", "Scheduled window for background dreaming.", "02:00-06:00"),
+            number("Max runtime minutes", "dreamer.max_runtime_minutes", "Maximum runtime per dream session.", "120"),
+            number("Task timeout minutes", "dreamer.task_timeout_minutes", "Timeout per dream task.", "20"),
+            lines("Tasks", "dreamer.tasks", "One task per line: consolidate, verify, archive-stale, improve, maintain-docs.", "consolidate\nverify\narchive-stale\nimprove"),
+            toggle("Inject docs", "dreamer.inject_docs", "Injects architecture docs into dreamer prompts."),
+            toggle("User memories", "dreamer.user_memories.enabled", "Extracts and promotes durable user memories."),
+            number("User memory promotion threshold", "dreamer.user_memories.promotion_threshold", "Candidate count before promotion review.", "3"),
+            toggle("Pin key files", "dreamer.pin_key_files.enabled", "Pins frequently-read key files into future sessions."),
+            number("Pinned file token budget", "dreamer.pin_key_files.token_budget", "Total token budget for pinned key files.", "10000"),
+            number("Pinned file min reads", "dreamer.pin_key_files.min_reads", "Full-read count before a file is considered.", "4"),
+          );
+        }
+        if (id === "sidekick") {
+          rows.push(
+            number("Timeout ms", "sidekick.timeout_ms", "Max wait for sidekick augmentation.", "30000"),
+            text("System prompt", "sidekick.system_prompt", "Optional sidekick system prompt override."),
+          );
+        }
+        return section(title, desc, rows.filter(Boolean), { open: id === "historian" });
+      }
+
+      function renderAgents() {
+        return [
+          agentCard("historian", "Historian", "Compartment and fact generation for older session history."),
+          agentCard("dreamer", "Dreamer", "Idle maintenance, user memory promotion, key file pinning, and project hygiene."),
+          agentCard("sidekick", "Sidekick", "Lightweight augmentation for memory/search oriented assistance."),
+        ].join("");
+      }
+
+      function renderMemory() {
+        return [
+          section("Embedding", "Semantic search provider used by memory and ctx_search.", [
+            select("Provider", "embedding.provider", "local, openai-compatible, or off.", ["local", "openai-compatible", "off"]),
+            text("Model", "embedding.model", "Local or remote embedding model.", "Xenova/all-MiniLM-L6-v2"),
+            text("Endpoint", "embedding.endpoint", "OpenAI-compatible embeddings endpoint.", "https://api.openai.com/v1/embeddings"),
+            text("API key", "embedding.api_key", "Supports raw value or config variables such as {env:OPENAI_API_KEY}.", "{env:OPENAI_API_KEY}"),
+          ]),
+          section("Memory", "Project memory injection and promotion settings.", [
+            toggle("Memory enabled", "memory.enabled", "Enables project memory and ctx_memory storage."),
+            number("Injection budget tokens", "memory.injection_budget_tokens", "Max memory tokens injected into session history.", "4000"),
+            toggle("Auto promote", "memory.auto_promote", "Promotes frequently retrieved facts to project memory."),
+            number("Retrieval promotion threshold", "memory.retrieval_count_promotion_threshold", "Retrieval count before auto-promotion.", "3"),
+          ]),
+        ].join("");
+      }
+
+      function renderAdvanced() {
+        return [
+          section("Compressor", "Multi-layer summary compression for older compartments.", [
+            toggle("Enabled", "compressor.enabled", "Enables background history block compression."),
+            number("Min compartment ratio", "compressor.min_compartment_ratio", "Floor = raw message count divided by this ratio.", "1000"),
+            number("Max merge depth", "compressor.max_merge_depth", "Maximum compression depth from 1 to 5.", "5"),
+            number("Cooldown ms", "compressor.cooldown_ms", "Minimum interval between compressor runs.", "600000"),
+            number("Max compartments per pass", "compressor.max_compartments_per_pass", "Batch size sent to the LLM.", "15"),
+            number("Grace compartments", "compressor.grace_compartments", "Newest compartments excluded from compression.", "10"),
+          ]),
+          section("Triggers and experimental", "Commit indexing, temporal hints, auto-search, and fallback compression.", [
+            toggle("Commit cluster trigger", "commit_cluster_trigger.enabled", "Runs historian after enough commit clusters accumulate."),
+            number("Min commit clusters", "commit_cluster_trigger.min_clusters", "Minimum clusters to trigger historian.", "3"),
+            toggle("Temporal awareness", "experimental.temporal_awareness", "Adds elapsed-time and date hints to history."),
+            toggle("Git commit indexing", "experimental.git_commit_indexing.enabled", "Indexes recent commits as ctx_search source."),
+            number("Git commit since days", "experimental.git_commit_indexing.since_days", "Days of commit history to index.", "365"),
+            number("Git commit max commits", "experimental.git_commit_indexing.max_commits", "Max commit rows retained per project.", "2000"),
+            toggle("Auto search hint", "experimental.auto_search.enabled", "Adds compact hints when memories look relevant."),
+            number("Auto search score threshold", "experimental.auto_search.score_threshold", "Top hit score required for hint.", "0.72"),
+            number("Auto search min prompt chars", "experimental.auto_search.min_prompt_chars", "Skip hints for shorter user prompts.", "20"),
+            toggle("Caveman text compression", "experimental.caveman_text_compression.enabled", "Age-tier compression when ctx_reduce is disabled."),
+            number("Caveman min chars", "experimental.caveman_text_compression.min_chars", "Minimum text length for caveman compression.", "600"),
+          ]),
+        ].join("");
+      }
+
+      function renderTab() {
+        if (state.loading) return `<div class="notice">${esc(t("loading"))}</div>`;
+        const modelStatus = state.activeTab === "agents" && state.modelStatus ? `<div class="notice">${esc(state.modelStatus)}</div>` : "";
+        if (state.activeTab === "overview") return renderOverview();
+        if (state.activeTab === "core") return renderCore();
+        if (state.activeTab === "agents") return modelStatus + renderAgents();
+        if (state.activeTab === "memory") return renderMemory();
+        if (state.activeTab === "advanced") return renderAdvanced();
+        return renderOverview();
+      }
+
+      function render() {
+        app.innerHTML = `
+          <div class="topbar">
+            <div class="title">
+              <h1>${esc(t("title"))}</h1>
+            </div>
+            <div class="actions">
+              <button data-action="refresh">${esc(t("refresh"))}</button>
+              <button data-action="doctor">${esc(t("doctor"))}</button>
+              <button data-action="discard" ${!state.dirty ? "disabled" : ""}>${esc(t("discard"))}</button>
+              <button class="primary" data-action="save" ${state.saving || !state.dirty ? "disabled" : ""}>${esc(state.saving ? t("saving") : t("save"))}</button>
+            </div>
+          </div>
+          <div class="tabs">
+            ${tabs
+              .map((tab) => `<button class="tab ${state.activeTab === tab ? "active" : ""}" data-tab="${tab}">${esc(t(tabLabels[tab]))}</button>`)
+              .join("")}
+          </div>
+          <main class="content">${renderTab()}</main>
+        `;
+      }
+
+      async function refresh() {
+        state.loading = true;
+        state.error = "";
+        render();
+        try {
+          const [status, config, models] = await Promise.all([
+            rpc("status"),
+            rpc("config.read"),
+            rpc("kilo.models"),
+          ]);
+          state.status = status;
+          state.configPayload = config;
+          state.modelOptions = Array.isArray(models?.models) ? models.models : [];
+          state.modelStatus = state.modelOptions.length
+            ? `Loaded ${state.modelOptions.length} configured Kilo models.`
+            : "No configured Kilo provider models were returned. Configure a provider in Kilo, then refresh this panel.";
+          state.draft = clone(config.raw ?? {});
+          state.rawText = JSON.stringify(state.draft, null, 2);
+          state.dirty = false;
+          state.notice = "";
+        } catch (error) {
+          state.error = error instanceof Error ? error.message : String(error);
+        } finally {
+          state.loading = false;
+          render();
+        }
+      }
+
+      async function runDoctor() {
+        try {
+          state.doctor = await rpc("doctor");
+          state.notice = t("doctorFinished");
+          state.activeTab = "overview";
+        } catch (error) {
+          state.error = error instanceof Error ? error.message : String(error);
+        }
+        render();
+      }
+
+      async function save() {
+        if (!state.dirty || state.saving) return;
+        state.saving = true;
+        state.error = "";
+        render();
+        try {
+          const saved = await rpc("config.save", {
+            expectedMtimeMs: state.configPayload?.target?.mtimeMs ?? null,
+            config: state.draft,
+          });
+          state.configPayload = saved;
+          state.draft = clone(saved.raw ?? {});
+          state.rawText = JSON.stringify(state.draft, null, 2);
+          state.dirty = false;
+          state.notice = t("savedNotice");
+        } catch (error) {
+          state.error = error instanceof Error ? error.message : String(error);
+        } finally {
+          state.saving = false;
+          render();
+        }
+      }
+
+      function discard() {
+        state.draft = clone(state.configPayload?.raw ?? {});
+        state.rawText = JSON.stringify(state.draft, null, 2);
+        state.dirty = false;
+        state.error = "";
+        render();
+      }
+
+      app.addEventListener("click", (event) => {
+        const tab = event.target.closest("[data-tab]")?.getAttribute("data-tab");
+        if (tab) {
+          state.activeTab = tab;
+          render();
+          return;
+        }
+        const reset = event.target.closest("[data-reset]")?.getAttribute("data-reset");
+        if (reset) {
+          resetPath(reset);
+          return;
+        }
+        const preset = event.target.closest("[data-preset]")?.getAttribute("data-preset");
+        if (preset) {
+          applyPreset(preset);
+          return;
+        }
+        const action = event.target.closest("[data-action]")?.getAttribute("data-action");
+        if (action === "refresh") refresh();
+        if (action === "doctor") runDoctor();
+        if (action === "save") save();
+        if (action === "discard") discard();
+      });
+
+      app.addEventListener("input", (event) => {
+        const target = event.target.closest("[data-path]");
+        if (!target) return;
+        const path = target.getAttribute("data-path");
+        const kind = target.getAttribute("data-kind");
+        if (!path) return;
+        try {
+          if (kind === "bool") setPath(path, target.checked);
+          else if (kind === "number") setPath(path, target.value.trim() ? Number(target.value) : undefined);
+          else if (kind === "json") setPath(path, parseLooseJson(target.value));
+          else if (kind?.startsWith("keyvalue:")) setPath(path, parseKeyValueMap(target.value, kind.slice("keyvalue:".length)));
+          else if (kind === "lines") setPath(path, parseLines(target.value));
+          else setPath(path, target.value.trim() || undefined);
+          state.error = "";
+        } catch (error) {
+          state.error = error instanceof Error ? error.message : String(error);
+        }
+      });
+
+      refresh();
+    </script>
+  </body>
+</html>
