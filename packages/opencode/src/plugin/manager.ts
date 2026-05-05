@@ -229,11 +229,44 @@ async function run(cmd: string[], cwd: string) {
   await Process.run(cmd, { cwd })
 }
 
+async function packageHasInstall(dir: string) {
+  return await Filesystem.exists(path.join(dir, "node_modules"))
+}
+
+async function needsBuild(pluginDir: string, pkg: Record<string, unknown>) {
+  const main = cleanString(pkg.main)
+  const types = cleanString(pkg.types)
+  if (main && !(await Filesystem.exists(path.join(pluginDir, main)))) return true
+  if (types && !(await Filesystem.exists(path.join(pluginDir, types)))) return true
+  return !(await Filesystem.exists(path.join(pluginDir, "dist")))
+}
+
 async function preparePackage(repo: string, pluginDir: string) {
-  await run(["bun", "install"], repo)
   const pkg = await readJson(path.join(pluginDir, "package.json"))
   const scripts = isRecord(pkg.scripts) ? pkg.scripts : {}
-  if (typeof scripts.build === "string") await run(["bun", "run", "build"], pluginDir)
+  const installDir = pluginDir === repo ? repo : pluginDir
+  if (!(await packageHasInstall(pluginDir))) await run(["bun", "install"], installDir)
+  if (typeof scripts.build === "string" && (await needsBuild(pluginDir, pkg))) await run(["bun", "run", "build"], pluginDir)
+}
+
+async function prepareIsolatedPackage(managedDir: string, repo: string, pluginDir: string) {
+  if (pluginDir === repo) {
+    await preparePackage(repo, pluginDir)
+    return pluginDir
+  }
+
+  const preparedDir = path.join(managedDir, "package")
+  await fs.rm(preparedDir, { recursive: true, force: true })
+  await fs.mkdir(path.dirname(preparedDir), { recursive: true })
+  await fs.cp(pluginDir, preparedDir, {
+    recursive: true,
+    filter: (source) => {
+      const name = path.basename(source)
+      return name !== "node_modules" && name !== ".turbo" && name !== ".cache"
+    },
+  })
+  await preparePackage(preparedDir, preparedDir)
+  return preparedDir
 }
 
 function globalConfigFile() {
@@ -608,10 +641,10 @@ export async function installFromGit(input: InstallInput) {
     await run(args, GIT_ROOT())
   }
 
-  const pluginDir = await findWorkspacePluginPackage(repo, subpath)
-  await preparePackage(repo, pluginDir)
+  const sourcePluginDir = await findWorkspacePluginPackage(repo, subpath)
+  const pluginDir = await prepareIsolatedPackage(managedDir, repo, sourcePluginDir)
 
-  const detectedPath = path.relative(repo, pluginDir).replaceAll("\\", "/") || undefined
+  const detectedPath = path.relative(repo, sourcePluginDir).replaceAll("\\", "/") || undefined
   const spec = pathToFileURL(pluginDir).href
   const manifest = await readKiloManifest(spec)
   const file = configFileForScope(input.scope ?? "global", input.directory)
