@@ -12,7 +12,7 @@ function base(): FormState {
     interfaceType: "openai-compatible",
     baseURL: "https://example.com/v1",
     apiKey: "",
-    models: [{ id: "model-1", name: "Model One", context: "", reasoning: false, variants: [] }],
+    models: [{ id: "model-1", name: "Model One", context: "", reasoning: false, vision: false, variants: [] }],
     headers: [],
     saving: false,
   }
@@ -155,6 +155,16 @@ describe("validateCustomProvider – variant name validation", () => {
     expect(out.result).toBeDefined()
     const saved = out.result!.config.models["model-1"] as Record<string, unknown>
     expect(saved.variants).toEqual({ eco: { enable_thinking: true, reasoningEffort: "low" } })
+  })
+
+  it("persists image input capability for vision models", () => {
+    const form = base()
+    form.models[0].vision = true
+    const out = validateCustomProvider(args(form))
+    expect(out.result).toBeDefined()
+    const saved = out.result!.config.models["model-1"] as Record<string, unknown>
+    expect(saved.attachment).toBe(true)
+    expect(saved.modalities).toEqual({ input: ["text", "image"], output: ["text"] })
   })
 
   it("persists custom interface type, context limit, and max reasoning effort", () => {
