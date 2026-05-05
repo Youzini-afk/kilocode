@@ -7,6 +7,7 @@ import z from "zod"
 import { Config } from "@/config/config"
 import { Plugin } from "@/plugin"
 import { PluginManager } from "@/plugin/manager"
+import { Provider } from "@/provider/provider"
 import { Instance } from "@/project/instance"
 import { errors } from "../../error"
 import { jsonRequest, runRequest } from "./trace"
@@ -143,6 +144,22 @@ const SettingsRpcInput = z.object({
   method: z.string().min(1),
   params: z.unknown().optional(),
 })
+
+function settingsModelOptions(providers: Record<string, Provider.Info>) {
+  const options = []
+  for (const provider of Object.values(providers)) {
+    for (const [modelID, model] of Object.entries(provider.models)) {
+      const id = model.id || modelID
+      options.push({
+        value: `${provider.id}/${id}`,
+        label: `${provider.name} · ${model.name || id}`,
+        provider: provider.id,
+        model: id,
+      })
+    }
+  }
+  return options.sort((a, b) => a.label.localeCompare(b.label))
+}
 
 function contentType(file: string) {
   const ext = path.extname(file).toLowerCase()
@@ -355,6 +372,14 @@ export const PluginRoutes = () =>
       async (c) =>
         jsonRequest("PluginRoutes.settingsRpc", c, function* () {
           const input = c.req.valid("json")
+          if (input.method === "kilo.models") {
+            const provider = yield* Provider.Service
+            const providers = yield* provider.list()
+            return {
+              requestId: input.requestId,
+              result: { models: settingsModelOptions(providers) },
+            }
+          }
           const plugin = yield* Plugin.Service
           const result = yield* plugin.settingsRpc(input.id, input.method, input.params)
           return {
