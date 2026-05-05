@@ -1,4 +1,4 @@
-import { Component, For, Show, createMemo, createSignal, onCleanup } from "solid-js"
+import { Component, For, Show, createMemo, createSignal, createEffect, onCleanup } from "solid-js"
 import { Button } from "@kilocode/kilo-ui/button"
 import { Card } from "@kilocode/kilo-ui/card"
 import { Checkbox } from "@kilocode/kilo-ui/checkbox"
@@ -46,6 +46,17 @@ function statusLabel(item: PluginListItem, t: Translate) {
   return item.enabled ? t("settings.plugins.status.enabled") : t("settings.plugins.status.disabled")
 }
 
+function progressLabel(action: string, stage: string, t: Translate) {
+  return t(`settings.plugins.progress.${action}.${stage}`)
+}
+
+function initialProgressStage(action: "install" | "enable" | "remove" | "update" | "resolve") {
+  if (action === "install") return "downloading"
+  if (action === "update") return "updating"
+  if (action === "remove") return "removing"
+  return "applying"
+}
+
 function statusColor(item: PluginListItem) {
   if (item.conflictStatus === "blocked" || item.conflictStatus === "pending-resolution") return "var(--vscode-errorForeground)"
   if (item.conflictStatus === "warning") return "var(--vscode-editorWarning-foreground)"
@@ -60,6 +71,10 @@ function hasUnresolvedBlockingConflict(item: PluginListItem) {
   return item.conflictStatus === "blocked" || item.conflictStatus === "pending-resolution"
 }
 
+function firstInstallRequestId(busy: Record<string, string>) {
+  return Object.keys(busy).find((id) => busy[id] === "install")
+}
+
 const PluginsTab: Component = () => {
   const language = useLanguage()
   const vscode = useVSCode()
@@ -70,6 +85,7 @@ const PluginsTab: Component = () => {
   const [scope, setScope] = createSignal<"global" | "local">("global")
   const [trusted, setTrusted] = createSignal(false)
   const [busy, setBusy] = createSignal<Record<string, string>>({})
+  const [progress, setProgress] = createSignal<Record<string, string>>({})
   const [settingsPanel, setSettingsPanel] = createSignal<{ pluginId: string; url: string; title: string } | null>(null)
   let settingsIframe: HTMLIFrameElement | undefined
 
@@ -90,13 +106,30 @@ const PluginsTab: Component = () => {
       else delete next[id]
       return next
     })
+    setProgress((prev) => {
+      const next = { ...prev }
+      if (!action) delete next[id]
+      return next
+    })
+  }
+
+  const setProgressText = (id: string, text: string | null) => {
+    setProgress((prev) => {
+      const next = { ...prev }
+      if (text) next[id] = text
+      else delete next[id]
+      return next
+    })
   }
 
   const install = () => {
     const value = url().trim()
     if (!value || !trusted()) return
     const id = requestId("plugin-install")
+    const text = progressLabel("install", initialProgressStage("install"), language.t)
     setAction(id, "install")
+    setProgressText(id, text)
+    showToast({ title: text })
     vscode.postMessage({
       type: "installPlugin",
       requestId: id,
@@ -120,8 +153,12 @@ const PluginsTab: Component = () => {
     fn: (id: string) => void,
   ) => {
     const id = requestId(`plugin-${name}`)
+    const text = progressLabel(name, initialProgressStage(name), language.t)
     setAction(id, name)
     setAction(plugin.id, name)
+    setProgressText(id, text)
+    setProgressText(plugin.id, text)
+    showToast({ title: text })
     fn(id)
   }
 
@@ -129,6 +166,7 @@ const PluginsTab: Component = () => {
     if (message.type === "pluginActionResult") {
       setAction(message.requestId, null)
       setBusy({})
+      setProgress({})
       if (message.success) {
         if (message.action === "install") {
           setUrl("")
@@ -158,6 +196,16 @@ const PluginsTab: Component = () => {
     }
   })
   onCleanup(unsubscribe)
+
+  createEffect(() => {
+    if (!installing()) return
+    const id = firstInstallRequestId(busy())
+    const text = progress()[id ?? ""]
+    if (text) return
+    setProgressText(id ?? "install", language.t("settings.plugins.progress.install.starting"))
+  })
+
+  const installProgress = createMemo(() => progress()[firstInstallRequestId(busy()) ?? ""])
 
   return (
     <div style={{ display: "flex", "flex-direction": "column", gap: "16px" }}>
@@ -218,7 +266,9 @@ const PluginsTab: Component = () => {
               onChange={setSubpath}
             />
             <Button variant="primary" onClick={install} disabled={!url().trim() || !trusted() || installing()}>
-              {language.t("settings.plugins.install.button")}
+              {installing()
+                ? (installProgress() ?? language.t("settings.plugins.progress.install.starting"))
+                : language.t("settings.plugins.install.button")}
             </Button>
           </div>
           <label style={{ display: "flex", gap: "8px", "align-items": "flex-start", "font-size": "12px" }}>
@@ -274,6 +324,13 @@ const PluginsTab: Component = () => {
                     <span style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))", "font-size": "12px" }}>
                       {label(plugin, language.t)}
                     </span>
+                    <Show when={progress()[plugin.id]}>
+                      {(text) => (
+                        <span style={{ color: "var(--vscode-progressBar-background)", "font-size": "12px" }}>
+                          {text()}
+                        </span>
+                      )}
+                    </Show>
                   </div>
                   <Show when={plugin.description}>
                     <div style={{ "font-size": "12px", color: "var(--text-weak-base, var(--vscode-descriptionForeground))" }}>
