@@ -68,6 +68,7 @@ export const TaskTool = Tool.define(
       // kilocode_change start — inherit edit/bash/MCP restrictions from calling agent
       const caller = yield* agent.get(ctx.agent)
       const parent = yield* Effect.promise(() => Session.get(SessionID.make(ctx.sessionID)))
+      KiloTask.validateCaller({ caller, session: parent })
       const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp })
       // kilocode_change end
 

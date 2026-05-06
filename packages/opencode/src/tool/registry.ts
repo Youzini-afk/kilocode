@@ -275,7 +275,9 @@ export const layer: Layer.Layer<
     })
 
     const describeTask = Effect.fn("ToolRegistry.describeTask")(function* (agent: Agent.Info) {
-      const items = (yield* agents.list()).filter((item) => item.mode !== "primary")
+      // kilocode_change start - hidden agents are internal and subagents are one level deep
+      const items = (yield* agents.list()).filter((item) => item.mode !== "primary" && item.hidden !== true)
+      // kilocode_change end
       const filtered = items.filter(
         (item) => Permission.evaluate("task", item.name, agent.permission).action !== "deny",
       )
@@ -286,7 +288,12 @@ export const layer: Layer.Layer<
             `- ${item.name}: ${item.description ?? "This subagent should only be called manually by the user."}`,
         )
         .join("\n")
-      return ["Available agent types and the tools they have access to:", description].join("\n")
+      return [
+        "Available subagent types:",
+        description || "No subagents are available for the current agent.",
+        "",
+        "Delegation is one level deep: subagents cannot launch additional subagents.",
+      ].join("\n")
     })
 
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {

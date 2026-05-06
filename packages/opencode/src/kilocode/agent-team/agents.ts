@@ -157,6 +157,7 @@ You are read-only. Do not edit files, run shell commands, or delegate.`,
 const readonly = (ctx: Context) =>
   Permission.merge(
     ctx.defaults,
+    ctx.user,
     Permission.fromConfig({
       "*": "deny",
       question: "allow",
@@ -174,7 +175,7 @@ const readonly = (ctx: Context) =>
       bash: "deny",
       ...ctx.mcp,
     }),
-    ctx.user,
+    ctx.user.filter((rule) => rule.action === "deny"),
   )
 
 const editable = (ctx: Context) =>
@@ -187,6 +188,7 @@ const editable = (ctx: Context) =>
       semantic_search: "allow",
     }),
     ctx.user,
+    Permission.fromConfig({ task: "deny" }),
   )
 
 const conductor = (ctx: Context) =>
@@ -214,6 +216,33 @@ const conductor = (ctx: Context) =>
     }),
     ctx.user,
     Permission.fromConfig({ bash: "deny" }),
+  )
+
+const moderator = (ctx: Context) =>
+  Permission.merge(
+    ctx.defaults,
+    ctx.user,
+    Permission.fromConfig({
+      "*": "deny",
+      question: "allow",
+      suggest: "allow",
+      read: "allow",
+      grep: "allow",
+      glob: "allow",
+      list: "allow",
+      todoread: "allow",
+      webfetch: "allow",
+      websearch: "allow",
+      codesearch: "allow",
+      codebase_search: "allow",
+      semantic_search: "allow",
+      skill: "allow",
+      council_session: "allow",
+      task: "deny",
+      bash: "deny",
+      ...ctx.mcp,
+    }),
+    ctx.user.filter((rule) => rule.action === "deny"),
   )
 
 export function enabled(cfg: Config | undefined, item: Role) {
@@ -251,7 +280,7 @@ export function build(ctx: Context): AgentMap {
             item === "fixer" || item === "designer"
               ? editable(ctx)
               : item === "council"
-                ? conductor(ctx)
+                ? moderator(ctx)
                 : readonly(ctx),
           mode: item === "council" ? ("all" as const) : ("subagent" as const),
           native: true,

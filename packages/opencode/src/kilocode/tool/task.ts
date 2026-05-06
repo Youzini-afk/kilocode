@@ -22,6 +22,13 @@ export namespace KiloTask {
   /** Reject primary agents used as subagents */
   export function validate(info: Agent.Info, name: string) {
     if (info.mode === "primary") throw new Error(`Agent "${name}" is a primary agent and cannot be used as a subagent`)
+    if (info.hidden === true) throw new Error(`Agent "${name}" is hidden and cannot be used as a subagent`)
+  }
+
+  /** Reject nested delegation from already-delegated child sessions. */
+  export function validateCaller(input: { caller: Agent.Info; session: Session.Info }) {
+    if (!input.session.parentID) return
+    throw new Error(`Agent "${input.caller.name}" is already running as a subagent and cannot delegate again`)
   }
 
   /**
