@@ -1,7 +1,7 @@
 import { dict as en } from "./en"
 type Keys = keyof typeof en
 
-export const dict = {
+const local = {
   "command.category.suggested": "Foreslått",
   "command.category.view": "Visning",
   "command.category.project": "Prosjekt",
@@ -1531,4 +1531,6 @@ export const dict = {
   "notifications.action.close": "Lukk",
   "notifications.action.tryModel": "Prøv {{model}}",
   "notifications.action.tryModelGeneric": "Prøv modell",
-} satisfies Partial<Record<Keys, string>>
+} satisfies Record<string, string>
+
+export const dict = { ...en, ...local } satisfies Record<Keys, string>

@@ -1935,6 +1935,8 @@ export class Session2 extends HeyApiClient {
     parameters?: {
       directory?: string
       workspace?: string
+      scope?: "project"
+      path?: string
       roots?: boolean | "true" | "false"
       start?: number
       search?: string
@@ -1949,6 +1951,8 @@ export class Session2 extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
+            { in: "query", key: "scope" },
+            { in: "query", key: "path" },
             { in: "query", key: "roots" },
             { in: "query", key: "start" },
             { in: "query", key: "search" },

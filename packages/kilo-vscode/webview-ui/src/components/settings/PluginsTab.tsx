@@ -294,7 +294,7 @@ const PluginsTab: Component = () => {
                 : language.t("settings.plugins.install.button")}
             </Button>
           </div>
-          <div style={{ "font-size": "12px" }}>
+          <div style={{ "font-size": "var(--kilo-font-size-12)" }}>
             <Checkbox checked={trusted()} onChange={setTrusted}>
               <span style={{ color: "var(--text-weak-base, var(--vscode-descriptionForeground))" }}>
                 {language.t("settings.plugins.install.trust")}
@@ -333,7 +333,7 @@ const PluginsTab: Component = () => {
                     <span
                       style={{
                         color: statusColor(plugin),
-                        "font-size": "11px",
+                        "font-size": "var(--kilo-font-size-11)",
                         border: "1px solid var(--border-weak-base)",
                         "border-radius": "999px",
                         padding: "1px 6px",
@@ -344,14 +344,19 @@ const PluginsTab: Component = () => {
                     <span
                       style={{
                         color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
-                        "font-size": "12px",
+                        "font-size": "var(--kilo-font-size-12)",
                       }}
                     >
                       {label(plugin, language.t)}
                     </span>
                     <Show when={progress()[plugin.id]}>
                       {(text) => (
-                        <span style={{ color: "var(--vscode-progressBar-background)", "font-size": "12px" }}>
+                        <span
+                          style={{
+                            color: "var(--vscode-progressBar-background)",
+                            "font-size": "var(--kilo-font-size-12)",
+                          }}
+                        >
                           {text()}
                         </span>
                       )}
@@ -360,7 +365,7 @@ const PluginsTab: Component = () => {
                   <Show when={plugin.description}>
                     <div
                       style={{
-                        "font-size": "12px",
+                        "font-size": "var(--kilo-font-size-12)",
                         color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
                       }}
                     >
@@ -368,12 +373,14 @@ const PluginsTab: Component = () => {
                     </div>
                   </Show>
                   <Show when={plugin.error}>
-                    <div style={{ "font-size": "12px", color: "var(--vscode-errorForeground)" }}>{plugin.error}</div>
+                    <div style={{ "font-size": "var(--kilo-font-size-12)", color: "var(--vscode-errorForeground)" }}>
+                      {plugin.error}
+                    </div>
                   </Show>
                   <div
                     style={{
                       "font-family": "var(--vscode-editor-font-family, monospace)",
-                      "font-size": "11px",
+                      "font-size": "var(--kilo-font-size-11)",
                       color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
                       overflow: "hidden",
                       "text-overflow": "ellipsis",
@@ -395,7 +402,12 @@ const PluginsTab: Component = () => {
                               "border-radius": "6px",
                             }}
                           >
-                            <div style={{ "font-size": "12px", color: "var(--vscode-descriptionForeground)" }}>
+                            <div
+                              style={{
+                                "font-size": "var(--kilo-font-size-12)",
+                                color: "var(--vscode-descriptionForeground)",
+                              }}
+                            >
                               {conflict.reason}
                             </div>
                             <div style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}>

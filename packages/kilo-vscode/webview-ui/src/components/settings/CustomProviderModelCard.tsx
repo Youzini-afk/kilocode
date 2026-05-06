@@ -313,7 +313,7 @@ export function ModelCard(props: ModelCardProps) {
             "align-items": "center",
             gap: "8px",
             cursor: "pointer",
-            "font-size": "13px",
+            "font-size": "var(--kilo-font-size-13)",
             color: "var(--vscode-foreground)",
           }}
         >
@@ -330,7 +330,7 @@ export function ModelCard(props: ModelCardProps) {
             "align-items": "center",
             gap: "8px",
             cursor: "pointer",
-            "font-size": "13px",
+            "font-size": "var(--kilo-font-size-13)",
             color: "var(--vscode-foreground)",
           }}
         >

@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const local = {
   "command.category.suggested": "おすすめ",
   "command.category.view": "表示",
   "command.category.project": "プロジェクト",
@@ -1531,4 +1535,6 @@ export const dict = {
   "notifications.action.close": "閉じる",
   "notifications.action.tryModel": "{{model}}を試す",
   "notifications.action.tryModelGeneric": "モデルを試す",
-}
+} satisfies Record<string, string>
+
+export const dict = { ...en, ...local } satisfies Record<Keys, string>

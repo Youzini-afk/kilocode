@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const local = {
   "command.category.suggested": "Voorgesteld",
   "command.category.view": "Weergave",
   "command.category.project": "Project",
@@ -1568,4 +1572,6 @@ export const dict = {
   "settings.agentBehaviour.permissions.hint":
     "Regels worden op volgorde geëvalueerd — de laatst overeenkomende regel wint. Dit is de opgeloste regelset van de CLI backend.",
   "settings.agentBehaviour.editMode.save": "Klaar",
-}
+} satisfies Record<string, string>
+
+export const dict = { ...en, ...local } satisfies Record<Keys, string>

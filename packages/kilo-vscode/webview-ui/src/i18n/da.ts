@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const local = {
   "command.category.suggested": "Foreslået",
   "command.category.view": "Vis",
   "command.category.project": "Projekt",
@@ -1536,4 +1540,6 @@ export const dict = {
   "notifications.action.close": "Luk",
   "notifications.action.tryModel": "Prøv {{model}}",
   "notifications.action.tryModelGeneric": "Prøv model",
-}
+} satisfies Record<string, string>
+
+export const dict = { ...en, ...local } satisfies Record<Keys, string>

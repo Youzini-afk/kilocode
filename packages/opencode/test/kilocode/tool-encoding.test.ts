@@ -372,7 +372,7 @@ describe("tool encoding preservation", () => {
       provideTmpdirInstance((dir) =>
         Effect.gen(function* () {
           const filepath = path.join(dir, "doc.txt")
-          // Pad with additional Shift_JIS text so jschardet has enough bytes
+          // Pad with additional Shift_JIS text so chardet has enough bytes
           // to confidently identify the encoding.
           const pad = samples.shiftJis + "\n"
           const original = pad + "日本語\n日本語\n日本語\n" + pad

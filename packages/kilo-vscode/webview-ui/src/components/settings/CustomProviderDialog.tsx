@@ -524,7 +524,13 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
               error={errors.name}
             />
             <div style={{ display: "flex", "flex-direction": "column", gap: "4px" }}>
-              <label style={{ "font-size": "12px", "font-weight": "500", color: "var(--text-weak-base)" }}>
+              <label
+                style={{
+                  "font-size": "var(--kilo-font-size-12)",
+                  "font-weight": "500",
+                  color: "var(--text-weak-base)",
+                }}
+              >
                 {language.t("provider.custom.interface.label")}
               </label>
               <Select

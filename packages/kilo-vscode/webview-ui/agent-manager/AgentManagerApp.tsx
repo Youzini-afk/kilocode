@@ -75,6 +75,7 @@ import { VSCodeProvider, useVSCode } from "../src/context/vscode"
 import { ServerProvider } from "../src/context/server"
 import { ProviderProvider } from "../src/context/provider"
 import { ConfigProvider } from "../src/context/config"
+import { PluginsProvider } from "../src/context/plugins"
 import { DisplayProvider } from "../src/context/display"
 import { NotificationsProvider } from "../src/context/notifications"
 import { SessionProvider, useSession } from "../src/context/session"
@@ -3157,20 +3158,19 @@ const AgentManagerContent: Component = () => {
     </div>
   )
 }
-
-export const AgentManagerApp: Component = () => {
-  return (
-    <ThemeProvider defaultTheme="kilo-vscode">
-      <DialogProvider>
-        <VSCodeProvider>
-          <ServerProvider>
-            <LanguageBridge>
-              <MarkedProvider>
-                <DiffComponentProvider component={Diff}>
-                  <CodeComponentProvider component={Code}>
-                    <FileComponentProvider component={File}>
-                      <ProviderProvider>
-                        <ConfigProvider>
+export const AgentManagerApp: Component = () => (
+  <ThemeProvider defaultTheme="kilo-vscode">
+    <DialogProvider>
+      <VSCodeProvider>
+        <ServerProvider>
+          <LanguageBridge>
+            <MarkedProvider>
+              <DiffComponentProvider component={Diff}>
+                <CodeComponentProvider component={Code}>
+                  <FileComponentProvider component={File}>
+                    <ProviderProvider>
+                      <ConfigProvider>
+                        <PluginsProvider>
                           <DisplayProvider>
                             <NotificationsProvider>
                               <SessionProvider>
@@ -3184,17 +3184,17 @@ export const AgentManagerApp: Component = () => {
                               </SessionProvider>
                             </NotificationsProvider>
                           </DisplayProvider>
-                        </ConfigProvider>
-                      </ProviderProvider>
-                    </FileComponentProvider>
-                  </CodeComponentProvider>
-                </DiffComponentProvider>
-              </MarkedProvider>
-            </LanguageBridge>
-          </ServerProvider>
-        </VSCodeProvider>
-        <Toast.Region />
-      </DialogProvider>
-    </ThemeProvider>
-  )
-}
+                        </PluginsProvider>
+                      </ConfigProvider>
+                    </ProviderProvider>
+                  </FileComponentProvider>
+                </CodeComponentProvider>
+              </DiffComponentProvider>
+            </MarkedProvider>
+          </LanguageBridge>
+        </ServerProvider>
+      </VSCodeProvider>
+      <Toast.Region />
+    </DialogProvider>
+  </ThemeProvider>
+)

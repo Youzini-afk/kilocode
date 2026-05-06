@@ -478,7 +478,9 @@ export const ContextEngineTab: Component = () => {
       >
         <div style={{ "min-width": 0 }}>
           <div style={{ "font-weight": 600 }}>{props.title}</div>
-          <div style={{ margin: "4px 0 0", color: "var(--text-muted)", "font-size": "12px" }}>{props.description}</div>
+          <div style={{ margin: "4px 0 0", color: "var(--text-muted)", "font-size": "var(--kilo-font-size-12)" }}>
+            {props.description}
+          </div>
         </div>
         <Show when={props.action}>
           <div style={{ display: "flex", "align-items": "center", "flex-shrink": 0 }}>{props.action}</div>

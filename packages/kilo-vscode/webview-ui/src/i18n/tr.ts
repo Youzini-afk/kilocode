@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const local = {
   "command.category.suggested": "Önerilen",
   "command.category.view": "Görünüm",
   "command.category.project": "Proje",
@@ -1557,4 +1561,6 @@ export const dict = {
   "settings.agentBehaviour.permissions.hint":
     "Kurallar sırayla değerlendirilir — son eşleşen kural kazanır. Bu, CLI arka ucundan çözümlenen kural kümesidir.",
   "settings.agentBehaviour.editMode.save": "Tamam",
-}
+} satisfies Record<string, string>
+
+export const dict = { ...en, ...local } satisfies Record<Keys, string>

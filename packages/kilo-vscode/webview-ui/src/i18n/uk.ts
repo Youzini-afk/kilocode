@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const local = {
   "command.category.suggested": "Запропоновані",
   "command.category.view": "Вигляд",
   "command.category.project": "Проєкт",
@@ -1558,4 +1562,6 @@ export const dict = {
   "settings.agentBehaviour.permissions.hint":
     "Правила оцінюються по порядку — останнє відповідне правило має пріоритет. Це розрахований набір правил з CLI бекенду.",
   "settings.agentBehaviour.editMode.save": "Готово",
-}
+} satisfies Record<string, string>
+
+export const dict = { ...en, ...local } satisfies Record<Keys, string>
