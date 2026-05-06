@@ -1350,7 +1350,7 @@ const local = {
   "settings.agentTeam.role.oracle.title": "Oracle",
   "settings.agentTeam.role.oracle.description": "回答聚焦的技术问题，并验证架构取舍。",
   "settings.agentTeam.role.designer.title": "Designer",
-  "settings.agentTeam.role.designer.description": "把模糊需求拆成明确的实施计划和接口。",
+  "settings.agentTeam.role.designer.description": "UI/UX 与前端工程专家，改进界面、响应式体验、可访问性和交互细节。",
   "settings.agentTeam.role.fixer.title": "Fixer",
   "settings.agentTeam.role.fixer.description": "执行边界清晰的代码修改并修复缺陷。",
   "settings.agentTeam.role.observer.title": "Observer",

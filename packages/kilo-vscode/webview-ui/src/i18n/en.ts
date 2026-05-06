@@ -1394,7 +1394,7 @@ export const dict = {
     "Answers focused technical questions and validates architecture tradeoffs.",
   "settings.agentTeam.role.designer.title": "Designer",
   "settings.agentTeam.role.designer.description":
-    "Turns ambiguous requests into concrete implementation plans and interfaces.",
+    "Improves UI/UX and front-end implementation with responsive, accessible interaction polish.",
   "settings.agentTeam.role.fixer.title": "Fixer",
   "settings.agentTeam.role.fixer.description": "Implements bounded code changes and fixes defects.",
   "settings.agentTeam.role.observer.title": "Observer",
