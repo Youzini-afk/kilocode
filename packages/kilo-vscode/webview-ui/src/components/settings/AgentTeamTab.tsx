@@ -23,6 +23,150 @@ interface Choice {
 const roles: Role[] = ["orchestrator", "explorer", "librarian", "oracle", "designer", "fixer", "observer", "council"]
 const efforts = ["low", "medium", "high", "xhigh"]
 
+// ---------------------------------------------------------------------------
+// Per-role row — isolated component so each role's memos are independent.
+// This prevents a model change in one role from invalidating other roles'
+// variant lists (which would reset Kobalte's selectedOption and blank the trigger).
+// ---------------------------------------------------------------------------
+interface RoleRowProps {
+  id: Role
+  title: string
+  description: string
+  open: boolean
+  onToggleOpen: () => void
+  cfg: () => RoleConfig
+  enabled: () => boolean
+  onToggleEnabled: (v: boolean) => void
+  onPatchRole: (next: Partial<RoleConfig>) => void
+}
+
+const RoleRow: Component<RoleRowProps> = (props) => {
+  const language = useLanguage()
+  const { findModel } = useProvider()
+
+  const modelSelection = createMemo(() => parseModelString(props.cfg().model ?? undefined))
+
+  const variantList = createMemo<Choice[]>(() => {
+    const found = findModel(modelSelection())
+    return [
+      { value: "", label: language.t("settings.agentTeam.variant.default") },
+      ...efforts.map((e) => ({ value: e, label: language.t(`settings.agentTeam.variant.${e}`) })),
+      ...Object.keys(found?.variants ?? {})
+        .filter((k) => !efforts.includes(k))
+        .map((k) => ({ value: k, label: k })),
+    ]
+  })
+
+  const currentVariant = createMemo(
+    () => variantList().find((item) => item.value === (props.cfg().variant ?? "")) ?? variantList()[0],
+  )
+
+  return (
+    <div
+      class="agent-team-role-row"
+      style={{
+        background: props.enabled()
+          ? "var(--vscode-editor-background)"
+          : "var(--surface-muted, rgba(127,127,127,0.06))",
+      }}
+    >
+      <div class="agent-team-role-summary">
+        <div style={{ "font-weight": 600 }}>{props.title}</div>
+        <div style={{ color: "var(--text-muted)", "font-size": "12px", "margin-top": "3px" }}>{props.description}</div>
+        <Button variant="ghost" size="small" onClick={props.onToggleOpen} style={{ padding: "0", "margin-top": "6px" }}>
+          {props.open
+            ? language.t("settings.agentTeam.role.advanced.hide")
+            : language.t("settings.agentTeam.role.advanced.show")}
+        </Button>
+      </div>
+      <div class="agent-team-role-controls">
+        <div class="agent-team-role-control agent-team-role-control-model">
+          <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.model")}</span>
+          <ModelSelectorBase
+            value={modelSelection()}
+            onSelect={(providerID, modelID) =>
+              props.onPatchRole({ model: providerID && modelID ? `${providerID}/${modelID}` : null })
+            }
+            placement="bottom-start"
+            allowClear
+            clearLabel={language.t("settings.agentTeam.model.default")}
+          />
+        </div>
+        <div class="agent-team-role-control agent-team-role-control-variant">
+          <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.variant")}</span>
+          <Select
+            options={variantList()}
+            current={currentVariant()}
+            value={(c: Choice) => c.value}
+            label={(c: Choice) => c.label}
+            onSelect={(c: Choice | undefined) => props.onPatchRole({ variant: c?.value || null })}
+            variant="secondary"
+            size="small"
+            triggerVariant="settings"
+          />
+        </div>
+        <div class="agent-team-role-control agent-team-role-control-temperature">
+          <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.temperature")}</span>
+          <TextField
+            type="number"
+            value={
+              props.cfg().temperature === undefined || props.cfg().temperature === null
+                ? ""
+                : String(props.cfg().temperature)
+            }
+            placeholder={language.t("settings.agentTeam.temperature.default")}
+            onChange={(value) => {
+              const n = Number.parseFloat(value)
+              props.onPatchRole({
+                temperature: value.trim() && Number.isFinite(n) ? Math.max(0, Math.min(2, n)) : null,
+              })
+            }}
+          />
+        </div>
+        <div class="agent-team-role-control agent-team-role-control-enabled">
+          <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.enabled")}</span>
+          <Switch checked={props.enabled()} onChange={props.onToggleEnabled} hideLabel>
+            {props.title}
+          </Switch>
+        </div>
+      </div>
+      <Show when={props.open}>
+        <div class="agent-team-role-policy">
+          <TextField
+            value={props.cfg().displayName ?? ""}
+            placeholder={language.t("settings.agentTeam.displayName.placeholder")}
+            onChange={(value) => props.onPatchRole({ displayName: value.trim() || null })}
+          />
+          <TextField
+            value={(props.cfg().skills ?? []).join(", ")}
+            placeholder={language.t("settings.agentTeam.skills.placeholder")}
+            onChange={(value) =>
+              props.onPatchRole({
+                skills: value
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+          <TextField
+            value={(props.cfg().mcps ?? []).join(", ")}
+            placeholder={language.t("settings.agentTeam.mcps.placeholder")}
+            onChange={(value) =>
+              props.onPatchRole({
+                mcps: value
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+        </div>
+      </Show>
+    </div>
+  )
+}
+
 function int(value: string, fallback: number) {
   const next = Number.parseInt(value, 10)
   if (!Number.isFinite(next) || next < 0) return fallback
@@ -35,27 +179,9 @@ function positive(value: string, fallback: number) {
   return next
 }
 
-function temp(value: string) {
-  const next = Number.parseFloat(value)
-  if (!Number.isFinite(next)) return null
-  return Math.max(0, Math.min(2, next))
-}
-
-function csv(value: string) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-function unique(items: string[]) {
-  return Array.from(new Set(items))
-}
-
 const AgentTeamTab: Component = () => {
   const language = useLanguage()
   const { config, updateConfig } = useConfig()
-  const { findModel } = useProvider()
   const [open, setOpen] = createSignal<Record<string, boolean>>({})
 
   const team = () => config().agentTeam ?? {}
@@ -63,18 +189,13 @@ const AgentTeamTab: Component = () => {
     if (id === "orchestrator") return team().roles?.orchestrator ?? team().roles?.team ?? {}
     return team().roles?.[id] ?? {}
   }
-  const on = (value: boolean | undefined, fallback = true) => value ?? fallback
 
   function patch(next: Partial<AgentTeamConfig>) {
     updateConfig({ agentTeam: next })
   }
 
   function patchRole(id: AgentTeamRole, next: Partial<RoleConfig>) {
-    patch({
-      roles: {
-        [id]: next,
-      },
-    })
+    patch({ roles: { [id]: next } })
   }
 
   function patchReuse(next: NonNullable<AgentTeamConfig["sessionReuse"]>) {
@@ -89,9 +210,9 @@ const AgentTeamTab: Component = () => {
     patch({ autoContinue: next })
   }
 
-  function enabled(id: Role) {
+  function roleEnabled(id: Role) {
     if (id === "council") return team().council?.enabled === true && cfg(id).enabled !== false
-    return on(cfg(id).enabled)
+    return cfg(id).enabled ?? true
   }
 
   function toggle(id: Role, value: boolean) {
@@ -100,33 +221,6 @@ const AgentTeamTab: Component = () => {
       return
     }
     patch({ council: { enabled: value }, roles: { [id]: { enabled: value } } })
-  }
-
-  const model = (id: AgentTeamRole) => parseModelString(cfg(id).model ?? undefined)
-  const select = (id: AgentTeamRole) => (providerID: string, modelID: string) => {
-    patchRole(id, { model: providerID && modelID ? `${providerID}/${modelID}` : null })
-  }
-
-  // Per-role memos so Kobalte sees stable object references for `current` and `options`.
-  const roleVariants = createMemo(() =>
-    Object.fromEntries(
-      roles.map((id) => {
-        const found = findModel(model(id))
-        const list = unique(["", ...efforts, ...Object.keys(found?.variants ?? {})]).map((item) => ({
-          value: item,
-          label: item
-            ? efforts.includes(item)
-              ? language.t(`settings.agentTeam.variant.${item}`)
-              : item
-            : language.t("settings.agentTeam.variant.default"),
-        }))
-        return [id, list] as const
-      }),
-    ),
-  )
-
-  function variants(id: AgentTeamRole) {
-    return roleVariants()[id] ?? []
   }
 
   function section(key: string) {
@@ -179,11 +273,6 @@ const AgentTeamTab: Component = () => {
     })),
   )
 
-  function variant(id: Role) {
-    const list = variants(id)
-    return list.find((item) => item.value === (cfg(id).variant ?? "")) ?? list[0]
-  }
-
   const tuned = () => team().autoContinue?.enabled === true || team().autoContinue?.autoEnable === true
 
   return (
@@ -222,96 +311,17 @@ const AgentTeamTab: Component = () => {
         <div class="agent-team-role-list">
           <For each={rows()}>
             {(item) => (
-              <div
-                class="agent-team-role-row"
-                style={{
-                  background: enabled(item.id)
-                    ? "var(--vscode-editor-background)"
-                    : "var(--surface-muted, rgba(127,127,127,0.06))",
-                }}
-              >
-                <div class="agent-team-role-summary">
-                  <div style={{ "font-weight": 600 }}>{item.title}</div>
-                  <div style={{ color: "var(--text-muted)", "font-size": "12px", "margin-top": "3px" }}>
-                    {item.description}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    onClick={() => setOpen((prev) => ({ ...prev, [`role:${item.id}`]: !prev[`role:${item.id}`] }))}
-                    style={{ padding: "0", "margin-top": "6px" }}
-                  >
-                    {open()[`role:${item.id}`]
-                      ? language.t("settings.agentTeam.role.advanced.hide")
-                      : language.t("settings.agentTeam.role.advanced.show")}
-                  </Button>
-                </div>
-                <div class="agent-team-role-controls">
-                  <div class="agent-team-role-control agent-team-role-control-model">
-                    <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.model")}</span>
-                    <ModelSelectorBase
-                      value={model(item.id)}
-                      onSelect={select(item.id)}
-                      placement="bottom-start"
-                      allowClear
-                      clearLabel={language.t("settings.agentTeam.model.default")}
-                    />
-                  </div>
-                  <div class="agent-team-role-control agent-team-role-control-variant">
-                    <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.variant")}</span>
-                    <Select
-                      options={variants(item.id)}
-                      current={variant(item.id)}
-                      value={(choice: Choice) => choice.value}
-                      label={(choice: Choice) => choice.label}
-                      onSelect={(choice: Choice | undefined) => patchRole(item.id, { variant: choice?.value || null })}
-                      variant="secondary"
-                      size="small"
-                      triggerVariant="settings"
-                    />
-                  </div>
-                  <div class="agent-team-role-control agent-team-role-control-temperature">
-                    <span class="agent-team-role-control-label">
-                      {language.t("settings.agentTeam.column.temperature")}
-                    </span>
-                    <TextField
-                      type="number"
-                      value={
-                        cfg(item.id).temperature === undefined || cfg(item.id).temperature === null
-                          ? ""
-                          : String(cfg(item.id).temperature)
-                      }
-                      placeholder={language.t("settings.agentTeam.temperature.default")}
-                      onChange={(value) => patchRole(item.id, { temperature: value.trim() ? temp(value) : null })}
-                    />
-                  </div>
-                  <div class="agent-team-role-control agent-team-role-control-enabled">
-                    <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.enabled")}</span>
-                    <Switch checked={enabled(item.id)} onChange={(value) => toggle(item.id, value)} hideLabel>
-                      {item.title}
-                    </Switch>
-                  </div>
-                </div>
-                <Show when={open()[`role:${item.id}`]}>
-                  <div class="agent-team-role-policy">
-                    <TextField
-                      value={cfg(item.id).displayName ?? ""}
-                      placeholder={language.t("settings.agentTeam.displayName.placeholder")}
-                      onChange={(value) => patchRole(item.id, { displayName: value.trim() || null })}
-                    />
-                    <TextField
-                      value={(cfg(item.id).skills ?? []).join(", ")}
-                      placeholder={language.t("settings.agentTeam.skills.placeholder")}
-                      onChange={(value) => patchRole(item.id, { skills: csv(value) })}
-                    />
-                    <TextField
-                      value={(cfg(item.id).mcps ?? []).join(", ")}
-                      placeholder={language.t("settings.agentTeam.mcps.placeholder")}
-                      onChange={(value) => patchRole(item.id, { mcps: csv(value) })}
-                    />
-                  </div>
-                </Show>
-              </div>
+              <RoleRow
+                id={item.id}
+                title={item.title}
+                description={item.description}
+                open={!!open()[`role:${item.id}`]}
+                onToggleOpen={() => setOpen((prev) => ({ ...prev, [`role:${item.id}`]: !prev[`role:${item.id}`] }))}
+                cfg={() => cfg(item.id)}
+                enabled={() => roleEnabled(item.id)}
+                onToggleEnabled={(v) => toggle(item.id, v)}
+                onPatchRole={(next) => patchRole(item.id, next)}
+              />
             )}
           </For>
         </div>
