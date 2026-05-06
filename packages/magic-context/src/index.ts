@@ -168,10 +168,13 @@ const server: Plugin = async (ctx) => {
         pluginConfig,
     });
 
-    // Start independent dream schedule timer at plugin level (not inside hooks)
-    // so overnight dreaming works even when the user isn't chatting.
-    if (pluginConfig.enabled) {
-        startDreamScheduleTimer({
+    const timer = { cleanup: undefined as (() => void) | undefined };
+
+    function syncDreamTimer() {
+        timer.cleanup?.();
+        timer.cleanup = undefined;
+        if (!pluginConfig.enabled) return;
+        timer.cleanup = startDreamScheduleTimer({
             directory: ctx.directory,
             client: ctx.client,
             dreamerConfig: pluginConfig.dreamer,
@@ -198,6 +201,34 @@ const server: Plugin = async (ctx) => {
                   }
                 : undefined,
         });
+    }
+
+    function replaceTools(next: typeof tools) {
+        for (const key of Object.keys(tools)) {
+            delete tools[key];
+        }
+        Object.assign(tools, next);
+    }
+
+    function reloadConfig(next: typeof pluginConfig) {
+        for (const key of Object.keys(pluginConfig)) {
+            delete (pluginConfig as unknown as Record<string, unknown>)[key];
+        }
+        Object.assign(pluginConfig, next);
+        setModelContextLimitOverrides(pluginConfig.model_context_limits);
+        hooks.magicContext = createSessionHooks({
+            ctx,
+            pluginConfig,
+            liveSessionState,
+        }).magicContext;
+        replaceTools(createToolRegistry({ ctx, pluginConfig }));
+        syncDreamTimer();
+    }
+
+    // Start independent dream schedule timer at plugin level (not inside hooks)
+    // so overnight dreaming works even when the user isn't chatting.
+    if (pluginConfig.enabled) {
+        syncDreamTimer();
 
         // Start RPC server for TUI↔server communication (replaces SQLite plugin_messages bus)
         const storageDir = getMagicContextStorageDir();
@@ -402,11 +433,13 @@ const server: Plugin = async (ctx) => {
                                   config?: Record<string, unknown>;
                               })
                             : {};
-                    return savePluginSettingsConfig({
+                    const saved = savePluginSettingsConfig({
                         directory: ctx.directory,
                         expectedMtimeMs: params.expectedMtimeMs,
                         config: params.config ?? {},
                     });
+                    reloadConfig(saved.effective);
+                    return saved;
                 }
                 throw new Error(`Unknown Magic Context settings RPC method: ${input.method}`);
             },

@@ -88,33 +88,123 @@ export interface IndexingConfig {
 export type IndexingStatus = SdkIndexingStatus
 
 export type ContextEngineMode = "recommended" | "light" | "advanced"
+export type ContextEngineEmbeddingProvider = "local" | "openai-compatible" | "off"
+export type ContextEngineThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+export type ContextEngineDreamTask = "consolidate" | "verify" | "archive-stale" | "improve" | "maintain-docs"
 
 export interface ContextEngineAgentConfig {
   enabled?: boolean
   model?: string
   fallbackModels?: string[]
+  fallback_models?: string[] | string
   variant?: string
   thinkingLevel?: string
+  thinking_level?: ContextEngineThinkingLevel
+  twoPass?: boolean
+  two_pass?: boolean
+  disable?: boolean
+  timeout_ms?: number
+  system_prompt?: string
+}
+
+export interface ContextEngineDreamerConfig extends ContextEngineAgentConfig {
+  enabled?: boolean
+  schedule?: string
+  max_runtime_minutes?: number
+  tasks?: ContextEngineDreamTask[]
+  task_timeout_minutes?: number
+  inject_docs?: boolean
+  user_memories?: {
+    enabled?: boolean
+    promotion_threshold?: number
+  }
+  pin_key_files?: {
+    enabled?: boolean
+    token_budget?: number
+    min_reads?: number
+  }
+}
+
+export interface ContextEngineSidekickConfig extends ContextEngineAgentConfig {
+  enabled?: boolean
+  timeout_ms?: number
+}
+
+export interface ContextEngineEmbeddingConfig {
+  provider?: ContextEngineEmbeddingProvider
+  model?: string
+  endpoint?: string
+  api_key?: string
+  apiKey?: string
+}
+
+export interface ContextEngineMemoryConfig {
+  enabled?: boolean
+  injection_budget_tokens?: number
+  injectionBudgetTokens?: number
+  auto_promote?: boolean
+  autoPromote?: boolean
+  retrieval_count_promotion_threshold?: number
+  retrievalCountPromotionThreshold?: number
+  embedding?: ContextEngineEmbeddingConfig
 }
 
 export interface ContextEngineConfig {
+  $schema?: string
   enabled?: boolean
+  auto_update?: boolean
+  ctx_reduce_enabled?: boolean
   mode?: ContextEngineMode
-  historian?: ContextEngineAgentConfig & { twoPass?: boolean }
-  dreamer?: ContextEngineAgentConfig
-  sidekick?: ContextEngineAgentConfig
-  memory?: {
+  historian?: ContextEngineAgentConfig
+  dreamer?: ContextEngineDreamerConfig
+  sidekick?: ContextEngineSidekickConfig
+  cache_ttl?: string | { default: string; [model: string]: string }
+  nudge_interval_tokens?: number
+  execute_threshold_percentage?: number | { default: number; [model: string]: number }
+  execute_threshold_tokens?: { default?: number; [model: string]: number | undefined }
+  model_context_limits?: { default?: number; [model: string]: number | undefined }
+  protected_tags?: number
+  auto_drop_tool_age?: number
+  drop_tool_structure?: boolean
+  clear_reasoning_age?: number
+  iteration_nudge_threshold?: number
+  history_budget_percentage?: number
+  historian_timeout_ms?: number
+  commit_cluster_trigger?: {
     enabled?: boolean
-    injectionBudgetTokens?: number
-    autoPromote?: boolean
-    retrievalCountPromotionThreshold?: number
-    embedding?: {
-      provider?: "local" | "openai-compatible" | "off"
-      model?: string
-      endpoint?: string
-      apiKey?: string
+    min_clusters?: number
+  }
+  compaction_markers?: boolean
+  compressor?: {
+    enabled?: boolean
+    min_compartment_ratio?: number
+    max_merge_depth?: number
+    cooldown_ms?: number
+    max_compartments_per_pass?: number
+    grace_compartments?: number
+  }
+  experimental?: {
+    temporal_awareness?: boolean
+    git_commit_indexing?: {
+      enabled?: boolean
+      since_days?: number
+      max_commits?: number
+    }
+    auto_search?: {
+      enabled?: boolean
+      score_threshold?: number
+      min_prompt_chars?: number
+    }
+    caveman_text_compression?: {
+      enabled?: boolean
+      min_chars?: number
     }
   }
+  embedding?: ContextEngineEmbeddingConfig
+  memory?: ContextEngineMemoryConfig
+  disabled_hooks?: string[]
+  command?: Record<string, unknown>
+  configWarnings?: string[]
 }
 
 export interface ContextEngineModelOption {
@@ -122,6 +212,33 @@ export interface ContextEngineModelOption {
   label: string
   provider: string
   model: string
+}
+
+export interface ContextEngineSettingsPayload {
+  target?: {
+    scope?: string
+    path?: string
+    exists?: boolean
+    format?: string
+    mtimeMs?: number | null
+  }
+  project?: {
+    path?: string | null
+    exists?: boolean
+    overriddenKeys?: string[]
+  }
+  schemaUrl?: string
+  raw?: ContextEngineConfig
+  projectRaw?: ContextEngineConfig
+  effective?: ContextEngineConfig
+}
+
+export interface ContextEngineDoctorResult {
+  ok?: boolean
+  enabled?: boolean
+  storageDir?: string
+  warnings?: string[]
+  checks?: Array<{ name: string; status: string }>
 }
 
 export interface BrowserSettings {
