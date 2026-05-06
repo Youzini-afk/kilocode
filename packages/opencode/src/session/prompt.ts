@@ -6,6 +6,7 @@ import { KiloSessionPromptQueue } from "@/kilocode/session/prompt-queue" // kilo
 import { KiloSession } from "@/kilocode/session" // kilocode_change
 import { KiloCostPropagation } from "@/kilocode/session/cost-propagation" // kilocode_change
 import { KiloSessionProcessor } from "@/kilocode/session/processor" // kilocode_change
+import { AgentTeamSessionReuse } from "@/kilocode/agent-team/session-reuse" // kilocode_change
 import { Suggestion } from "@/kilocode/suggestion" // kilocode_change
 import { Question } from "@/question" // kilocode_change
 import z from "zod"
@@ -1571,6 +1572,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             // kilocode_change start — ephemeral context injection + post-summary
             // media strip (keeps outgoing body under the gateway body-size limit
             // even when filterCompacted couldn't trim the pre-summary history).
+            AgentTeamSessionReuse.inject({ cfg: yield* config.get(), messages: msgs })
             KiloSessionPrompt.injectEditorContext({ msgs, lastUser, sessionID, cache: envCache })
             msgs = KiloSessionPrompt.maybeStripHistoricalMedia(msgs)
             // kilocode_change end

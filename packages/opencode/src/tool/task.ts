@@ -8,6 +8,7 @@ import type { SessionPrompt } from "../session/prompt"
 import { Config } from "@/config/config"
 import { KiloTask } from "../kilocode/tool/task" // kilocode_change
 import { KiloCostPropagation } from "../kilocode/session/cost-propagation" // kilocode_change
+import { AgentTeamSessionReuse } from "@/kilocode/agent-team/session-reuse" // kilocode_change
 import { Effect, Schema } from "effect"
 
 export interface TaskPromptOps {
@@ -72,9 +73,29 @@ export const TaskTool = Tool.define(
       const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp })
       // kilocode_change end
 
-      const taskID = params.task_id
+      const reuse = AgentTeamSessionReuse.resolve({
+        cfg,
+        caller: ctx.agent,
+        parent: ctx.sessionID,
+        agent: params.subagent_type,
+        taskID: params.task_id,
+      }) // kilocode_change
+      const taskID = reuse.taskID
       const session = taskID
-        ? yield* sessions.get(SessionID.make(taskID)).pipe(Effect.catchCause(() => Effect.succeed(undefined)))
+        ? yield* sessions.get(SessionID.make(taskID)).pipe(
+            Effect.catchCause(() =>
+              Effect.sync(() => {
+                if (reuse.entry) {
+                  AgentTeamSessionReuse.drop({
+                    parent: ctx.sessionID,
+                    agent: params.subagent_type,
+                    taskID: reuse.entry.taskID,
+                  })
+                }
+                return undefined
+              }),
+            ),
+          )
         : undefined
       const nextSession =
         session ??
@@ -169,6 +190,16 @@ export const TaskTool = Tool.define(
               parts,
             })
 
+            const entry = AgentTeamSessionReuse.remember({
+              cfg,
+              caller: ctx.agent,
+              parent: ctx.sessionID,
+              agent: params.subagent_type,
+              taskID: nextSession.id,
+              description: params.description,
+              prompt: params.prompt,
+            }) // kilocode_change
+
             return {
               title: params.description,
               metadata: {
@@ -178,11 +209,14 @@ export const TaskTool = Tool.define(
               },
               output: [
                 `task_id: ${nextSession.id} (for resuming to continue this task if needed)`,
+                entry ? `task_alias: ${entry.alias} (short alias for the same task_id)` : undefined,
                 "",
                 "<task_result>",
                 result.parts.findLast((item) => item.type === "text")?.text ?? "",
                 "</task_result>",
-              ].join("\n"),
+              ]
+                .filter((item) => item !== undefined)
+                .join("\n"),
             }
           }),
         // kilocode_change start - propagate subagent cost delta to parent on every exit path (#6321)
