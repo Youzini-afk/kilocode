@@ -160,8 +160,9 @@ export const ConfigRoutes = lazy(() =>
         jsonRequest("ConfigRoutes.contextEngine.save", c, function* () {
           const input = c.req.valid("json")
           const cfg = yield* Config.Service
-          const config = ContextEngineConfig.normalize(input.config)
-          yield* cfg.update({ contextEngine: config }, { dispose: false })
+          const patch = ContextEngineConfig.savePatch(input.config)
+          const config = patch.contextEngine
+          yield* cfg.update(patch, { dispose: false })
           yield* cfg.invalidate(true)
           return { config }
         }),

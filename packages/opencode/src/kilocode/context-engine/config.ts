@@ -144,4 +144,12 @@ export namespace ContextEngineConfig {
       },
     }
   }
+
+  export function savePatch(value: unknown) {
+    const config = normalize(value)
+    return {
+      contextEngine: config,
+      ...(config.enabled ? { compaction: { auto: false } } : {}),
+    }
+  }
 }

@@ -1052,7 +1052,7 @@ export const dict = {
   "settings.notifications.title": "通知",
   "settings.context.title": "上下文",
   "settings.contextEngine.title": "Context Engine",
-  "settings.contextEngine.description": "Kilo 内置的上下文规划、记忆与助手能力。",
+  "settings.contextEngine.description": "Kilo 内置的上下文规划、记忆与助手能力，用于长任务和长期项目上下文。",
   "settings.contextEngine.refresh": "刷新",
   "settings.contextEngine.diagnose": "诊断",
   "settings.contextEngine.reset": "重置",
@@ -1063,7 +1063,8 @@ export const dict = {
   "settings.contextEngine.diagnose.title": "Context Engine 诊断",
   "settings.contextEngine.diagnose.description": "状态：{{status}} · 可用 API 模型：{{models}}",
   "settings.contextEngine.enabled.title": "启用 Context Engine",
-  "settings.contextEngine.enabled.description": "为当前工作区启用 Kilo 原生 Context Engine。",
+  "settings.contextEngine.enabled.description":
+    "为当前工作区启用 Kilo 内置 Context Engine。保存后会由它接管长上下文处理，并关闭原生阈值自动总结。",
   "settings.contextEngine.mode.title": "默认配置",
   "settings.contextEngine.mode.description": "选择默认启用多少 Context Engine 自动化能力。",
   "settings.contextEngine.mode.recommended": "推荐",
@@ -1073,11 +1074,14 @@ export const dict = {
   "settings.contextEngine.noModels.description": "请先配置 API 提供商，然后在这里选择模型。",
   "settings.contextEngine.api.title": "API",
   "settings.contextEngine.historian.title": "Historian",
-  "settings.contextEngine.historian.description": "总结长会话，并保留重要决策。",
+  "settings.contextEngine.historian.description":
+    "为长会话建立可延续的历史记录：保留关键决策、约束、已完成工作和重要项目上下文，避免压缩后丢失。",
   "settings.contextEngine.dreamer.title": "Dreamer",
-  "settings.contextEngine.dreamer.description": "提前规划并建议下一步实现。",
+  "settings.contextEngine.dreamer.description":
+    "基于当前项目上下文提前规划：拆出下一步行动、提示潜在风险，并把模糊意图整理成可执行待办。",
   "settings.contextEngine.sidekick.title": "Sidekick",
-  "settings.contextEngine.sidekick.description": "在工作中保持轻量辅助上下文。",
+  "settings.contextEngine.sidekick.description":
+    "在当前会话中提供轻量辅助：检索相关上下文、补齐信息缺口，减少反复解释同一背景。",
   "settings.contextEngine.model.title": "模型",
   "settings.contextEngine.model.description": "从已配置的 Kilo API 提供商中选择模型。",
   "settings.contextEngine.model.default": "使用 Kilo 默认模型",

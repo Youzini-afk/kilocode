@@ -13,4 +13,16 @@ describe("context engine save", () => {
     expect(saved.memory.enabled).toBe(true)
     expect(saved.memory.embedding.provider).toBe("local")
   })
+
+  test("disables native automatic compaction when engine is enabled", () => {
+    const patch = ContextEngineConfig.savePatch({ enabled: true })
+    expect(patch.contextEngine.enabled).toBe(true)
+    expect(patch.compaction).toEqual({ auto: false })
+  })
+
+  test("does not change native automatic compaction when engine is disabled", () => {
+    const patch = ContextEngineConfig.savePatch({ enabled: false })
+    expect(patch.contextEngine.enabled).toBe(false)
+    expect("compaction" in patch).toBe(false)
+  })
 })

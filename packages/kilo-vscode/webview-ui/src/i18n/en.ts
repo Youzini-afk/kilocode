@@ -1012,7 +1012,8 @@ export const dict = {
   "settings.notifications.title": "Notifications",
   "settings.context.title": "Context",
   "settings.contextEngine.title": "Context Engine",
-  "settings.contextEngine.description": "Native context planning, memory, and assistant helpers built into Kilo.",
+  "settings.contextEngine.description":
+    "Kilo built-in context planning, memory, and assistant helpers for long-running work.",
   "settings.contextEngine.refresh": "Refresh",
   "settings.contextEngine.diagnose": "Diagnose",
   "settings.contextEngine.reset": "Reset",
@@ -1023,7 +1024,8 @@ export const dict = {
   "settings.contextEngine.diagnose.title": "Context Engine diagnostics",
   "settings.contextEngine.diagnose.description": "Status: {{status}} · Available API models: {{models}}",
   "settings.contextEngine.enabled.title": "Enable Context Engine",
-  "settings.contextEngine.enabled.description": "Turn on Kilo's native Context Engine for this workspace.",
+  "settings.contextEngine.enabled.description":
+    "Turn on Kilo's built-in Context Engine for this workspace. Saving this disables native threshold auto-summary so Context Engine owns long-context handling.",
   "settings.contextEngine.mode.title": "Default profile",
   "settings.contextEngine.mode.description": "Choose how much Context Engine automation is enabled by default.",
   "settings.contextEngine.mode.recommended": "Recommended",
@@ -1033,11 +1035,14 @@ export const dict = {
   "settings.contextEngine.noModels.description": "Configure an API provider first, then select its models here.",
   "settings.contextEngine.api.title": "API",
   "settings.contextEngine.historian.title": "Historian",
-  "settings.contextEngine.historian.description": "Summarizes long sessions and keeps important decisions available.",
+  "settings.contextEngine.historian.description":
+    "Maintains a durable record of long sessions: decisions, constraints, completed work, and important project context that should survive compaction.",
   "settings.contextEngine.dreamer.title": "Dreamer",
-  "settings.contextEngine.dreamer.description": "Plans ahead and suggests likely next implementation steps.",
+  "settings.contextEngine.dreamer.description":
+    "Looks across the current project context to propose next steps, surface risks, and turn loose intent into actionable follow-up work.",
   "settings.contextEngine.sidekick.title": "Sidekick",
-  "settings.contextEngine.sidekick.description": "Keeps lightweight helper context ready during active work.",
+  "settings.contextEngine.sidekick.description":
+    "Provides lightweight in-session assistance: retrieves relevant context, fills gaps, and reduces repeated explanations while you work.",
   "settings.contextEngine.model.title": "Model",
   "settings.contextEngine.model.description": "Select a model from configured Kilo API providers.",
   "settings.contextEngine.model.default": "Use Kilo default",
