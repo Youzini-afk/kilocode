@@ -1341,6 +1341,11 @@ const local = {
   "settings.agentTeam.council.timeout.description": "等待 Council 成員的最長毫秒數。",
   "settings.agentTeam.autoContinue.title": "自動繼續",
   "settings.agentTeam.autoContinue.description": "允許團隊協調器在安全時自動繼續有邊界的工作。",
+  "settings.agentTeam.autoContinue.autoEnable.title": "依 TODO 自動啟用",
+  "settings.agentTeam.autoContinue.autoEnable.description":
+    "在自動繼續關閉時，僅當對話有足夠未完成 TODO 時自動啟用繼續。",
+  "settings.agentTeam.autoContinue.threshold.title": "TODO 閾值",
+  "settings.agentTeam.autoContinue.threshold.description": "觸發自動啟用所需的最少未完成 TODO 數量。",
   "settings.agentTeam.autoContinue.max.title": "最大繼續次數",
   "settings.agentTeam.autoContinue.max.description": "每個對話最多自動繼續的次數。",
   "settings.agentTeam.autoContinue.cooldown.title": "繼續間隔",

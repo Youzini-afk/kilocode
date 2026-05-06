@@ -1419,6 +1419,12 @@ export const dict = {
   "settings.agentTeam.autoContinue.title": "Auto-continue",
   "settings.agentTeam.autoContinue.description":
     "Allow the team coordinator to continue bounded work automatically when safe.",
+  "settings.agentTeam.autoContinue.autoEnable.title": "Auto-enable by todos",
+  "settings.agentTeam.autoContinue.autoEnable.description":
+    "When auto-continue is off, enable it automatically only for sessions with enough unfinished todos.",
+  "settings.agentTeam.autoContinue.threshold.title": "Todo threshold",
+  "settings.agentTeam.autoContinue.threshold.description":
+    "Minimum unfinished todo count required before auto-enable starts continuing.",
   "settings.agentTeam.autoContinue.max.title": "Maximum continuations",
   "settings.agentTeam.autoContinue.max.description": "Maximum automatic continuations per session.",
   "settings.agentTeam.autoContinue.cooldown.title": "Continuation cooldown",

@@ -331,6 +331,35 @@ describe("ConfigState", () => {
   })
 
   describe("agent permission patches", () => {
+    it("merges repeated Agent Team role patches without losing later changes", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({
+        agentTeam: {
+          roles: {
+            orchestrator: {
+              model: "kilo/gpt-5.5",
+              variant: "high",
+            },
+          },
+        },
+      })
+
+      s.updateConfig({ agentTeam: { roles: { orchestrator: { model: "kilo/gpt-5.5-codex" } } } })
+      s.updateConfig({ agentTeam: { roles: { orchestrator: { variant: "xhigh" } } } })
+      s.updateConfig({ agentTeam: { roles: { orchestrator: { temperature: 0.2 } } } })
+
+      expect(s.config.agentTeam?.roles?.orchestrator).toEqual({
+        model: "kilo/gpt-5.5-codex",
+        variant: "xhigh",
+        temperature: 0.2,
+      })
+      expect(s.draft.agentTeam?.roles?.orchestrator).toEqual({
+        model: "kilo/gpt-5.5-codex",
+        variant: "xhigh",
+        temperature: 0.2,
+      })
+    })
+
     it("merges nested per-agent permission patches into existing rules", () => {
       const s = new ConfigState()
       s.handleConfigLoaded({

@@ -8,7 +8,7 @@
  * changes into a single write (which triggers disposeAll on the CLI).
  */
 
-import { createContext, useContext, createSignal, onCleanup } from "solid-js"
+import { batch, createContext, useContext, createSignal, onCleanup } from "solid-js"
 import type { ParentComponent, Accessor } from "solid-js"
 import { useVSCode } from "./vscode"
 import type { Config, ExtensionMessage, FeatureFlags } from "../types/messages"
@@ -60,48 +60,52 @@ export const ConfigProvider: ParentComponent = (props) => {
       if (saving()) return
       // Re-apply the draft on top so pending changes (e.g. a toggled switch the
       // user hasn't saved yet) stay visible instead of snapping back.
-      setConfig(resolveConfig(message.config, draft(), isDirty()))
-      setFeatures(message.features)
-      setSaved(message.config)
-      setLoading(false)
+      batch(() => {
+        setConfig(resolveConfig(message.config, draft(), isDirty()))
+        setFeatures(message.features)
+        setSaved(message.config)
+        setLoading(false)
+      })
       return
     }
     if (message.type === "contextEngineSettingsLoaded") {
       const next = { ...saved(), contextEngine: message.config }
-      setConfig(resolveConfig(next, draft(), isDirty()))
-      setSaved(next)
-      setLoading(false)
+      batch(() => {
+        setConfig(resolveConfig(next, draft(), isDirty()))
+        setSaved(next)
+        setLoading(false)
+      })
       return
     }
     if (message.type === "contextEngineSettingsSaved") {
-      setConfig((prev) => ({ ...prev, contextEngine: message.config }))
-      setSaved((prev) => ({ ...prev, contextEngine: message.config }))
-      setDraft((prev) => {
-        const next = { ...prev }
-        delete next.contextEngine
-        setIsDirty(Object.keys(next).length > 0)
-        return next
+      batch(() => {
+        setConfig((prev) => ({ ...prev, contextEngine: message.config }))
+        setSaved((prev) => ({ ...prev, contextEngine: message.config }))
+        setDraft((prev) => {
+          const next = { ...prev }
+          delete next.contextEngine
+          setIsDirty(Object.keys(next).length > 0)
+          return next
+        })
+        setSaveError(null)
       })
-      setSaveError(null)
       return
     }
     if (message.type === "configUpdated") {
-      if (saving()) {
-        // This configUpdated is the confirmation of our saveConfig() write.
-        // Clear the draft now that the server has confirmed the write.
-        setSaving(false)
-        setDraft({})
-        setIsDirty(false)
-        setSaveError(null)
-        setConfig(message.config)
-        setFeatures(message.features)
-      } else {
-        // configUpdated from a different source (e.g. PermissionDock save).
-        // Re-apply the draft on top so pending settings changes are preserved.
-        setConfig(resolveConfig(message.config, draft(), isDirty()))
-        setFeatures(message.features)
-      }
-      setSaved(message.config)
+      batch(() => {
+        if (saving()) {
+          setSaving(false)
+          setDraft({})
+          setIsDirty(false)
+          setSaveError(null)
+          setConfig(message.config)
+          setFeatures(message.features)
+        } else {
+          setConfig(resolveConfig(message.config, draft(), isDirty()))
+          setFeatures(message.features)
+        }
+        setSaved(message.config)
+      })
       return
     }
     if (message.type === "configUpdateFailed") {
@@ -140,14 +144,16 @@ export const ConfigProvider: ParentComponent = (props) => {
   })
 
   function updateConfig(partial: Partial<Config>) {
-    // Optimistically update local state with deep merge + null stripping
-    setConfig((prev) => stripNulls(deepMerge(prev, partial)))
-    // Accumulate in draft — will be sent on saveConfig()
-    setDraft((prev) => deepMerge(prev as Config, partial))
-    setIsDirty(true)
-    // Clear any stale error from a previous failed save — the user is editing
-    // again, so the old error message no longer reflects the current draft.
-    setSaveError(null)
+    batch(() => {
+      // Optimistically update local state with deep merge + null stripping
+      setConfig((prev) => stripNulls(deepMerge(prev, partial)))
+      // Accumulate in draft — will be sent on saveConfig()
+      setDraft((prev) => deepMerge(prev as Config, partial))
+      setIsDirty(true)
+      // Clear any stale error from a previous failed save — the user is editing
+      // again, so the old error message no longer reflects the current draft.
+      setSaveError(null)
+    })
   }
 
   function saveConfig() {

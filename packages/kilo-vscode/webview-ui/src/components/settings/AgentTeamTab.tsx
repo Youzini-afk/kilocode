@@ -29,6 +29,12 @@ function int(value: string, fallback: number) {
   return next
 }
 
+function positive(value: string, fallback: number) {
+  const next = Number.parseInt(value, 10)
+  if (!Number.isFinite(next) || next < 1) return fallback
+  return next
+}
+
 function temp(value: string) {
   const next = Number.parseFloat(value)
   if (!Number.isFinite(next)) return null
@@ -60,31 +66,27 @@ const AgentTeamTab: Component = () => {
   const on = (value: boolean | undefined, fallback = true) => value ?? fallback
 
   function patch(next: Partial<AgentTeamConfig>) {
-    updateConfig({ agentTeam: { ...team(), ...next } })
+    updateConfig({ agentTeam: next })
   }
 
   function patchRole(id: AgentTeamRole, next: Partial<RoleConfig>) {
     patch({
       roles: {
-        ...team().roles,
-        [id]: {
-          ...cfg(id),
-          ...next,
-        },
+        [id]: next,
       },
     })
   }
 
   function patchReuse(next: NonNullable<AgentTeamConfig["sessionReuse"]>) {
-    patch({ sessionReuse: { ...team().sessionReuse, ...next } })
+    patch({ sessionReuse: next })
   }
 
   function patchCouncil(next: NonNullable<AgentTeamConfig["council"]>) {
-    patch({ council: { ...team().council, ...next } })
+    patch({ council: next })
   }
 
   function patchAuto(next: NonNullable<AgentTeamConfig["autoContinue"]>) {
-    patch({ autoContinue: { ...team().autoContinue, ...next } })
+    patch({ autoContinue: next })
   }
 
   function enabled(id: Role) {
@@ -93,8 +95,11 @@ const AgentTeamTab: Component = () => {
   }
 
   function toggle(id: Role, value: boolean) {
-    if (id === "council") patchCouncil({ enabled: value })
-    patchRole(id, { enabled: value })
+    if (id !== "council") {
+      patchRole(id, { enabled: value })
+      return
+    }
+    patch({ council: { enabled: value }, roles: { [id]: { enabled: value } } })
   }
 
   const model = (id: AgentTeamRole) => parseModelString(cfg(id).model ?? undefined)
@@ -169,6 +174,8 @@ const AgentTeamTab: Component = () => {
     return list.find((item) => item.value === (cfg(id).variant ?? "")) ?? list[0]
   }
 
+  const tuned = () => team().autoContinue?.enabled === true || team().autoContinue?.autoEnable === true
+
   return (
     <div style={{ display: "flex", "flex-direction": "column", gap: "16px" }}>
       <Overview
@@ -202,41 +209,18 @@ const AgentTeamTab: Component = () => {
         title={language.t("settings.agentTeam.roles.title")}
         description={language.t("settings.agentTeam.roles.description")}
       >
-        <div style={{ display: "flex", "flex-direction": "column", gap: "10px" }}>
-          <div
-            style={{
-              display: "grid",
-              "grid-template-columns": "minmax(180px, 1.2fr) minmax(220px, 1fr) 150px 96px 72px",
-              gap: "8px",
-              "align-items": "center",
-              color: "var(--text-muted)",
-              "font-size": "12px",
-              "padding-inline": "4px",
-            }}
-          >
-            <span>{language.t("settings.agentTeam.column.agent")}</span>
-            <span>{language.t("settings.agentTeam.column.model")}</span>
-            <span>{language.t("settings.agentTeam.column.variant")}</span>
-            <span>{language.t("settings.agentTeam.column.temperature")}</span>
-            <span>{language.t("settings.agentTeam.column.enabled")}</span>
-          </div>
+        <div class="agent-team-role-list">
           <For each={rows()}>
             {(item) => (
               <div
+                class="agent-team-role-row"
                 style={{
-                  display: "grid",
-                  "grid-template-columns": "minmax(180px, 1.2fr) minmax(220px, 1fr) 150px 96px 72px",
-                  gap: "8px",
-                  "align-items": "center",
-                  padding: "10px",
-                  border: "1px solid var(--border-weak-base)",
-                  "border-radius": "8px",
                   background: enabled(item.id)
                     ? "var(--vscode-editor-background)"
                     : "var(--surface-muted, rgba(127,127,127,0.06))",
                 }}
               >
-                <div>
+                <div class="agent-team-role-summary">
                   <div style={{ "font-weight": 600 }}>{item.title}</div>
                   <div style={{ color: "var(--text-muted)", "font-size": "12px", "margin-top": "3px" }}>
                     {item.description}
@@ -252,45 +236,54 @@ const AgentTeamTab: Component = () => {
                       : language.t("settings.agentTeam.role.advanced.show")}
                   </Button>
                 </div>
-                <ModelSelectorBase
-                  value={model(item.id)}
-                  onSelect={select(item.id)}
-                  placement="bottom-start"
-                  allowClear
-                  clearLabel={language.t("settings.agentTeam.model.default")}
-                />
-                <Select
-                  options={variants(item.id)}
-                  current={variant(item.id)}
-                  value={(choice: Choice) => choice.value}
-                  label={(choice: Choice) => choice.label}
-                  onSelect={(choice: Choice | undefined) => patchRole(item.id, { variant: choice?.value || null })}
-                  variant="secondary"
-                  size="small"
-                  triggerVariant="settings"
-                />
-                <TextField
-                  type="number"
-                  value={
-                    cfg(item.id).temperature === undefined || cfg(item.id).temperature === null
-                      ? ""
-                      : String(cfg(item.id).temperature)
-                  }
-                  placeholder={language.t("settings.agentTeam.temperature.default")}
-                  onChange={(value) => patchRole(item.id, { temperature: value.trim() ? temp(value) : null })}
-                />
-                <Switch checked={enabled(item.id)} onChange={(value) => toggle(item.id, value)} hideLabel>
-                  {item.title}
-                </Switch>
+                <div class="agent-team-role-controls">
+                  <div class="agent-team-role-control agent-team-role-control-model">
+                    <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.model")}</span>
+                    <ModelSelectorBase
+                      value={model(item.id)}
+                      onSelect={select(item.id)}
+                      placement="bottom-start"
+                      allowClear
+                      clearLabel={language.t("settings.agentTeam.model.default")}
+                    />
+                  </div>
+                  <div class="agent-team-role-control agent-team-role-control-variant">
+                    <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.variant")}</span>
+                    <Select
+                      options={variants(item.id)}
+                      current={variant(item.id)}
+                      value={(choice: Choice) => choice.value}
+                      label={(choice: Choice) => choice.label}
+                      onSelect={(choice: Choice | undefined) => patchRole(item.id, { variant: choice?.value || null })}
+                      variant="secondary"
+                      size="small"
+                      triggerVariant="settings"
+                    />
+                  </div>
+                  <div class="agent-team-role-control agent-team-role-control-temperature">
+                    <span class="agent-team-role-control-label">
+                      {language.t("settings.agentTeam.column.temperature")}
+                    </span>
+                    <TextField
+                      type="number"
+                      value={
+                        cfg(item.id).temperature === undefined || cfg(item.id).temperature === null
+                          ? ""
+                          : String(cfg(item.id).temperature)
+                      }
+                      placeholder={language.t("settings.agentTeam.temperature.default")}
+                      onChange={(value) => patchRole(item.id, { temperature: value.trim() ? temp(value) : null })}
+                    />
+                  </div>
+                  <div class="agent-team-role-control agent-team-role-control-enabled">
+                    <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.enabled")}</span>
+                    <Switch checked={enabled(item.id)} onChange={(value) => toggle(item.id, value)} hideLabel>
+                      {item.title}
+                    </Switch>
+                  </div>
+                </div>
                 <Show when={open()[`role:${item.id}`]}>
-                  <div
-                    style={{
-                      "grid-column": "1 / -1",
-                      display: "grid",
-                      "grid-template-columns": "1fr 1fr 1fr",
-                      gap: "8px",
-                    }}
-                  >
+                  <div class="agent-team-role-policy">
                     <TextField
                       value={cfg(item.id).displayName ?? ""}
                       placeholder={language.t("settings.agentTeam.displayName.placeholder")}
@@ -371,7 +364,32 @@ const AgentTeamTab: Component = () => {
             {language.t("settings.agentTeam.autoContinue.title")}
           </Switch>
         </SettingsRow>
-        <Show when={team().autoContinue?.enabled === true}>
+        <SettingsRow
+          title={language.t("settings.agentTeam.autoContinue.autoEnable.title")}
+          description={language.t("settings.agentTeam.autoContinue.autoEnable.description")}
+          last={!tuned()}
+        >
+          <Switch
+            checked={team().autoContinue?.autoEnable === true}
+            onChange={(autoEnable) => patchAuto({ autoEnable })}
+            hideLabel
+          >
+            {language.t("settings.agentTeam.autoContinue.autoEnable.title")}
+          </Switch>
+        </SettingsRow>
+        <Show when={team().autoContinue?.autoEnable === true}>
+          <SettingsRow
+            title={language.t("settings.agentTeam.autoContinue.threshold.title")}
+            description={language.t("settings.agentTeam.autoContinue.threshold.description")}
+          >
+            <TextField
+              type="number"
+              value={String(team().autoContinue?.autoEnableThreshold ?? 4)}
+              onChange={(value) => patchAuto({ autoEnableThreshold: positive(value, 4) })}
+            />
+          </SettingsRow>
+        </Show>
+        <Show when={tuned()}>
           <SettingsRow
             title={language.t("settings.agentTeam.autoContinue.max.title")}
             description={language.t("settings.agentTeam.autoContinue.max.description")}

@@ -70,7 +70,11 @@ The user-facing config key is `agentTeam`:
       "enabled": false
     },
     "autoContinue": {
-      "enabled": false
+      "enabled": false,
+      "autoEnable": false,
+      "autoEnableThreshold": 4,
+      "maxContinuations": 5,
+      "cooldownMs": 3000
     }
   }
 }
@@ -152,6 +156,7 @@ Auto-continue is intentionally conservative:
 - Disabled by default.
 - Only applies to Team sessions.
 - Requires incomplete todos.
+- Can auto-enable only when unfinished todos meet the configured threshold.
 - Must not continue when the last assistant message asks a question.
 - Must stop after a configured number of continuations.
 - Must suppress continuation after user abort.

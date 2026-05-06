@@ -190,6 +190,12 @@ const AgentTeamAutoContinue = Schema.Struct({
   enabled: Schema.optional(Schema.Boolean).annotate({
     description: "Automatically continue Team sessions with incomplete todos",
   }),
+  autoEnable: Schema.optional(Schema.Boolean).annotate({
+    description: "Automatically enable continuation when enough unfinished todos remain",
+  }),
+  autoEnableThreshold: Schema.optional(PositiveInt).annotate({
+    description: "Minimum unfinished todo count required for automatic enablement",
+  }),
   maxContinuations: Schema.optional(PositiveInt).annotate({
     description: "Maximum consecutive automatic continuations",
   }),

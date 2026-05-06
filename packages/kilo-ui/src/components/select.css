@@ -70,6 +70,7 @@
   padding: 0;
   overflow: hidden;
   background-color: var(--background-stronger);
+  color: var(--text-base);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
 
   [data-slot="select-select-content-list"] {

@@ -2333,6 +2333,14 @@ export type Config = {
        */
       enabled?: boolean
       /**
+       * Automatically enable continuation when enough unfinished todos remain
+       */
+      autoEnable?: boolean
+      /**
+       * Minimum unfinished todo count required for automatic enablement
+       */
+      autoEnableThreshold?: number
+      /**
        * Maximum consecutive automatic continuations
        */
       maxContinuations?: number

@@ -18,7 +18,16 @@ type UserMessage = MessageV2.WithParts & { info: MessageV2.User }
 
 function enabled(cfg: Config.Info) {
   if (cfg.agentTeam?.enabled !== true) return false
-  return cfg.agentTeam.autoContinue?.enabled === true
+  const auto = cfg.agentTeam.autoContinue
+  return auto?.enabled === true || auto?.autoEnable === true
+}
+
+function allowed(cfg: Config.Info, todos: Todo.Info[]) {
+  if (cfg.agentTeam?.enabled !== true) return false
+  const auto = cfg.agentTeam.autoContinue
+  if (auto?.enabled === true) return true
+  if (auto?.autoEnable !== true) return false
+  return todos.length >= (auto.autoEnableThreshold ?? 4)
 }
 
 function text(msg: MessageV2.WithParts | undefined) {
@@ -106,6 +115,7 @@ export namespace AgentTeamAutoContinue {
           counts.delete(input.sessionID)
           return
         }
+        if (!allowed(input.cfg, remaining)) return
 
         counts.set(input.sessionID, count + 1)
         const item = await import("@/session/prompt")

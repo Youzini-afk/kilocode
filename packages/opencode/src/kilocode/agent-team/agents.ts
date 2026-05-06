@@ -62,6 +62,8 @@ export type Config = {
   }
   autoContinue?: {
     enabled?: boolean
+    autoEnable?: boolean
+    autoEnableThreshold?: number
     maxContinuations?: number
     cooldownMs?: number
   }

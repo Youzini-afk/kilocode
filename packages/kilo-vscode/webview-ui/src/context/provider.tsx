@@ -9,7 +9,7 @@ import type { ParentComponent, Accessor } from "solid-js"
 import { useVSCode } from "./vscode"
 import type { Provider, ProviderModel, ModelSelection, ExtensionMessage, ProviderAuthState } from "../types/messages"
 import type { ProviderAuthMethod } from "@kilocode/sdk/v2/client"
-import { flattenModels, findModel as _findModel, isModelValid as isValid } from "./provider-utils"
+import { flattenModels, isModelValid as isValid } from "./provider-utils"
 import { KILO_AUTO } from "../../../src/shared/provider-model"
 
 export type EnrichedModel = ProviderModel & { providerID: string; providerName: string }
@@ -39,9 +39,11 @@ export const ProviderProvider: ParentComponent = (props) => {
   const [authStates, setAuthStates] = createSignal<Record<string, ProviderAuthState>>({})
 
   const models = createMemo<EnrichedModel[]>(() => flattenModels(providers()))
+  const index = createMemo(() => new Map(models().map((m) => [`${m.providerID}/${m.id}`, m] as const)))
 
   function findModel(selection: ModelSelection | null): EnrichedModel | undefined {
-    return _findModel(models(), selection)
+    if (!selection) return undefined
+    return index().get(`${selection.providerID}/${selection.modelID}`)
   }
 
   function isModelValid(selection: ModelSelection | null): boolean {

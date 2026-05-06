@@ -116,6 +116,96 @@
   max-width: none;
 }
 
+.agent-team-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.agent-team-role-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border-weak-base);
+  border-radius: 8px;
+}
+
+.agent-team-role-summary {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.agent-team-role-controls {
+  flex: 2 1 360px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.agent-team-role-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agent-team-role-control-model {
+  flex: 1 1 200px;
+}
+
+.agent-team-role-control-variant {
+  flex: 1 1 130px;
+}
+
+.agent-team-role-control-variant [data-slot="select-select-trigger"] {
+  color: var(--text-strong);
+  background-color: var(--input-base);
+  box-shadow: var(--shadow-xs-border-base);
+  justify-content: space-between;
+}
+
+.agent-team-role-control-variant [data-slot="select-select-trigger-value"] {
+  color: var(--text-strong);
+  min-width: 0;
+}
+
+.agent-team-role-control-temperature {
+  flex: 0 1 100px;
+}
+
+.agent-team-role-control-enabled {
+  flex: 0 0 auto;
+  align-items: flex-start;
+}
+
+.agent-team-role-control-label {
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.2;
+}
+
+.agent-team-role-control [data-component="button"],
+.agent-team-role-control [data-slot="select-select-trigger"],
+.agent-team-role-control [data-component="input"] {
+  width: 100%;
+  min-width: 0;
+}
+
+.agent-team-role-policy {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
 .settings-font-size-control {
   display: flex;
   align-items: center;

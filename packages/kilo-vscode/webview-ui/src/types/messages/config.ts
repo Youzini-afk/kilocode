@@ -277,6 +277,8 @@ export interface AgentTeamCouncilConfig {
 
 export interface AgentTeamAutoContinueConfig {
   enabled?: boolean
+  autoEnable?: boolean
+  autoEnableThreshold?: number
   maxContinuations?: number
   cooldownMs?: number
 }
