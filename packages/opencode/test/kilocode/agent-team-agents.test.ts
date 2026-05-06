@@ -2,14 +2,26 @@ import { describe, expect, test } from "bun:test"
 import { Permission } from "@/permission"
 import { build, enabled, type Config } from "@/kilocode/agent-team/agents"
 
-function agents(cfg?: Config, mcp: Record<string, "allow" | "ask" | "deny"> = {}) {
+function agents(
+  cfg?: Config,
+  mcp: Record<string, "allow" | "ask" | "deny"> = {},
+  base: Permission.Ruleset = Permission.fromConfig({}),
+  user: Permission.Ruleset = Permission.fromConfig({}),
+) {
   return build({
-    defaults: Permission.fromConfig({}),
-    user: Permission.fromConfig({}),
+    defaults: base,
+    user,
     mcp,
     cfg,
   })
 }
+
+const shell = Permission.fromConfig({
+  bash: {
+    "*": "ask",
+    "git status *": "allow",
+  },
+})
 
 describe("Agent Team agents", () => {
   test("registers the primary team and explorer specialist", () => {
@@ -19,6 +31,22 @@ describe("Agent Team agents", () => {
     expect(map.explorer?.mode).toBe("subagent")
     expect(map.explorer?.description).toContain("codebase discovery")
     expect(map.team?.prompt).toContain("@explorer")
+  })
+
+  test("keeps default bash available for the primary team agent", () => {
+    const map = agents({ enabled: true }, {}, shell)
+    const disabled = Permission.disabled(["bash"], map.team.permission)
+
+    expect(disabled.has("bash")).toBe(false)
+    expect(Permission.evaluate("bash", "git status --short", map.team.permission).action).toBe("allow")
+    expect(Permission.evaluate("bash", "git push origin main", map.team.permission).action).toBe("ask")
+  })
+
+  test("respects explicit user bash deny for the primary team agent", () => {
+    const map = agents({ enabled: true }, {}, shell, Permission.fromConfig({ bash: "deny" }))
+    const disabled = Permission.disabled(["bash"], map.team.permission)
+
+    expect(disabled.has("bash")).toBe(true)
   })
 
   test("applies orchestrator overrides to the team primary agent", () => {

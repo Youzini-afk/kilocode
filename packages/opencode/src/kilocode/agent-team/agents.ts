@@ -78,6 +78,10 @@ type Context = {
 
 type PermissionConfig = Parameters<typeof Permission.fromConfig>[0]
 
+function shell(ctx: Context) {
+  return ctx.defaults.filter((rule) => rule.permission === "bash")
+}
+
 const visible = role.filter((item) => item !== "councillor")
 
 const descriptions: Record<Role, string> = {
@@ -236,11 +240,10 @@ const conductor = (ctx: Context) =>
       codebase_search: "allow",
       semantic_search: "allow",
       skill: "allow",
-      bash: "deny",
       ...ctx.mcp,
     }),
+    shell(ctx),
     ctx.user,
-    Permission.fromConfig({ bash: "deny" }),
   )
 
 const moderator = (ctx: Context) =>
