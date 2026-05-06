@@ -7,6 +7,7 @@ import { KiloSession } from "@/kilocode/session" // kilocode_change
 import { KiloCostPropagation } from "@/kilocode/session/cost-propagation" // kilocode_change
 import { KiloSessionProcessor } from "@/kilocode/session/processor" // kilocode_change
 import { AgentTeamSessionReuse } from "@/kilocode/agent-team/session-reuse" // kilocode_change
+import { AgentTeamAutoContinue } from "@/kilocode/agent-team/auto-continue" // kilocode_change
 import { Suggestion } from "@/kilocode/suggestion" // kilocode_change
 import { Question } from "@/question" // kilocode_change
 import z from "zod"
@@ -135,6 +136,7 @@ export const layer = Layer.effect(
     const cancel = Effect.fn("SessionPrompt.cancel")(function* (sessionID: SessionID) {
       yield* elog.info("cancel", { sessionID })
       yield* KiloSessionPromptQueue.cancel(sessionID) // kilocode_change - drop queued follow-up loops on abort
+      AgentTeamAutoContinue.cancel(sessionID) // kilocode_change - drop scheduled Team auto-continue
       KiloSessionPrompt.abortPlanFollowup(sessionID) // kilocode_change - abort pending plan-followup handover work
       yield* state.cancel(sessionID)
     })
@@ -1289,6 +1291,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         const session = yield* sessions.get(input.sessionID)
         yield* revert.cleanup(session)
         // kilocode_change start - persist queued prompts immediately while serializing each follow-up loop
+        if (!AgentTeamAutoContinue.isAutoPrompt(input.parts)) AgentTeamAutoContinue.cancel(input.sessionID)
         yield* KiloSessionPrompt.recoverDanglingAssistant({ sessionID: input.sessionID, status, sessions })
         const message = yield* createUserMessage(input)
         yield* sessions.touch(input.sessionID)
@@ -1679,14 +1682,18 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return yield* Effect.onExit(
         state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), runLoop(input.sessionID)),
         Effect.fnUntraced(function* (exit) {
+          // kilocode_change start - schedule conservative Agent Team auto-continue after completed turns
+          const reason = KiloSessionPrompt.resolveCloseReason({
+            sessionID: input.sessionID,
+            closeReasons,
+            exit,
+          })
           yield* bus.publish(KiloSession.Event.TurnClose, {
             sessionID: input.sessionID,
-            reason: KiloSessionPrompt.resolveCloseReason({
-              sessionID: input.sessionID,
-              closeReasons,
-              exit,
-            }),
+            reason,
           })
+          AgentTeamAutoContinue.schedule({ sessionID: input.sessionID, cfg: yield* config.get(), reason })
+          // kilocode_change end
         }),
       )
       // kilocode_change end
