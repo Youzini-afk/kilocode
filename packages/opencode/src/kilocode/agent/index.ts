@@ -9,6 +9,7 @@ import { makeRuntime } from "@/effect/run-service"
 import z from "zod"
 import path from "path"
 import { Global } from "@opencode-ai/core/global"
+import * as AgentTeam from "@/kilocode/agent-team/agents"
 
 import PROMPT_DEBUG from "../../agent/prompt/debug.txt"
 import PROMPT_ORCHESTRATOR from "../../agent/prompt/orchestrator.txt"
@@ -239,6 +240,27 @@ export function processConfigItem(item: {
   }
 }
 
+type DefaultableAgent = {
+  name: string
+  mode: "subagent" | "primary" | "all"
+  hidden?: boolean
+}
+
+export function defaultTeam(cfg: Config.Info, agents: Record<string, DefaultableAgent>) {
+  if (cfg.agentTeam?.enabled !== true) return undefined
+  if (cfg.agentTeam.takeoverDefault === false) return undefined
+  const agent = agents.team
+  if (!agent) return undefined
+  if (agent.mode === "subagent") return undefined
+  if (agent.hidden === true) return undefined
+  return agent.name
+}
+
+export function preferredDefault(cfg: Config.Info, agents: Record<string, DefaultableAgent>) {
+  if (cfg.default_agent) return resolveKey(cfg.default_agent)
+  return defaultTeam(cfg, agents) ?? "code"
+}
+
 // Returns experimental_telemetry config for generate calls.
 // AI SDK span recording (ai.* / gen_ai.*) is disabled.
 export function telemetryOptions(_cfg: Config.Info) {
@@ -412,6 +434,18 @@ export function patchAgents(
     ),
     mode: "primary",
     native: true,
+  }
+
+  if (cfg.agentTeam?.enabled === true) {
+    Object.assign(
+      agents,
+      AgentTeam.build({
+        defaults,
+        user,
+        mcp: kilo.mcpRules,
+        cfg: cfg.agentTeam,
+      }),
+    )
   }
 }
 

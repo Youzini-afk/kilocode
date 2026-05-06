@@ -1,14 +1,7 @@
 import { Permission } from "@/permission"
+import { Provider } from "@/provider/provider"
 
-export const role = [
-  "librarian",
-  "oracle",
-  "designer",
-  "fixer",
-  "observer",
-  "council",
-  "councillor",
-] as const
+export const role = ["librarian", "oracle", "designer", "fixer", "observer", "council", "councillor"] as const
 
 export type Role = (typeof role)[number]
 
@@ -42,9 +35,21 @@ export type RoleConfig = {
 
 export type Config = {
   enabled?: boolean
+  takeoverDefault?: boolean
   roles?: Partial<Record<Role, RoleConfig>>
+  sessionReuse?: {
+    enabled?: boolean
+    maxSessionsPerAgent?: number
+  }
   council?: {
     enabled?: boolean
+    defaultPreset?: string
+    timeoutMs?: number
+  }
+  autoContinue?: {
+    enabled?: boolean
+    maxContinuations?: number
+    cooldownMs?: number
   }
 }
 
@@ -58,8 +63,7 @@ type Context = {
 const visible = role.filter((item) => item !== "councillor")
 
 const descriptions: Record<Role | "explore", string> = {
-  explore:
-    "Fast local codebase discovery. Use for finding files, symbols, call sites, and architectural entry points.",
+  explore: "Fast local codebase discovery. Use for finding files, symbols, call sites, and architectural entry points.",
   librarian:
     "Current documentation and external source research. Use for library APIs, official examples, version-specific behavior, and unfamiliar dependencies.",
   oracle:
@@ -72,15 +76,11 @@ const descriptions: Record<Role | "explore", string> = {
     "Visual analysis. Use for screenshots, images, PDFs, diagrams, and exact extraction of visible errors or UI details.",
   council:
     "Optional multi-model consensus. Use only for high-stakes or ambiguous decisions where independent perspectives justify extra cost and latency.",
-  councillor:
-    "Internal council advisor. Provides independent read-only analysis for a council session.",
+  councillor: "Internal council advisor. Provides independent read-only analysis for a council session.",
 }
 
 const roleBrief = () =>
-  [
-    ["explore", descriptions.explore],
-    ...visible.map((item) => [item, descriptions[item]] as const),
-  ]
+  [["explore", descriptions.explore], ...visible.map((item) => [item, descriptions[item]] as const)]
     .map(([name, description]) => `- @${name}: ${description}`)
     .join("\n")
 
@@ -240,9 +240,9 @@ export function build(ctx: Context): AgentMap {
   const agents = Object.fromEntries(
     role
       .filter((item) => enabled(ctx.cfg, item))
-      .map((item) => [
-        item,
-        {
+      .map((item) => {
+        const cfg = ctx.cfg?.roles?.[item]
+        const agent: AgentInfo = {
           name: item,
           description: descriptions[item],
           prompt: prompts[item],
@@ -257,10 +257,13 @@ export function build(ctx: Context): AgentMap {
           native: true,
           hidden: item === "councillor" ? true : undefined,
           temperature: item === "designer" ? 0.5 : item === "fixer" || item === "councillor" ? 0.2 : 0.1,
-        },
-      ]),
+        }
+        if (cfg?.model) agent.model = Provider.parseModel(cfg.model)
+        if (cfg?.variant) agent.variant = cfg.variant
+        if (cfg?.temperature !== undefined && cfg.temperature !== null) agent.temperature = cfg.temperature
+        return [item, agent]
+      }),
   ) as AgentMap
 
   return { ...base, ...agents }
 }
-

@@ -309,11 +309,14 @@ export const layer = Layer.effect(
 
         const list = Effect.fnUntraced(function* () {
           const cfg = yield* config.get()
+          // kilocode_change start - prefer Agent Team when configured to take over defaults
+          const preferred = KiloAgent.preferredDefault(cfg, agents)
+          // kilocode_change end
           return pipe(
             agents,
             values(),
             sortBy(
-              [(x) => (cfg.default_agent ? x.name === cfg.default_agent : x.name === "code"), "desc"], // kilocode_change - renamed from "build" to "code"
+              [(x) => x.name === preferred, "desc"], // kilocode_change - renamed from "build" to "code" and supports Agent Team
               [(x) => x.name, "asc"],
             ),
           )
@@ -329,7 +332,9 @@ export const layer = Layer.effect(
             if (agent.hidden === true) throw new Error(`default agent "${c.default_agent}" is hidden`)
             return agent.name
           }
-          // kilocode_change start - prefer "code" as default agent (key order changes after rename from "build")
+          // kilocode_change start - prefer Agent Team when enabled, otherwise prefer "code"
+          const team = KiloAgent.defaultTeam(c, agents)
+          if (team) return team
           const code = agents.code
           if (code && code.mode !== "subagent" && code.hidden !== true) return code.name
           // kilocode_change end
