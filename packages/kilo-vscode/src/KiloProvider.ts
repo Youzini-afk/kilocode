@@ -2136,6 +2136,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   }
 
   private async fetchAndSendConfigUpdated(): Promise<void> {
+    if (this.pending > 0) return
     await fetchConfigUpdated({
       client: () => this.client,
       state: () => this.connectionState,

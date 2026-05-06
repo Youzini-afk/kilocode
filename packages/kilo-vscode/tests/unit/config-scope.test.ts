@@ -30,4 +30,31 @@ describe("splitConfigByScope", () => {
       },
     })
   })
+
+  it("writes Agent Team settings to project config", () => {
+    const split = splitConfigByScope({
+      agentTeam: {
+        enabled: true,
+        roles: {
+          orchestrator: {
+            model: "kilo/gpt-5.5",
+            variant: "high",
+          },
+        },
+      },
+    })
+
+    expect(split.global).toEqual({})
+    expect(split.project).toEqual({
+      agentTeam: {
+        enabled: true,
+        roles: {
+          orchestrator: {
+            model: "kilo/gpt-5.5",
+            variant: "high",
+          },
+        },
+      },
+    })
+  })
 })

@@ -175,6 +175,45 @@ describe("ConfigState", () => {
       expect(Object.keys(s.draft).length).toBe(0)
     })
 
+    it("does not treat a stale update as our save confirmation", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({
+        agentTeam: {
+          roles: {
+            orchestrator: { model: "kilo/gpt-5.5", variant: "medium" },
+          },
+        },
+      })
+
+      s.updateConfig({ agentTeam: { roles: { orchestrator: { variant: "high" } } } })
+      s.saveConfig()
+      s.handleConfigUpdated({
+        agentTeam: {
+          roles: {
+            orchestrator: { model: "kilo/gpt-5.5", variant: "medium" },
+          },
+        },
+      })
+
+      expect(s.saving).toBe(true)
+      expect(s.dirty).toBe(true)
+      expect(s.config.agentTeam?.roles?.orchestrator?.variant).toBe("high")
+      expect(s.draft.agentTeam?.roles?.orchestrator).toEqual({ variant: "high" })
+
+      s.handleConfigUpdated({
+        agentTeam: {
+          roles: {
+            orchestrator: { model: "kilo/gpt-5.5", variant: "high" },
+          },
+        },
+      })
+
+      expect(s.saving).toBe(false)
+      expect(s.dirty).toBe(false)
+      expect(s.config.agentTeam?.roles?.orchestrator?.variant).toBe("high")
+      expect(Object.keys(s.draft).length).toBe(0)
+    })
+
     it("clears default_agent when update confirms a null-sentinel save", () => {
       const s = new ConfigState()
       s.handleConfigLoaded({ default_agent: "code" })

@@ -77,6 +77,30 @@ export function removeMatchingDraft(current: Partial<Config>, confirmed: Partial
   return result as Partial<Config>
 }
 
+function deletes(value: unknown): boolean {
+  if (value === null || value === undefined) return true
+  if (!isRecord(value)) return false
+  return Object.values(value).every(deletes)
+}
+
+function confirms(target: unknown, patch: unknown): boolean {
+  if (patch === null || patch === undefined) return target === null || target === undefined
+  if (!isRecord(patch)) return valuesEqual(target, patch)
+  if (!isRecord(target)) return deletes(patch)
+  return Object.entries(patch).every(([key, value]) => confirms(target[key], value))
+}
+
+/**
+ * Check whether a server config actually contains an acknowledged save patch.
+ *
+ * During save, the CLI can emit an intermediate configUpdated/config reload
+ * before KiloProvider posts its optimistic confirmation. Treating that stale
+ * update as a confirmation clears the draft and makes the UI snap back.
+ */
+export function patchConfirmed(server: Config, patch: Partial<Config>): boolean {
+  return confirms(server, patch)
+}
+
 /**
  * Resolve the visible config when a configLoaded/configUpdated message arrives.
  * If the user has pending draft changes, re-apply the draft on top of the
@@ -118,6 +142,12 @@ export class ConfigState {
   /** Handle an incoming configUpdated push from the extension. */
   handleConfigUpdated(server: Config) {
     if (this.saving) {
+      if (!patchConfirmed(server, this.savingDraft)) {
+        this.config = resolveConfig(server, this.draft, this.dirty)
+        this.saved = server
+        return
+      }
+
       const remaining = removeMatchingDraft(this.draft, this.savingDraft)
       this.saving = false
       this.savingDraft = {}

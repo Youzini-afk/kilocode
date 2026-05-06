@@ -3,7 +3,7 @@ import type { Config } from "../types/messages"
 // Top-level config keys that persist to the project's kilo.json rather than the
 // global one. Settings that are inherently per-repository (e.g. commit message
 // conventions) belong here so they don't leak across workspaces.
-const PROJECT_SCOPED_KEYS: ReadonlySet<string> = new Set(["commit_message", "contextEngine"])
+const PROJECT_SCOPED_KEYS: ReadonlySet<string> = new Set(["commit_message", "contextEngine", "agentTeam"])
 const PROJECT_INDEXING_KEYS: ReadonlySet<string> = new Set(["enabled"])
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -133,10 +133,18 @@ const RoleRow: Component<RoleRowProps> = (props) => {
           <select
             class="agent-team-native-control"
             value={providerID()}
-            onInput={(e) => updateProvider(e.currentTarget.value)}
+            onChange={(event) => updateProvider(event.currentTarget.value)}
           >
-            <option value="">{language.t("settings.agentTeam.model.default")}</option>
-            <For each={modelGroups()}>{(group) => <option value={group.providerID}>{group.providerName}</option>}</For>
+            <option value="" selected={providerID() === ""}>
+              {language.t("settings.agentTeam.model.default")}
+            </option>
+            <For each={modelGroups()}>
+              {(group) => (
+                <option value={group.providerID} selected={group.providerID === providerID()}>
+                  {group.providerName}
+                </option>
+              )}
+            </For>
           </select>
         </div>
         <div class="agent-team-role-control agent-team-role-control-model">
@@ -145,17 +153,31 @@ const RoleRow: Component<RoleRowProps> = (props) => {
             class="agent-team-native-control"
             value={modelID()}
             disabled={!providerID() || selectedProviderModels().length === 0}
-            onInput={(e) => updateModel(e.currentTarget.value)}
+            onChange={(event) => updateModel(event.currentTarget.value)}
           >
             <Show
               when={providerID()}
-              fallback={<option value="">{language.t("settings.agentTeam.model.default")}</option>}
+              fallback={
+                <option value="" selected={modelID() === ""}>
+                  {language.t("settings.agentTeam.model.default")}
+                </option>
+              }
             >
               <Show
                 when={selectedProviderModels().length > 0}
-                fallback={<option value="">{language.t("dialog.model.empty")}</option>}
+                fallback={
+                  <option value="" selected={modelID() === ""}>
+                    {language.t("dialog.model.empty")}
+                  </option>
+                }
               >
-                <For each={selectedProviderModels()}>{(model) => <option value={model.id}>{model.name}</option>}</For>
+                <For each={selectedProviderModels()}>
+                  {(model) => (
+                    <option value={model.id} selected={model.id === modelID()}>
+                      {model.name}
+                    </option>
+                  )}
+                </For>
               </Show>
             </Show>
           </select>
@@ -165,9 +187,15 @@ const RoleRow: Component<RoleRowProps> = (props) => {
           <select
             class="agent-team-native-control"
             value={currentVariant()?.value ?? ""}
-            onInput={(e) => props.onPatchRole({ variant: e.currentTarget.value || null })}
+            onChange={(event) => props.onPatchRole({ variant: event.currentTarget.value || null })}
           >
-            <For each={variantList()}>{(choice) => <option value={choice.value}>{choice.label}</option>}</For>
+            <For each={variantList()}>
+              {(choice) => (
+                <option value={choice.value} selected={choice.value === (props.cfg().variant ?? "")}>
+                  {choice.label}
+                </option>
+              )}
+            </For>
           </select>
         </div>
         <div class="agent-team-role-control agent-team-role-control-temperature">

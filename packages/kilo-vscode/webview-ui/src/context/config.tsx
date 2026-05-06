@@ -12,7 +12,7 @@ import { batch, createContext, useContext, createSignal, onCleanup } from "solid
 import type { ParentComponent, Accessor } from "solid-js"
 import { useVSCode } from "./vscode"
 import type { Config, ExtensionMessage, FeatureFlags } from "../types/messages"
-import { deepMerge, stripNulls, resolveConfig, removeMatchingDraft } from "../utils/config-utils"
+import { deepMerge, stripNulls, resolveConfig, removeMatchingDraft, patchConfirmed } from "../utils/config-utils"
 import { splitConfigByScope } from "../utils/config-scope"
 
 export interface SaveError {
@@ -95,6 +95,13 @@ export const ConfigProvider: ParentComponent = (props) => {
     if (message.type === "configUpdated") {
       batch(() => {
         if (saving()) {
+          if (!patchConfirmed(message.config, savingDraft())) {
+            setConfig(resolveConfig(message.config, draft(), isDirty()))
+            setFeatures(message.features)
+            setSaved(message.config)
+            return
+          }
+
           const remaining = removeMatchingDraft(draft(), savingDraft())
           const dirty = Object.keys(remaining).length > 0
           setSaving(false)
