@@ -241,7 +241,17 @@ export interface ContextEngineDoctorResult {
   checks?: Array<{ name: string; status: string }>
 }
 
-export type AgentTeamRole = "librarian" | "oracle" | "designer" | "fixer" | "observer" | "council" | "councillor"
+export type AgentTeamRole =
+  | "orchestrator"
+  | "team"
+  | "explorer"
+  | "librarian"
+  | "oracle"
+  | "designer"
+  | "fixer"
+  | "observer"
+  | "council"
+  | "councillor"
 
 export interface AgentTeamRoleConfig {
   enabled?: boolean

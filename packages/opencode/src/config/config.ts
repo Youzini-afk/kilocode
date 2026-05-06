@@ -129,6 +129,9 @@ const AgentTeamRole = Schema.Struct({
 })
 
 const AgentTeamRoles = Schema.Struct({
+  orchestrator: Schema.optional(AgentTeamRole),
+  team: Schema.optional(AgentTeamRole),
+  explorer: Schema.optional(AgentTeamRole),
   librarian: Schema.optional(AgentTeamRole),
   oracle: Schema.optional(AgentTeamRole),
   designer: Schema.optional(AgentTeamRole),

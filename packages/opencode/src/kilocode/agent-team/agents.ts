@@ -1,9 +1,19 @@
 import { Permission } from "@/permission"
 import { Provider } from "@/provider/provider"
 
-export const role = ["librarian", "oracle", "designer", "fixer", "observer", "council", "councillor"] as const
+export const role = [
+  "explorer",
+  "librarian",
+  "oracle",
+  "designer",
+  "fixer",
+  "observer",
+  "council",
+  "councillor",
+] as const
 
 export type Role = (typeof role)[number]
+export type PrimaryRole = "orchestrator" | "team"
 
 export type AgentInfo = {
   name: string
@@ -36,7 +46,7 @@ export type RoleConfig = {
 export type Config = {
   enabled?: boolean
   takeoverDefault?: boolean
-  roles?: Partial<Record<Role, RoleConfig>>
+  roles?: Partial<Record<Role | PrimaryRole, RoleConfig>>
   sessionReuse?: {
     enabled?: boolean
     maxSessionsPerAgent?: number
@@ -62,8 +72,9 @@ type Context = {
 
 const visible = role.filter((item) => item !== "councillor")
 
-const descriptions: Record<Role | "explore", string> = {
-  explore: "Fast local codebase discovery. Use for finding files, symbols, call sites, and architectural entry points.",
+const descriptions: Record<Role, string> = {
+  explorer:
+    "Fast local codebase discovery. Use for finding files, symbols, call sites, and architectural entry points.",
   librarian:
     "Current documentation and external source research. Use for library APIs, official examples, version-specific behavior, and unfamiliar dependencies.",
   oracle:
@@ -80,7 +91,8 @@ const descriptions: Record<Role | "explore", string> = {
 }
 
 const roleBrief = () =>
-  [["explore", descriptions.explore], ...visible.map((item) => [item, descriptions[item]] as const)]
+  visible
+    .map((item) => [item, descriptions[item]] as const)
     .map(([name, description]) => `- @${name}: ${description}`)
     .join("\n")
 
@@ -100,7 +112,7 @@ Workflow:
 6. Verify with the smallest relevant checks when code changes are made.
 
 Delegation rules:
-- Use @explore for broad local code discovery.
+- Use @explorer for broad local code discovery.
 - Use @librarian for current external docs and APIs.
 - Use @oracle for reviews, architecture, persistent failures, and high-risk decisions.
 - Use @designer for user-facing UI/UX work.
@@ -117,6 +129,11 @@ Communication:
 - Push back on risky or unclear requests with a concrete alternative.`
 
 export const prompts: Record<Role, string> = {
+  explorer: `You are Explorer, Kilo's fast local codebase discovery specialist.
+
+Find files, symbols, call sites, configuration, and architectural entry points quickly. Prefer exact codebase search tools before broad reading. Return concise findings with file paths and confidence.
+
+You are read-only. Do not edit files and do not delegate.`,
   librarian: `You are Librarian, Kilo's documentation and external research specialist.
 
 Use official documentation, source repositories, and reliable references to answer library, API, and ecosystem questions. Prefer primary sources. Distinguish current documented behavior from inference. Return concise findings with links or file references when available.
@@ -246,25 +263,39 @@ const moderator = (ctx: Context) =>
   )
 
 export function enabled(cfg: Config | undefined, item: Role) {
-  if (item === "council") return cfg?.council?.enabled === true
+  if (item === "council") return cfg?.council?.enabled === true && cfg?.roles?.council?.enabled !== false
   if (item === "councillor") return cfg?.council?.enabled === true
   return cfg?.roles?.[item]?.enabled !== false
 }
 
+function primary(cfg: Config | undefined) {
+  return cfg?.roles?.orchestrator ?? cfg?.roles?.team
+}
+
+function primaryEnabled(cfg: Config | undefined) {
+  return primary(cfg)?.enabled !== false
+}
+
 export function build(ctx: Context): AgentMap {
-  const base: AgentMap = {
-    team: {
-      name: "team",
-      displayName: "Agent Team",
-      description: "Coordinate complex work by delegating to Kilo specialist agents when useful.",
-      prompt: team,
-      options: {},
-      permission: conductor(ctx),
-      mode: "primary",
-      native: true,
-      temperature: 0.1,
-    },
-  }
+  const cfg = primary(ctx.cfg)
+  const base: AgentMap = primaryEnabled(ctx.cfg)
+    ? {
+        team: {
+          name: "team",
+          displayName: "Agent Team",
+          description: "Coordinate complex work by delegating to Kilo specialist agents when useful.",
+          prompt: team,
+          options: {},
+          permission: conductor(ctx),
+          mode: "primary",
+          native: true,
+          temperature: 0.1,
+        },
+      }
+    : {}
+  if (base.team && cfg?.model) base.team.model = Provider.parseModel(cfg.model)
+  if (base.team && cfg?.variant) base.team.variant = cfg.variant
+  if (base.team && cfg?.temperature !== undefined && cfg.temperature !== null) base.team.temperature = cfg.temperature
 
   const agents = Object.fromEntries(
     role
