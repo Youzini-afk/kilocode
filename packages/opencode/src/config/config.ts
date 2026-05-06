@@ -114,6 +114,97 @@ const LogLevelRef = Schema.Literals(["DEBUG", "INFO", "WARN", "ERROR"]).annotate
 // kilocode_change - KiloIndexingConfig is still a Zod schema; bridge via ZodOverride
 const IndexingRef = Schema.Any.annotate({ [ZodOverride]: KiloIndexingConfig })
 
+// kilocode_change start - Agent Team configuration
+const AgentTeamRole = Schema.Struct({
+  enabled: Schema.optional(Schema.Boolean).annotate({ description: "Enable this Agent Team role" }),
+  model: Schema.optional(Schema.NullOr(ConfigModelID)).annotate({
+    description: "Model for this Agent Team role in provider/model format",
+  }),
+  variant: Schema.optional(Schema.NullOr(Schema.String)).annotate({
+    description: "Optional model variant for this Agent Team role",
+  }),
+  temperature: Schema.optional(Schema.NullOr(Schema.Number)).annotate({
+    description: "Optional temperature override for this Agent Team role",
+  }),
+})
+
+const AgentTeamRoles = Schema.Struct({
+  librarian: Schema.optional(AgentTeamRole),
+  oracle: Schema.optional(AgentTeamRole),
+  designer: Schema.optional(AgentTeamRole),
+  fixer: Schema.optional(AgentTeamRole),
+  observer: Schema.optional(AgentTeamRole),
+  council: Schema.optional(AgentTeamRole),
+  councillor: Schema.optional(AgentTeamRole),
+})
+
+const AgentTeamSessionReuse = Schema.Struct({
+  enabled: Schema.optional(Schema.Boolean).annotate({
+    description: "Reuse previous specialist child sessions when Team delegates related work",
+  }),
+  maxSessionsPerAgent: Schema.optional(PositiveInt).annotate({
+    description: "Maximum remembered child sessions per specialist role",
+  }),
+})
+
+const AgentTeamCouncilPreset = Schema.Record(
+  Schema.String,
+  Schema.Struct({
+    model: ConfigModelID,
+    variant: Schema.optional(Schema.NullOr(Schema.String)),
+    prompt: Schema.optional(Schema.String),
+  }),
+)
+
+const AgentTeamCouncil = Schema.Struct({
+  enabled: Schema.optional(Schema.Boolean).annotate({
+    description: "Enable multi-model council consensus for Agent Team",
+  }),
+  defaultPreset: Schema.optional(Schema.String).annotate({
+    description: "Default council preset name",
+  }),
+  timeoutMs: Schema.optional(PositiveInt).annotate({
+    description: "Council session timeout in milliseconds",
+  }),
+  presets: Schema.optional(Schema.Record(Schema.String, AgentTeamCouncilPreset)).annotate({
+    description: "Council presets keyed by preset name, then councillor name",
+  }),
+})
+
+const AgentTeamAutoContinue = Schema.Struct({
+  enabled: Schema.optional(Schema.Boolean).annotate({
+    description: "Automatically continue Team sessions with incomplete todos",
+  }),
+  maxContinuations: Schema.optional(PositiveInt).annotate({
+    description: "Maximum consecutive automatic continuations",
+  }),
+  cooldownMs: Schema.optional(NonNegativeInt).annotate({
+    description: "Delay before an automatic continuation is injected",
+  }),
+})
+
+const AgentTeam = Schema.Struct({
+  enabled: Schema.optional(Schema.Boolean).annotate({
+    description: "Enable native Kilo Agent Team coordination",
+  }),
+  takeoverDefault: Schema.optional(Schema.Boolean).annotate({
+    description: "Use Agent Team as the default agent when no explicit default_agent is set",
+  }),
+  roles: Schema.optional(AgentTeamRoles).annotate({
+    description: "Agent Team role configuration",
+  }),
+  sessionReuse: Schema.optional(AgentTeamSessionReuse).annotate({
+    description: "Agent Team specialist session reuse configuration",
+  }),
+  council: Schema.optional(AgentTeamCouncil).annotate({
+    description: "Agent Team council configuration",
+  }),
+  autoContinue: Schema.optional(AgentTeamAutoContinue).annotate({
+    description: "Agent Team auto-continue configuration",
+  }),
+})
+// kilocode_change end
+
 // The Effect Schema is the canonical source of truth. The `.zod` compatibility
 // surface is derived so existing Hono validators keep working without a parallel
 // Zod definition.
@@ -177,6 +268,7 @@ export const Info = Schema.Struct({
   }),
   indexing: Schema.optional(IndexingRef).annotate({ description: "Codebase indexing configuration" }), // kilocode_change
   contextEngine: Schema.optional(Schema.Any).annotate({ description: "Native Context Engine configuration" }), // kilocode_change
+  agentTeam: Schema.optional(AgentTeam).annotate({ description: "Native Kilo Agent Team configuration" }), // kilocode_change
   terminal_command_display: Schema.optional(Schema.Literals(["expanded", "collapsed"])).annotate({
     description: "Controls whether terminal command blocks are expanded or collapsed by default in the VS Code chat UI",
   }),
@@ -216,9 +308,17 @@ export const Info = Schema.Struct({
         debug: Schema.optional(ConfigAgent.Info), // kilocode_change
         orchestrator: Schema.optional(ConfigAgent.Info), // kilocode_change
         ask: Schema.optional(ConfigAgent.Info), // kilocode_change
+        team: Schema.optional(ConfigAgent.Info), // kilocode_change
         // subagent
         general: Schema.optional(ConfigAgent.Info),
         explore: Schema.optional(ConfigAgent.Info),
+        librarian: Schema.optional(ConfigAgent.Info), // kilocode_change
+        oracle: Schema.optional(ConfigAgent.Info), // kilocode_change
+        designer: Schema.optional(ConfigAgent.Info), // kilocode_change
+        fixer: Schema.optional(ConfigAgent.Info), // kilocode_change
+        observer: Schema.optional(ConfigAgent.Info), // kilocode_change
+        council: Schema.optional(ConfigAgent.Info), // kilocode_change
+        councillor: Schema.optional(ConfigAgent.Info), // kilocode_change
         // specialized
         title: Schema.optional(ConfigAgent.Info),
         summary: Schema.optional(ConfigAgent.Info),
