@@ -107,16 +107,26 @@ const AgentTeamTab: Component = () => {
     patchRole(id, { model: providerID && modelID ? `${providerID}/${modelID}` : null })
   }
 
+  // Per-role memos so Kobalte sees stable object references for `current` and `options`.
+  const roleVariants = createMemo(() =>
+    Object.fromEntries(
+      roles.map((id) => {
+        const found = findModel(model(id))
+        const list = unique(["", ...efforts, ...Object.keys(found?.variants ?? {})]).map((item) => ({
+          value: item,
+          label: item
+            ? efforts.includes(item)
+              ? language.t(`settings.agentTeam.variant.${item}`)
+              : item
+            : language.t("settings.agentTeam.variant.default"),
+        }))
+        return [id, list] as const
+      }),
+    ),
+  )
+
   function variants(id: AgentTeamRole) {
-    const found = findModel(model(id))
-    return unique(["", ...efforts, ...Object.keys(found?.variants ?? {})]).map((item) => ({
-      value: item,
-      label: item
-        ? efforts.includes(item)
-          ? language.t(`settings.agentTeam.variant.${item}`)
-          : item
-        : language.t("settings.agentTeam.variant.default"),
-    }))
+    return roleVariants()[id] ?? []
   }
 
   function section(key: string) {

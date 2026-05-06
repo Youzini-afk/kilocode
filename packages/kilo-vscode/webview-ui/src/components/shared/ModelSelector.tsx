@@ -101,6 +101,7 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
   const activeModel = createMemo(() => findModel(props.value))
 
   const [open, setOpen] = createSignal(false)
+  const [listReady, setListReady] = createSignal(false)
   const [expanded, setExpanded] = createSignal(false)
   const [search, setSearch] = createSignal("")
   const [debouncedSearch, setDebouncedSearch] = createSignal("")
@@ -120,6 +121,7 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
   let listRef: HTMLDivElement | undefined
   let bodyRef: HTMLDivElement | undefined
   let previewTimer: ReturnType<typeof setTimeout> | undefined
+  let listReadyFrame: number | undefined
   const [pointer, setPointer] = createSignal(true)
   // Ref map: row key → DOM element. Populated by each row's ref callback,
   // avoids DOM queries for scroll anchoring and scrollIntoView.
@@ -163,10 +165,7 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
   })
 
   const visibleModels = createMemo(() => {
-    // Only recompute the full list when the popover is open — avoids
-    // re-filtering hundreds of models on every providersLoaded push when
-    // multiple ModelSelectorBase instances are mounted (e.g. AgentTeamTab).
-    if (!open()) return [] as EnrichedModel[]
+    if (!open() || !listReady()) return [] as EnrichedModel[]
     const c = ids()
     return models().filter((m) => {
       if (!props.includeAutoSmall && isSmall(m)) return false
@@ -357,20 +356,31 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
       const active = activeModel()
       const snap = active ? modelKey(active.providerID, active.id) : null
       setOpenSnapshot(snap)
-      // Defer key resolution to next microtask so favoriteModels/groups/rows
-      // recompute with the snapshot before we try to resolve the key.
-      queueMicrotask(() => {
-        const next = activeKey(activeModel())
-        setSelectedKey(next ?? CLEAR_KEY)
-        setPreActiveKey(next)
-        setPreviewKey(next)
-        requestAnimationFrame(() => {
-          searchRef?.focus()
-          scrollRow(next ?? CLEAR_KEY, "center")
+      if (listReadyFrame !== undefined) cancelAnimationFrame(listReadyFrame)
+      listReadyFrame = requestAnimationFrame(() => {
+        listReadyFrame = undefined
+        if (!open()) return
+        setListReady(true)
+        queueMicrotask(() => {
+          if (!open()) return
+          const next = activeKey(activeModel())
+          setSelectedKey(next ?? CLEAR_KEY)
+          setPreActiveKey(next)
+          setPreviewKey(next)
+          requestAnimationFrame(() => {
+            if (!open()) return
+            searchRef?.focus()
+            scrollRow(next ?? CLEAR_KEY, "center")
+          })
         })
       })
       return
     }
+    if (listReadyFrame !== undefined) {
+      cancelAnimationFrame(listReadyFrame)
+      listReadyFrame = undefined
+    }
+    setListReady(false)
     setOpenSnapshot(null)
     setSearch("")
     setDebouncedSearch("")
@@ -380,7 +390,10 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
   // Listen for slash command trigger
   const onTrigger = () => setOpen(true)
   window.addEventListener("openModelPicker", onTrigger)
-  onCleanup(() => window.removeEventListener("openModelPicker", onTrigger))
+  onCleanup(() => {
+    window.removeEventListener("openModelPicker", onTrigger)
+    if (listReadyFrame !== undefined) cancelAnimationFrame(listReadyFrame)
+  })
 
   const onEscape = (e: KeyboardEvent) => {
     if (!open() || e.key !== "Escape") return
