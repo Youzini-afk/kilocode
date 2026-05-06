@@ -133,11 +133,17 @@ describe("kilocode tool registry indexing", () => {
       semantic: def("semantic_search"),
       recall: def("recall"),
       manager: def("agent_manager"),
+      council: def("council_session"),
     }
 
     try {
       process.env["KILO_CLIENT"] = "cli"
       expect(KiloToolRegistry.extra(tools, {}).map((tool) => tool.id)).toEqual(["semantic_search", "recall"])
+      expect(
+        KiloToolRegistry.extra(tools, { agentTeam: { enabled: true, council: { enabled: true } } }).map(
+          (tool) => tool.id,
+        ),
+      ).toEqual(["semantic_search", "recall", "council_session"])
       expect(
         KiloToolRegistry.extra(tools, { experimental: { codebase_search: true, agent_manager_tool: true } }).map(
           (tool) => tool.id,

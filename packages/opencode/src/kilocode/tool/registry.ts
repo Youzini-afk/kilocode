@@ -2,15 +2,23 @@
 import { CodebaseSearchTool } from "../../tool/warpgrep"
 import { RecallTool } from "../../tool/recall"
 import { AgentManagerTool } from "./agent-manager"
+import { CouncilTool } from "@/kilocode/agent-team/council"
 import * as Tool from "../../tool/tool"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Effect } from "effect"
 import * as Log from "@opencode-ai/core/util/log"
 import { Agent } from "@/agent/agent"
+import { Config } from "@/config/config"
+import { Session } from "@/session/session"
 import * as Truncate from "@/tool/truncate"
 
 const log = Log.create({ service: "kilocode-tool-registry" })
-type Deps = { agent: Agent.Interface; truncate: Truncate.Interface }
+type Deps = {
+  agent: Agent.Interface
+  config: Config.Interface
+  session: Session.Interface
+  truncate: Truncate.Interface
+}
 
 export namespace KiloToolRegistry {
   /** Resolve Kilo-specific tool Infos outside any InstanceState, so their Truncate/Agent deps are
@@ -28,10 +36,17 @@ export namespace KiloToolRegistry {
    * it has no Service deps beyond what Tool.init itself needs. */
   export function build(tools: { codebase: Tool.Info; recall: Tool.Info; manager: Tool.Info }, deps: Deps) {
     return Effect.gen(function* () {
+      const council = yield* CouncilTool.pipe(
+        Effect.provideService(Agent.Service, deps.agent),
+        Effect.provideService(Config.Service, deps.config),
+        Effect.provideService(Session.Service, deps.session),
+        Effect.provideService(Truncate.Service, deps.truncate),
+      )
       const base = yield* Effect.all({
         codebase: Tool.init(tools.codebase),
         recall: Tool.init(tools.recall),
         manager: Tool.init(tools.manager),
+        council: Tool.init(council),
       })
       const semantic = yield* semanticTool(deps)
       return { ...base, semantic }
@@ -88,13 +103,17 @@ export namespace KiloToolRegistry {
 
   /** Kilo-specific tools to append to the builtin list */
   export function extra(
-    tools: { codebase: Tool.Def; semantic?: Tool.Def; recall: Tool.Def; manager: Tool.Def },
-    cfg: { experimental?: { codebase_search?: boolean; agent_manager_tool?: boolean } },
+    tools: { codebase: Tool.Def; semantic?: Tool.Def; recall: Tool.Def; manager: Tool.Def; council: Tool.Def },
+    cfg: {
+      experimental?: { codebase_search?: boolean; agent_manager_tool?: boolean }
+      agentTeam?: { enabled?: boolean; council?: { enabled?: boolean } }
+    },
   ): Tool.Def[] {
     return [
       ...(cfg.experimental?.codebase_search === true ? [tools.codebase] : []),
       ...(tools.semantic ? [tools.semantic] : []),
       tools.recall,
+      ...(cfg.agentTeam?.enabled === true && cfg.agentTeam.council?.enabled === true ? [tools.council] : []),
       // The extension is the only client that can consume the Agent Manager start event.
       ...(Flag.KILO_CLIENT === "vscode" && cfg.experimental?.agent_manager_tool === true ? [tools.manager] : []),
     ]

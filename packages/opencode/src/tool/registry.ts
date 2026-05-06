@@ -119,6 +119,7 @@ export const layer: Layer.Layer<
     const patchtool = yield* ApplyPatchTool
     const skilltool = yield* SkillTool
     const agent = yield* Agent.Service
+    const session = yield* Session.Service // kilocode_change - passed to Kilo council tool
     const suggesttool = yield* SuggestTool // kilocode_change
     const kiloToolInfos = yield* KiloToolRegistry.infos() // kilocode_change
 
@@ -213,7 +214,7 @@ export const layer: Layer.Layer<
         })
         // kilocode_change end
 
-        const kilo = yield* KiloToolRegistry.build(kiloToolInfos, { agent: agents, truncate }) // kilocode_change
+        const kilo = yield* KiloToolRegistry.build(kiloToolInfos, { agent: agents, config, session, truncate }) // kilocode_change
 
         // kilocode_change start
         return {
