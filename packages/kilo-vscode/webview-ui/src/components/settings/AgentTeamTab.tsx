@@ -133,7 +133,7 @@ const RoleRow: Component<RoleRowProps> = (props) => {
           <select
             class="agent-team-native-control"
             value={providerID()}
-            onChange={(e) => updateProvider(e.currentTarget.value)}
+            onInput={(e) => updateProvider(e.currentTarget.value)}
           >
             <option value="">{language.t("settings.agentTeam.model.default")}</option>
             <For each={modelGroups()}>{(group) => <option value={group.providerID}>{group.providerName}</option>}</For>
@@ -145,7 +145,7 @@ const RoleRow: Component<RoleRowProps> = (props) => {
             class="agent-team-native-control"
             value={modelID()}
             disabled={!providerID() || selectedProviderModels().length === 0}
-            onChange={(e) => updateModel(e.currentTarget.value)}
+            onInput={(e) => updateModel(e.currentTarget.value)}
           >
             <Show
               when={providerID()}
@@ -165,7 +165,7 @@ const RoleRow: Component<RoleRowProps> = (props) => {
           <select
             class="agent-team-native-control"
             value={currentVariant()?.value ?? ""}
-            onChange={(e) => props.onPatchRole({ variant: e.currentTarget.value || null })}
+            onInput={(e) => props.onPatchRole({ variant: e.currentTarget.value || null })}
           >
             <For each={variantList()}>{(choice) => <option value={choice.value}>{choice.label}</option>}</For>
           </select>

@@ -48,6 +48,7 @@ import { retry } from "./services/cli-backend/retry"
 import { slimPart, slimParts } from "./kilo-provider/slim-metadata"
 import { handleSidebarWorktreeMessage } from "./kilo-provider/sidebar-worktree"
 import { fetchConfig, fetchConfigUpdated, fetchGlobalConfig } from "./kilo-provider/config-messages"
+import { mergeConfigPatches } from "./kilo-provider/config-merge"
 import { parseMessageFiles, type MessageFile } from "./kilo-provider/message-files"
 import { handleFileSearch } from "./kilo-provider/file-search"
 import { watchFontSizeConfig } from "./kilo-provider/font-size"
@@ -2323,28 +2324,15 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     }
 
     try {
-      const { data: merged } = await retry(() => this.client!.config.get({ directory: dir }, { throwOnError: true }))
-      this.cachedConfigMessage = { type: "configLoaded", config: merged, features: configFeatures(merged) }
-      this.postMessage({ type: "configUpdated", config: merged, features: configFeatures(merged) })
-      if (refreshProviders) await this.fetchAndSendProviders()
-    } catch (error) {
-      console.error("[Kilo New] KiloProvider: Config write succeeded but post-write refresh failed:", error)
-      const patch =
-        partial.indexing === undefined && project.indexing === undefined
-          ? { ...partial, ...project }
-          : { ...partial, ...project, indexing: { ...(partial.indexing ?? {}), ...(project.indexing ?? {}) } }
       const cached = (this.cachedConfigMessage as { config?: unknown } | null)?.config
-      const features = (this.cachedConfigMessage as { features?: unknown } | null)?.features
-      const optimistic =
-        cached && typeof cached === "object" ? { ...(cached as Record<string, unknown>), ...patch } : patch
-      this.postMessage({
-        type: "configUpdated",
-        config: optimistic,
-        features: features ?? configFeatures(optimistic as Config),
-      })
+      const optimistic = mergeConfigPatches(cached, partial, project)
+      const features = configFeatures(optimistic)
+      this.cachedConfigMessage = { type: "configLoaded", config: optimistic, features }
+      this.postMessage({ type: "configUpdated", config: optimistic, features })
     } finally {
       this.pending--
     }
+    if (refreshProviders) await this.fetchAndSendProviders()
   }
   private postConfigFailure(error: unknown): void {
     console.error("[Kilo New] KiloProvider: Failed to update config:", error)
