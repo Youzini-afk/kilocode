@@ -1559,6 +1559,16 @@ const local = {
   "notifications.action.close": "Cerrar",
   "notifications.action.tryModel": "Probar {{model}}",
   "notifications.action.tryModelGeneric": "Probar modelo",
+  "diffViewer.source.workspace.label": "Cambios locales",
+  "diffViewer.source.workspace.tooltip":
+    "Todos los cambios de esta rama respecto a la rama base. Incluye archivos sin commitear (staged, unstaged y no rastreados) y commits locales que todavía no están en la base.",
+  "diffViewer.source.session.label": "Sesión",
+  "diffViewer.source.session.tooltip":
+    "Archivos modificados por Kilo durante la sesión actual, basado en snapshots por turno. Se reinicia al empezar una nueva sesión.",
+  "diffViewer.group.session": "Sesión",
+  "diffViewer.group.git": "Git",
+  "diffViewer.notice.snapshotsDisabled":
+    "Las instantáneas están deshabilitadas para este repositorio. Edita tus archivos de configuración para mostrar los cambios de la sesión.",
 } satisfies Record<string, string>
 
 export const dict = { ...en, ...local } satisfies Record<Keys, string>

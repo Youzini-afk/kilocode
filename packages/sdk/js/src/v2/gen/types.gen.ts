@@ -2406,7 +2406,7 @@ export type Config = {
    * Custom provider configurations and model overrides
    */
   provider?: {
-    [key: string]: ProviderConfig
+    [key: string]: ProviderConfig | null
   }
   /**
    * MCP (Model Context Protocol) server configurations
