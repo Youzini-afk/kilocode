@@ -31,6 +31,52 @@ export function stripNulls(obj: Config): Config {
   return result as Config
 }
 
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
+    return a.every((item, index) => valuesEqual(item, b[index]))
+  }
+  if (isRecord(a) || isRecord(b)) {
+    if (!isRecord(a) || !isRecord(b)) return false
+    const aKeys = Object.keys(a)
+    const bKeys = Object.keys(b)
+    if (aKeys.length !== bKeys.length) return false
+    return aKeys.every((key) => Object.prototype.hasOwnProperty.call(b, key) && valuesEqual(a[key], b[key]))
+  }
+  return false
+}
+
+/**
+ * Remove only the draft values that were part of a confirmed save.
+ *
+ * Edits made while saveConfig() is in-flight must remain dirty after the
+ * backend acknowledges the older save; otherwise the UI appears to ignore
+ * changes made immediately after the first save started.
+ */
+export function removeMatchingDraft(current: Partial<Config>, confirmed: Partial<Config>): Partial<Config> {
+  const result: Record<string, unknown> = {}
+  const confirmedRecord = confirmed as Record<string, unknown>
+
+  for (const [key, currentValue] of Object.entries(current)) {
+    if (!Object.prototype.hasOwnProperty.call(confirmedRecord, key)) {
+      result[key] = currentValue
+      continue
+    }
+
+    const confirmedValue = confirmedRecord[key]
+    if (isRecord(currentValue) && isRecord(confirmedValue)) {
+      const child = removeMatchingDraft(currentValue as Partial<Config>, confirmedValue as Partial<Config>)
+      if (Object.keys(child).length > 0) result[key] = child
+      continue
+    }
+
+    if (!valuesEqual(currentValue, confirmedValue)) result[key] = currentValue
+  }
+
+  return result as Partial<Config>
+}
+
 /**
  * Resolve the visible config when a configLoaded/configUpdated message arrives.
  * If the user has pending draft changes, re-apply the draft on top of the
@@ -49,6 +95,7 @@ export class ConfigState {
   config: Config = {}
   saved: Config = {}
   draft: Partial<Config> = {}
+  savingDraft: Partial<Config> = {}
   dirty = false
   saving = false
   loading = true
@@ -71,10 +118,12 @@ export class ConfigState {
   /** Handle an incoming configUpdated push from the extension. */
   handleConfigUpdated(server: Config) {
     if (this.saving) {
+      const remaining = removeMatchingDraft(this.draft, this.savingDraft)
       this.saving = false
-      this.draft = {}
-      this.dirty = false
-      this.config = server
+      this.savingDraft = {}
+      this.draft = remaining
+      this.dirty = Object.keys(remaining).length > 0
+      this.config = resolveConfig(server, remaining, this.dirty)
     } else {
       this.config = resolveConfig(server, this.draft, this.dirty)
     }
@@ -84,9 +133,11 @@ export class ConfigState {
   /** Handle a confirmed save when merged config refresh is still pending. */
   handleConfigSaved() {
     if (!this.saving) return
+    const remaining = removeMatchingDraft(this.draft, this.savingDraft)
     this.saving = false
-    this.draft = {}
-    this.dirty = false
+    this.savingDraft = {}
+    this.draft = remaining
+    this.dirty = Object.keys(remaining).length > 0
     this.saved = this.config
   }
 
@@ -94,6 +145,7 @@ export class ConfigState {
   handleConfigSaveFailed(server: Config) {
     if (!this.saving) return
     this.saving = false
+    this.savingDraft = {}
     this.saved = server
     this.config = resolveConfig(server, this.draft, this.dirty)
   }
@@ -101,6 +153,7 @@ export class ConfigState {
   /** Send the draft to the backend. */
   saveConfig() {
     if (this.saving || Object.keys(this.draft).length === 0) return
+    this.savingDraft = this.draft
     this.saving = true
   }
 

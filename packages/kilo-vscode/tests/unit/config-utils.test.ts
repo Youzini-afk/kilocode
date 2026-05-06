@@ -360,6 +360,63 @@ describe("ConfigState", () => {
       })
     })
 
+    it("preserves Agent Team edits made while a save is in-flight", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({
+        agentTeam: {
+          roles: {
+            orchestrator: { model: "kilo/gpt-5.5" },
+            explorer: { model: "kilo/gpt-5.4" },
+          },
+        },
+      })
+
+      s.updateConfig({ agentTeam: { roles: { orchestrator: { model: "kilo/gpt-5.5-codex" } } } })
+      s.saveConfig()
+      s.updateConfig({ agentTeam: { roles: { explorer: { model: "kilo/gpt-5.4-mini" } } } })
+      s.handleConfigUpdated({
+        agentTeam: {
+          roles: {
+            orchestrator: { model: "kilo/gpt-5.5-codex" },
+            explorer: { model: "kilo/gpt-5.4" },
+          },
+        },
+      })
+
+      expect(s.dirty).toBe(true)
+      expect(s.saving).toBe(false)
+      expect(s.config.agentTeam?.roles?.orchestrator?.model).toBe("kilo/gpt-5.5-codex")
+      expect(s.config.agentTeam?.roles?.explorer?.model).toBe("kilo/gpt-5.4-mini")
+      expect(s.draft.agentTeam?.roles?.orchestrator).toBeUndefined()
+      expect(s.draft.agentTeam?.roles?.explorer).toEqual({ model: "kilo/gpt-5.4-mini" })
+    })
+
+    it("preserves same-field edits made after save started", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({
+        agentTeam: {
+          roles: {
+            orchestrator: { model: "kilo/gpt-5.5" },
+          },
+        },
+      })
+
+      s.updateConfig({ agentTeam: { roles: { orchestrator: { model: "kilo/gpt-5.5-codex" } } } })
+      s.saveConfig()
+      s.updateConfig({ agentTeam: { roles: { orchestrator: { model: "kilo/gpt-5.4" } } } })
+      s.handleConfigUpdated({
+        agentTeam: {
+          roles: {
+            orchestrator: { model: "kilo/gpt-5.5-codex" },
+          },
+        },
+      })
+
+      expect(s.dirty).toBe(true)
+      expect(s.config.agentTeam?.roles?.orchestrator?.model).toBe("kilo/gpt-5.4")
+      expect(s.draft.agentTeam?.roles?.orchestrator).toEqual({ model: "kilo/gpt-5.4" })
+    })
+
     it("merges nested per-agent permission patches into existing rules", () => {
       const s = new ConfigState()
       s.handleConfigLoaded({

@@ -157,7 +157,11 @@
 }
 
 .agent-team-role-control-model {
-  flex: 1 1 200px;
+  flex: 1 1 180px;
+}
+
+.agent-team-role-control-provider {
+  flex: 0 1 150px;
 }
 
 .agent-team-role-control-variant {
@@ -193,9 +197,38 @@
 
 .agent-team-role-control [data-component="button"],
 .agent-team-role-control [data-slot="select-select-trigger"],
-.agent-team-role-control [data-component="input"] {
+.agent-team-role-control [data-component="input"],
+.agent-team-native-control {
   width: 100%;
   min-width: 0;
+}
+
+.agent-team-native-control {
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-strong);
+  background: var(--input-base);
+  box-shadow: var(--shadow-xs-border-base);
+  font: inherit;
+}
+
+.agent-team-native-control:disabled {
+  opacity: 0.6;
+}
+
+.agent-team-native-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  color: var(--text-base);
+  font-size: var(--font-size-small);
+}
+
+.agent-team-native-check input {
+  margin: 0;
 }
 
 .agent-team-role-policy {

@@ -12,7 +12,7 @@ import { batch, createContext, useContext, createSignal, onCleanup } from "solid
 import type { ParentComponent, Accessor } from "solid-js"
 import { useVSCode } from "./vscode"
 import type { Config, ExtensionMessage, FeatureFlags } from "../types/messages"
-import { deepMerge, stripNulls, resolveConfig } from "../utils/config-utils"
+import { deepMerge, stripNulls, resolveConfig, removeMatchingDraft } from "../utils/config-utils"
 import { splitConfigByScope } from "../utils/config-scope"
 
 export interface SaveError {
@@ -47,6 +47,7 @@ export const ConfigProvider: ParentComponent = (props) => {
   // True while a saveConfig() write is in-flight — used to clear draft on success
   // and to guard against stale configLoaded messages overwriting optimistic state.
   const [saving, setSaving] = createSignal(false)
+  const [savingDraft, setSavingDraft] = createSignal<Partial<Config>>({})
   // Error from the most recent saveConfig() attempt, or null if no error.
   // Cleared when the user edits the draft again or starts a new save.
   const [saveError, setSaveError] = createSignal<SaveError | null>(null)
@@ -94,11 +95,14 @@ export const ConfigProvider: ParentComponent = (props) => {
     if (message.type === "configUpdated") {
       batch(() => {
         if (saving()) {
+          const remaining = removeMatchingDraft(draft(), savingDraft())
+          const dirty = Object.keys(remaining).length > 0
           setSaving(false)
-          setDraft({})
-          setIsDirty(false)
+          setSavingDraft({})
+          setDraft(remaining)
+          setIsDirty(dirty)
           setSaveError(null)
-          setConfig(message.config)
+          setConfig(resolveConfig(message.config, remaining, dirty))
           setFeatures(message.features)
         } else {
           setConfig(resolveConfig(message.config, draft(), isDirty()))
@@ -112,6 +116,7 @@ export const ConfigProvider: ParentComponent = (props) => {
       // The write was rejected (e.g. schema validation) — surface the error
       // and keep the draft + isDirty so the user can correct and retry.
       setSaving(false)
+      setSavingDraft({})
       setSaveError({ message: message.message, details: message.details })
       return
     }
@@ -158,10 +163,11 @@ export const ConfigProvider: ParentComponent = (props) => {
 
   function saveConfig() {
     const changes = draft()
-    if (Object.keys(changes).length === 0) return
+    if (saving() || Object.keys(changes).length === 0) return
     // Don't clear draft/isDirty yet — wait for configUpdated confirmation.
     // If the write fails, the save bar stays visible so the user can retry.
     setSaving(true)
+    setSavingDraft(changes)
     setSaveError(null)
     // Split so per-project settings (e.g. commit_message.prompt) land in the
     // workspace's kilo.json instead of the global one. Send one message so the

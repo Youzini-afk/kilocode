@@ -1,15 +1,14 @@
 import { Component, For, JSX, Show, createMemo, createSignal } from "solid-js"
 import { Button } from "@kilocode/kilo-ui/button"
 import { Card } from "@kilocode/kilo-ui/card"
-import { Select } from "@kilocode/kilo-ui/select"
 import { Switch } from "@kilocode/kilo-ui/switch"
 import { TextField } from "@kilocode/kilo-ui/text-field"
-import { ModelSelectorBase } from "../shared/ModelSelector"
 import { parseModelString } from "../../../../src/shared/provider-model"
 import { useConfig } from "../../context/config"
 import { useLanguage } from "../../context/language"
 import { useProvider } from "../../context/provider"
 import type { AgentTeamConfig, AgentTeamRole, AgentTeamRoleConfig } from "../../types/messages"
+import { KILO_GATEWAY_ID, isSmall, providerSortKey, sanitizeName } from "../shared/model-selector-utils"
 import SettingsRow from "./SettingsRow"
 
 type Role = Exclude<AgentTeamRole, "councillor" | "team">
@@ -18,6 +17,17 @@ type RoleConfig = AgentTeamRoleConfig
 interface Choice {
   value: string
   label: string
+}
+
+interface ModelOption {
+  id: string
+  name: string
+}
+
+interface ModelGroup {
+  providerID: string
+  providerName: string
+  models: ModelOption[]
 }
 
 const roles: Role[] = ["orchestrator", "explorer", "librarian", "oracle", "designer", "fixer", "observer", "council"]
@@ -36,6 +46,7 @@ interface RoleRowProps {
   onToggleOpen: () => void
   cfg: () => RoleConfig
   enabled: () => boolean
+  modelGroups: () => ModelGroup[]
   onToggleEnabled: (v: boolean) => void
   onPatchRole: (next: Partial<RoleConfig>) => void
 }
@@ -45,6 +56,43 @@ const RoleRow: Component<RoleRowProps> = (props) => {
   const { findModel } = useProvider()
 
   const modelSelection = createMemo(() => parseModelString(props.cfg().model ?? undefined))
+  const providerID = createMemo(() => modelSelection()?.providerID ?? "")
+  const modelID = createMemo(() => modelSelection()?.modelID ?? "")
+
+  const modelGroups = createMemo<ModelGroup[]>(() => {
+    const current = modelSelection()
+    const groups = props.modelGroups()
+    if (!current || groups.some((group) => group.providerID === current.providerID)) return groups
+    return [
+      ...groups,
+      {
+        providerID: current.providerID,
+        providerName: current.providerID,
+        models: [{ id: current.modelID, name: current.modelID }],
+      },
+    ]
+  })
+
+  const selectedProviderModels = createMemo(
+    () => modelGroups().find((group) => group.providerID === providerID())?.models ?? [],
+  )
+
+  function updateProvider(nextProviderID: string) {
+    if (!nextProviderID) {
+      props.onPatchRole({ model: null })
+      return
+    }
+    const firstModel = modelGroups().find((group) => group.providerID === nextProviderID)?.models[0]
+    props.onPatchRole({ model: firstModel ? `${nextProviderID}/${firstModel.id}` : null })
+  }
+
+  function updateModel(nextModelID: string) {
+    if (!providerID() || !nextModelID) {
+      props.onPatchRole({ model: null })
+      return
+    }
+    props.onPatchRole({ model: `${providerID()}/${nextModelID}` })
+  }
 
   const variantList = createMemo<Choice[]>(() => {
     const found = findModel(modelSelection())
@@ -80,34 +128,52 @@ const RoleRow: Component<RoleRowProps> = (props) => {
         </Button>
       </div>
       <div class="agent-team-role-controls">
+        <div class="agent-team-role-control agent-team-role-control-provider">
+          <span class="agent-team-role-control-label">{language.t("settings.providers.title")}</span>
+          <select
+            class="agent-team-native-control"
+            value={providerID()}
+            onChange={(e) => updateProvider(e.currentTarget.value)}
+          >
+            <option value="">{language.t("settings.agentTeam.model.default")}</option>
+            <For each={modelGroups()}>{(group) => <option value={group.providerID}>{group.providerName}</option>}</For>
+          </select>
+        </div>
         <div class="agent-team-role-control agent-team-role-control-model">
           <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.model")}</span>
-          <ModelSelectorBase
-            value={modelSelection()}
-            onSelect={(providerID, modelID) =>
-              props.onPatchRole({ model: providerID && modelID ? `${providerID}/${modelID}` : null })
-            }
-            placement="bottom-start"
-            allowClear
-            clearLabel={language.t("settings.agentTeam.model.default")}
-          />
+          <select
+            class="agent-team-native-control"
+            value={modelID()}
+            disabled={!providerID() || selectedProviderModels().length === 0}
+            onChange={(e) => updateModel(e.currentTarget.value)}
+          >
+            <Show
+              when={providerID()}
+              fallback={<option value="">{language.t("settings.agentTeam.model.default")}</option>}
+            >
+              <Show
+                when={selectedProviderModels().length > 0}
+                fallback={<option value="">{language.t("dialog.model.empty")}</option>}
+              >
+                <For each={selectedProviderModels()}>{(model) => <option value={model.id}>{model.name}</option>}</For>
+              </Show>
+            </Show>
+          </select>
         </div>
         <div class="agent-team-role-control agent-team-role-control-variant">
           <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.variant")}</span>
-          <Select
-            options={variantList()}
-            current={currentVariant()}
-            value={(c: Choice) => c.value}
-            label={(c: Choice) => c.label}
-            onSelect={(c: Choice | undefined) => props.onPatchRole({ variant: c?.value || null })}
-            variant="secondary"
-            size="small"
-            triggerVariant="settings"
-          />
+          <select
+            class="agent-team-native-control"
+            value={currentVariant()?.value ?? ""}
+            onChange={(e) => props.onPatchRole({ variant: e.currentTarget.value || null })}
+          >
+            <For each={variantList()}>{(choice) => <option value={choice.value}>{choice.label}</option>}</For>
+          </select>
         </div>
         <div class="agent-team-role-control agent-team-role-control-temperature">
           <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.temperature")}</span>
-          <TextField
+          <input
+            class="agent-team-native-control"
             type="number"
             value={
               props.cfg().temperature === undefined || props.cfg().temperature === null
@@ -115,7 +181,8 @@ const RoleRow: Component<RoleRowProps> = (props) => {
                 : String(props.cfg().temperature)
             }
             placeholder={language.t("settings.agentTeam.temperature.default")}
-            onChange={(value) => {
+            onChange={(event) => {
+              const value = event.currentTarget.value
               const n = Number.parseFloat(value)
               props.onPatchRole({
                 temperature: value.trim() && Number.isFinite(n) ? Math.max(0, Math.min(2, n)) : null,
@@ -125,36 +192,44 @@ const RoleRow: Component<RoleRowProps> = (props) => {
         </div>
         <div class="agent-team-role-control agent-team-role-control-enabled">
           <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.enabled")}</span>
-          <Switch checked={props.enabled()} onChange={props.onToggleEnabled} hideLabel>
-            {props.title}
-          </Switch>
+          <label class="agent-team-native-check">
+            <input
+              type="checkbox"
+              checked={props.enabled()}
+              onChange={(event) => props.onToggleEnabled(event.currentTarget.checked)}
+            />
+            <span>{props.title}</span>
+          </label>
         </div>
       </div>
       <Show when={props.open}>
         <div class="agent-team-role-policy">
-          <TextField
+          <input
+            class="agent-team-native-control"
             value={props.cfg().displayName ?? ""}
             placeholder={language.t("settings.agentTeam.displayName.placeholder")}
-            onChange={(value) => props.onPatchRole({ displayName: value.trim() || null })}
+            onChange={(event) => props.onPatchRole({ displayName: event.currentTarget.value.trim() || null })}
           />
-          <TextField
+          <input
+            class="agent-team-native-control"
             value={(props.cfg().skills ?? []).join(", ")}
             placeholder={language.t("settings.agentTeam.skills.placeholder")}
-            onChange={(value) =>
+            onChange={(event) =>
               props.onPatchRole({
-                skills: value
+                skills: event.currentTarget.value
                   .split(",")
                   .map((s) => s.trim())
                   .filter(Boolean),
               })
             }
           />
-          <TextField
+          <input
+            class="agent-team-native-control"
             value={(props.cfg().mcps ?? []).join(", ")}
             placeholder={language.t("settings.agentTeam.mcps.placeholder")}
-            onChange={(value) =>
+            onChange={(event) =>
               props.onPatchRole({
-                mcps: value
+                mcps: event.currentTarget.value
                   .split(",")
                   .map((s) => s.trim())
                   .filter(Boolean),
@@ -182,6 +257,7 @@ function positive(value: string, fallback: number) {
 const AgentTeamTab: Component = () => {
   const language = useLanguage()
   const { config, updateConfig } = useConfig()
+  const { connected, models } = useProvider()
   const [open, setOpen] = createSignal<Record<string, boolean>>({})
 
   const team = () => config().agentTeam ?? {}
@@ -273,6 +349,32 @@ const AgentTeamTab: Component = () => {
     })),
   )
 
+  const connectedSet = createMemo(() => new Set(connected()))
+  const modelGroups = createMemo<ModelGroup[]>(() => {
+    const grouped = new Map<string, ModelGroup>()
+    for (const model of models()) {
+      if (model.providerID !== KILO_GATEWAY_ID && !connectedSet().has(model.providerID)) continue
+      if (isSmall(model)) continue
+      const group = grouped.get(model.providerID) ?? {
+        providerID: model.providerID,
+        providerName: model.providerName,
+        models: [],
+      }
+      group.models.push({ id: model.id, name: sanitizeName(model.name) })
+      grouped.set(model.providerID, group)
+    }
+
+    return [...grouped.values()]
+      .map((group) => ({
+        ...group,
+        models: [...group.models].sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .sort(
+        (a, b) =>
+          providerSortKey(a.providerID) - providerSortKey(b.providerID) || a.providerName.localeCompare(b.providerName),
+      )
+  })
+
   const tuned = () => team().autoContinue?.enabled === true || team().autoContinue?.autoEnable === true
 
   return (
@@ -319,6 +421,7 @@ const AgentTeamTab: Component = () => {
                 onToggleOpen={() => setOpen((prev) => ({ ...prev, [`role:${item.id}`]: !prev[`role:${item.id}`] }))}
                 cfg={() => cfg(item.id)}
                 enabled={() => roleEnabled(item.id)}
+                modelGroups={modelGroups}
                 onToggleEnabled={(v) => toggle(item.id, v)}
                 onPatchRole={(next) => patchRole(item.id, next)}
               />
