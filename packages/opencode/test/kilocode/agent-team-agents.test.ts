@@ -69,4 +69,65 @@ describe("Agent Team agents", () => {
     expect(enabled({ council: { enabled: true }, roles: { council: { enabled: false } } }, "council")).toBe(false)
     expect(enabled({ council: { enabled: true } }, "council")).toBe(true)
   })
+
+  test("applies display name and provider options", () => {
+    const map = agents({
+      enabled: true,
+      roles: {
+        oracle: {
+          displayName: "advisor",
+          options: {
+            reasoningEffort: "high",
+          },
+        },
+      },
+    })
+
+    expect(map.oracle?.displayName).toBe("advisor")
+    expect(map.oracle?.options).toEqual({ reasoningEffort: "high" })
+  })
+
+  test("restricts skills with wildcard syntax", () => {
+    const map = agents({
+      enabled: true,
+      roles: {
+        oracle: {
+          skills: ["browser-use", "openai-docs"],
+        },
+        librarian: {
+          skills: ["*", "!imagegen"],
+        },
+      },
+    })
+
+    expect(Permission.evaluate("skill", "browser-use", map.oracle.permission).action).toBe("allow")
+    expect(Permission.evaluate("skill", "imagegen", map.oracle.permission).action).toBe("deny")
+    expect(Permission.evaluate("skill", "openai-docs", map.librarian.permission).action).toBe("allow")
+    expect(Permission.evaluate("skill", "imagegen", map.librarian.permission).action).toBe("deny")
+  })
+
+  test("restricts MCP servers with wildcard syntax", () => {
+    const map = agents(
+      {
+        enabled: true,
+        roles: {
+          orchestrator: {
+            mcps: ["*", "!context7"],
+          },
+          librarian: {
+            mcps: ["github"],
+          },
+        },
+      },
+      {
+        "context7_*": "ask",
+        "github_*": "ask",
+      },
+    )
+
+    expect(Permission.evaluate("github_create_issue", "*", map.team.permission).action).toBe("ask")
+    expect(Permission.evaluate("context7_query_docs", "*", map.team.permission).action).toBe("deny")
+    expect(Permission.evaluate("github_create_issue", "*", map.librarian.permission).action).toBe("ask")
+    expect(Permission.evaluate("context7_query_docs", "*", map.librarian.permission).action).toBe("deny")
+  })
 })

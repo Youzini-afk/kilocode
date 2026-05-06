@@ -258,6 +258,10 @@ export interface AgentTeamRoleConfig {
   model?: string | null
   variant?: string | null
   temperature?: number | null
+  skills?: string[]
+  mcps?: string[]
+  options?: Record<string, unknown>
+  displayName?: string | null
 }
 
 export interface AgentTeamSessionReuseConfig {

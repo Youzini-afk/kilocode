@@ -126,6 +126,18 @@ const AgentTeamRole = Schema.Struct({
   temperature: Schema.optional(Schema.NullOr(Schema.Number)).annotate({
     description: "Optional temperature override for this Agent Team role",
   }),
+  skills: Schema.optional(Schema.Array(Schema.String)).annotate({
+    description: "Optional skill allow-list for this Agent Team role. Supports * and !name entries",
+  }),
+  mcps: Schema.optional(Schema.Array(Schema.String)).annotate({
+    description: "Optional MCP server allow-list for this Agent Team role. Supports * and !name entries",
+  }),
+  options: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)).annotate({
+    description: "Optional provider-specific model options for this Agent Team role",
+  }),
+  displayName: Schema.optional(Schema.NullOr(Schema.String)).annotate({
+    description: "Optional display name for this Agent Team role",
+  }),
 })
 
 const AgentTeamRoles = Schema.Struct({
