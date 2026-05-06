@@ -1359,7 +1359,33 @@ export const dict = {
   "settings.agentTeam.takeover.description":
     "When no explicit default agent is configured, start new sessions with the team coordinator.",
   "settings.agentTeam.roles.title": "Specialists",
+  "settings.agentTeam.roles.description":
+    "Route work across the coordinator and specialist agents without editing raw JSON.",
+  "settings.agentTeam.section.expand": "Expand",
+  "settings.agentTeam.section.collapse": "Collapse",
+  "settings.agentTeam.column.agent": "Agent",
+  "settings.agentTeam.column.model": "Model",
+  "settings.agentTeam.column.variant": "Thinking",
+  "settings.agentTeam.column.temperature": "Temp",
+  "settings.agentTeam.column.enabled": "Enabled",
   "settings.agentTeam.model.default": "Use team default",
+  "settings.agentTeam.variant.default": "Default",
+  "settings.agentTeam.variant.low": "Low",
+  "settings.agentTeam.variant.medium": "Medium",
+  "settings.agentTeam.variant.high": "High",
+  "settings.agentTeam.variant.xhigh": "XHigh",
+  "settings.agentTeam.temperature.default": "Default",
+  "settings.agentTeam.displayName.placeholder": "Display name",
+  "settings.agentTeam.skills.placeholder": "Skills: *, !imagegen, browser-use",
+  "settings.agentTeam.mcps.placeholder": "MCPs: *, !context7, github",
+  "settings.agentTeam.role.advanced.show": "Show policy",
+  "settings.agentTeam.role.advanced.hide": "Hide policy",
+  "settings.agentTeam.role.orchestrator.title": "Orchestrator",
+  "settings.agentTeam.role.orchestrator.description":
+    "Coordinates the full workflow and decides when delegation is worth it.",
+  "settings.agentTeam.role.explorer.title": "Explorer",
+  "settings.agentTeam.role.explorer.description":
+    "Finds files, symbols, call sites, and architecture entry points quickly.",
   "settings.agentTeam.role.librarian.title": "Librarian",
   "settings.agentTeam.role.librarian.description":
     "Searches the codebase, docs, history, and references before changes.",
@@ -1377,12 +1403,14 @@ export const dict = {
   "settings.agentTeam.role.council.title": "Council",
   "settings.agentTeam.role.council.description": "Runs structured multi-agent review for high-risk decisions.",
   "settings.agentTeam.collaboration.title": "Collaboration",
+  "settings.agentTeam.collaboration.description": "Control how specialist sessions are reused across related tasks.",
   "settings.agentTeam.sessionReuse.title": "Reuse specialist sessions",
   "settings.agentTeam.sessionReuse.description":
     "Keep a small pool of specialist sessions alive so repeated handoffs preserve context.",
   "settings.agentTeam.sessionReuse.max.title": "Sessions per specialist",
   "settings.agentTeam.sessionReuse.max.description": "Maximum reusable sessions kept for each specialist role.",
   "settings.agentTeam.advanced.title": "Advanced",
+  "settings.agentTeam.advanced.description": "Tune council timing and automatic continuation behavior.",
   "settings.agentTeam.council.title": "Enable Council",
   "settings.agentTeam.council.description":
     "Expose the optional Council workflow for deliberate multi-agent decisions.",
