@@ -83,6 +83,8 @@ const INTERNAL_PLUGINS: PluginInstance[] = [
 const OPTIONAL_INTERNAL_PLUGINS = new Map<PluginInstance, () => boolean>([
   [MagicContextPlugin, () => Flag.KILO_DISABLE_MAGIC_CONTEXT],
 ])
+
+const INTERNAL_PLUGIN_IDS = new Map<PluginInstance, string>([[MagicContextPlugin, "kilocode-magic-context"]])
 // kilocode_change end
 
 function isServerPlugin(value: unknown): value is PluginInstance {
@@ -186,7 +188,8 @@ export const layer = Layer.effect(
           $: typeof Bun === "undefined" ? undefined : Bun.$,
         }
 
-        for (const plugin of INTERNAL_PLUGINS) { // kilocode_change - optional internal plugin filtering
+        for (const plugin of INTERNAL_PLUGINS) {
+          // kilocode_change - optional internal plugin filtering
           // kilocode_change start
           if (OPTIONAL_INTERNAL_PLUGINS.get(plugin)?.()) {
             log.info("skipping disabled internal plugin", { name: plugin.name })
@@ -202,7 +205,7 @@ export const layer = Layer.effect(
           }).pipe(Effect.option)
           if (init._tag === "Some") {
             hooks.push(init.value)
-            entries.push({ id: plugin.name || "internal", hooks: init.value })
+            entries.push({ id: INTERNAL_PLUGIN_IDS.get(plugin) ?? plugin.name ?? "internal", hooks: init.value })
           }
         }
 
