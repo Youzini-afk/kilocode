@@ -23,7 +23,11 @@ import { ContextEngineModelSelect } from "./ContextEngineModelSelect"
 type Profile = "light" | "recommended" | "advanced"
 type Section = "agents" | "memory" | "runtime" | "advanced"
 type Option<T extends string> = { value: T; label: string }
-type Call = { resolve: (value: unknown) => void; reject: (error: Error) => void; timeout: ReturnType<typeof setTimeout> }
+type Call = {
+  resolve: (value: unknown) => void
+  reject: (error: Error) => void
+  timeout: ReturnType<typeof setTimeout>
+}
 
 const PLUGIN_ID = "kilocode-magic-context"
 const LOCAL_EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2"
@@ -244,7 +248,10 @@ export const ContextEngineTab: Component = () => {
     patch([agent, "model"], model || undefined)
   }
 
-  const patchThinking = (agent: "historian" | "dreamer" | "sidekick", item?: Option<ContextEngineThinkingLevel | "default">) => {
+  const patchThinking = (
+    agent: "historian" | "dreamer" | "sidekick",
+    item?: Option<ContextEngineThinkingLevel | "default">,
+  ) => {
     patch([agent, "thinking_level"], item?.value === "default" ? undefined : item?.value)
   }
 
@@ -303,12 +310,14 @@ export const ContextEngineTab: Component = () => {
       const checks = result.checks?.map((item) => `${item.name}: ${item.status}`).join(" · ")
       showToast({
         title: language.t("settings.contextEngine.diagnose.title"),
-        description: checks || language.t("settings.contextEngine.diagnose.description", {
-          models: count(),
-          status: result.enabled
-            ? language.t("settings.contextEngine.status.enabled")
-            : language.t("settings.contextEngine.status.disabled"),
-        }),
+        description:
+          checks ||
+          language.t("settings.contextEngine.diagnose.description", {
+            models: count(),
+            status: result.enabled
+              ? language.t("settings.contextEngine.status.enabled")
+              : language.t("settings.contextEngine.status.disabled"),
+          }),
       })
     } catch (error) {
       showToast({
@@ -383,9 +392,43 @@ export const ContextEngineTab: Component = () => {
     setOpen((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  const SectionCard: Component<{ id: Section; title: string; description: string; children: JSX.Element }> = (props) => (
-    <section style={{ display: "flex", "flex-direction": "column", gap: "8px" }}>
-      <div style={{ display: "flex", "align-items": "center", "justify-content": "space-between", gap: "12px" }}>
+  const Block: Component<{ title: string; description: string; children: JSX.Element }> = (props) => (
+    <Card style={{ padding: "0", overflow: "hidden" }}>
+      <div
+        style={{
+          display: "flex",
+          "align-items": "center",
+          "justify-content": "space-between",
+          gap: "12px",
+          padding: "12px 14px",
+          "border-bottom": "1px solid var(--border-weak-base)",
+          background: "var(--surface-base, var(--vscode-editorWidget-background))",
+        }}
+      >
+        <div>
+          <h4 style={{ margin: 0 }}>{props.title}</h4>
+          <p style={{ margin: "4px 0 0", color: "var(--text-muted)" }}>{props.description}</p>
+        </div>
+      </div>
+      <div style={{ padding: "12px 14px" }}>{props.children}</div>
+    </Card>
+  )
+
+  const SectionCard: Component<{ id: Section; title: string; description: string; children: JSX.Element }> = (
+    props,
+  ) => (
+    <Card style={{ padding: "0", overflow: "hidden" }}>
+      <div
+        style={{
+          display: "flex",
+          "align-items": "center",
+          "justify-content": "space-between",
+          gap: "12px",
+          padding: "12px 14px",
+          "border-bottom": open()[props.id] ? "1px solid var(--border-weak-base)" : "none",
+          background: "var(--surface-base, var(--vscode-editorWidget-background))",
+        }}
+      >
         <div>
           <h4 style={{ margin: 0 }}>{props.title}</h4>
           <p style={{ margin: "4px 0 0", color: "var(--text-muted)" }}>{props.description}</p>
@@ -397,9 +440,52 @@ export const ContextEngineTab: Component = () => {
         </Button>
       </div>
       <Show when={open()[props.id]}>
-        <Card>{props.children}</Card>
+        <div
+          style={{
+            display: "flex",
+            "flex-direction": "column",
+            gap: "12px",
+            padding: "12px",
+          }}
+        >
+          {props.children}
+        </div>
       </Show>
-    </section>
+    </Card>
+  )
+
+  const Group: Component<{ title: string; description: string; action?: JSX.Element; children: JSX.Element }> = (
+    props,
+  ) => (
+    <div
+      style={{
+        overflow: "hidden",
+        border: "1px solid var(--border-weak-base)",
+        "border-radius": "8px",
+        background: "var(--surface-base, var(--vscode-editorWidget-background))",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          "align-items": "center",
+          "justify-content": "space-between",
+          gap: "12px",
+          padding: "10px 12px",
+          "border-bottom": "1px solid var(--border-weak-base)",
+          background: "var(--surface-inset-base, rgba(127, 127, 127, 0.06))",
+        }}
+      >
+        <div style={{ "min-width": 0 }}>
+          <div style={{ "font-weight": 600 }}>{props.title}</div>
+          <div style={{ margin: "4px 0 0", color: "var(--text-muted)", "font-size": "12px" }}>{props.description}</div>
+        </div>
+        <Show when={props.action}>
+          <div style={{ display: "flex", "align-items": "center", "flex-shrink": 0 }}>{props.action}</div>
+        </Show>
+      </div>
+      <div style={{ padding: "12px" }}>{props.children}</div>
+    </div>
   )
 
   const unsubscribe = vscode.onMessage((message) => {
@@ -444,7 +530,10 @@ export const ContextEngineTab: Component = () => {
         </div>
       </div>
 
-      <Card>
+      <Block
+        title={language.t("settings.contextEngine.general.title")}
+        description={language.t("settings.contextEngine.general.description")}
+      >
         <SettingsRow
           title={language.t("settings.contextEngine.enabled.title")}
           description={language.t("settings.contextEngine.enabled.description")}
@@ -475,7 +564,7 @@ export const ContextEngineTab: Component = () => {
         >
           <Tag>{language.t("settings.contextEngine.models.count", { count: count() })}</Tag>
         </SettingsRow>
-      </Card>
+      </Block>
 
       <Show when={count() === 0}>
         <Card>
@@ -496,13 +585,11 @@ export const ContextEngineTab: Component = () => {
         title={language.t("settings.contextEngine.agents.title")}
         description={language.t("settings.contextEngine.agents.description")}
       >
-        <>
-          <SettingsRow
-            title={language.t("settings.contextEngine.historian.title")}
-            description={language.t("settings.contextEngine.historian.description")}
-          >
-            <Tag>{language.t("settings.contextEngine.historian.core")}</Tag>
-          </SettingsRow>
+        <Group
+          title={language.t("settings.contextEngine.historian.title")}
+          description={language.t("settings.contextEngine.historian.description")}
+          action={<Tag>{language.t("settings.contextEngine.historian.core")}</Tag>}
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.model.title")}
             description={language.t("settings.contextEngine.model.description")}
@@ -529,10 +616,14 @@ export const ContextEngineTab: Component = () => {
           <SettingsRow
             title={language.t("settings.contextEngine.thinking.title")}
             description={language.t("settings.contextEngine.thinking.description")}
+            last
           >
             <Select
               options={thinking}
-              current={label(thinking, (string(["historian", "thinking_level"]) || "default") as ContextEngineThinkingLevel | "default")}
+              current={label(
+                thinking,
+                (string(["historian", "thinking_level"]) || "default") as ContextEngineThinkingLevel | "default",
+              )}
               value={(item) => item.value}
               label={(item) => language.t(`settings.contextEngine.thinking.${item.value}`)}
               onSelect={(item) => patchThinking("historian", item)}
@@ -541,10 +632,12 @@ export const ContextEngineTab: Component = () => {
               triggerVariant="settings"
             />
           </SettingsRow>
-          <SettingsRow
-            title={language.t("settings.contextEngine.dreamer.title")}
-            description={language.t("settings.contextEngine.dreamer.description")}
-          >
+        </Group>
+
+        <Group
+          title={language.t("settings.contextEngine.dreamer.title")}
+          description={language.t("settings.contextEngine.dreamer.description")}
+          action={
             <Switch
               checked={checked(["dreamer", "enabled"], false)}
               onChange={(next) => patch(["dreamer", "enabled"], next)}
@@ -552,7 +645,8 @@ export const ContextEngineTab: Component = () => {
             >
               {language.t("settings.contextEngine.dreamer.title")}
             </Switch>
-          </SettingsRow>
+          }
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.model.title")}
             description={language.t("settings.contextEngine.model.description")}
@@ -567,6 +661,7 @@ export const ContextEngineTab: Component = () => {
           <SettingsRow
             title={language.t("settings.contextEngine.dreamer.schedule.title")}
             description={language.t("settings.contextEngine.dreamer.schedule.description")}
+            last
           >
             <TextField
               value={string(["dreamer", "schedule"], "02:00-06:00")}
@@ -574,10 +669,12 @@ export const ContextEngineTab: Component = () => {
               onChange={(next) => patchText(["dreamer", "schedule"], next)}
             />
           </SettingsRow>
-          <SettingsRow
-            title={language.t("settings.contextEngine.sidekick.title")}
-            description={language.t("settings.contextEngine.sidekick.description")}
-          >
+        </Group>
+
+        <Group
+          title={language.t("settings.contextEngine.sidekick.title")}
+          description={language.t("settings.contextEngine.sidekick.description")}
+          action={
             <Switch
               checked={checked(["sidekick", "enabled"], false)}
               onChange={(next) => patch(["sidekick", "enabled"], next)}
@@ -585,7 +682,8 @@ export const ContextEngineTab: Component = () => {
             >
               {language.t("settings.contextEngine.sidekick.title")}
             </Switch>
-          </SettingsRow>
+          }
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.model.title")}
             description={language.t("settings.contextEngine.model.description")}
@@ -598,7 +696,7 @@ export const ContextEngineTab: Component = () => {
               onOpenProviders={providers}
             />
           </SettingsRow>
-        </>
+        </Group>
       </SectionCard>
 
       <SectionCard
@@ -606,7 +704,10 @@ export const ContextEngineTab: Component = () => {
         title={language.t("settings.contextEngine.memory.title")}
         description={language.t("settings.contextEngine.memory.description")}
       >
-        <>
+        <Group
+          title={language.t("settings.contextEngine.group.memory.title")}
+          description={language.t("settings.contextEngine.group.memory.description")}
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.memory.enabled.title")}
             description={language.t("settings.contextEngine.memory.enabled.description")}
@@ -627,7 +728,9 @@ export const ContextEngineTab: Component = () => {
               type="number"
               value={String(number(["memory", "injection_budget_tokens"], 4000))}
               placeholder="4000"
-              onChange={(next) => patchNumber(["memory", "injection_budget_tokens"], next, 4000, { integer: true, min: 500, max: 20000 })}
+              onChange={(next) =>
+                patchNumber(["memory", "injection_budget_tokens"], next, 4000, { integer: true, min: 500, max: 20000 })
+              }
             />
           </SettingsRow>
           <SettingsRow
@@ -645,14 +748,23 @@ export const ContextEngineTab: Component = () => {
           <SettingsRow
             title={language.t("settings.contextEngine.memory.promotionThreshold.title")}
             description={language.t("settings.contextEngine.memory.promotionThreshold.description")}
+            last
           >
             <TextField
               type="number"
               value={String(number(["memory", "retrieval_count_promotion_threshold"], 3))}
               placeholder="3"
-              onChange={(next) => patchNumber(["memory", "retrieval_count_promotion_threshold"], next, 3, { integer: true, min: 1 })}
+              onChange={(next) =>
+                patchNumber(["memory", "retrieval_count_promotion_threshold"], next, 3, { integer: true, min: 1 })
+              }
             />
           </SettingsRow>
+        </Group>
+
+        <Group
+          title={language.t("settings.contextEngine.group.embedding.title")}
+          description={language.t("settings.contextEngine.group.embedding.description")}
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.embedding.storage.title")}
             description={language.t("settings.contextEngine.embedding.storage.description")}
@@ -709,7 +821,7 @@ export const ContextEngineTab: Component = () => {
               />
             </SettingsRow>
           </Show>
-        </>
+        </Group>
       </SectionCard>
 
       <SectionCard
@@ -717,7 +829,10 @@ export const ContextEngineTab: Component = () => {
         title={language.t("settings.contextEngine.runtime.title")}
         description={language.t("settings.contextEngine.runtime.description")}
       >
-        <>
+        <Group
+          title={language.t("settings.contextEngine.group.contextReduction.title")}
+          description={language.t("settings.contextEngine.group.contextReduction.description")}
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.ctxReduce.title")}
             description={language.t("settings.contextEngine.ctxReduce.description")}
@@ -766,6 +881,7 @@ export const ContextEngineTab: Component = () => {
           <SettingsRow
             title={language.t("settings.contextEngine.compactionMarkers.title")}
             description={language.t("settings.contextEngine.compactionMarkers.description")}
+            last
           >
             <Switch
               checked={checked(["compaction_markers"], true)}
@@ -775,6 +891,12 @@ export const ContextEngineTab: Component = () => {
               {language.t("settings.contextEngine.compactionMarkers.title")}
             </Switch>
           </SettingsRow>
+        </Group>
+
+        <Group
+          title={language.t("settings.contextEngine.group.commitTrigger.title")}
+          description={language.t("settings.contextEngine.group.commitTrigger.description")}
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.commitTrigger.title")}
             description={language.t("settings.contextEngine.commitTrigger.description")}
@@ -796,10 +918,12 @@ export const ContextEngineTab: Component = () => {
               type="number"
               value={String(number(["commit_cluster_trigger", "min_clusters"], 3))}
               placeholder="3"
-              onChange={(next) => patchNumber(["commit_cluster_trigger", "min_clusters"], next, 3, { integer: true, min: 1 })}
+              onChange={(next) =>
+                patchNumber(["commit_cluster_trigger", "min_clusters"], next, 3, { integer: true, min: 1 })
+              }
             />
           </SettingsRow>
-        </>
+        </Group>
       </SectionCard>
 
       <SectionCard
@@ -807,10 +931,14 @@ export const ContextEngineTab: Component = () => {
         title={language.t("settings.contextEngine.advanced.title")}
         description={language.t("settings.contextEngine.advanced.description")}
       >
-        <>
+        <Group
+          title={language.t("settings.contextEngine.group.timeouts.title")}
+          description={language.t("settings.contextEngine.group.timeouts.description")}
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.historian.timeout.title")}
             description={language.t("settings.contextEngine.historian.timeout.description")}
+            last
           >
             <TextField
               type="number"
@@ -819,6 +947,12 @@ export const ContextEngineTab: Component = () => {
               onChange={(next) => patchNumber(["historian_timeout_ms"], next, 300000, { integer: true, min: 60000 })}
             />
           </SettingsRow>
+        </Group>
+
+        <Group
+          title={language.t("settings.contextEngine.group.compressor.title")}
+          description={language.t("settings.contextEngine.group.compressor.description")}
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.compressor.enabled.title")}
             description={language.t("settings.contextEngine.compressor.enabled.description")}
@@ -834,14 +968,23 @@ export const ContextEngineTab: Component = () => {
           <SettingsRow
             title={language.t("settings.contextEngine.compressor.depth.title")}
             description={language.t("settings.contextEngine.compressor.depth.description")}
+            last
           >
             <TextField
               type="number"
               value={String(number(["compressor", "max_merge_depth"], 5))}
               placeholder="5"
-              onChange={(next) => patchNumber(["compressor", "max_merge_depth"], next, 5, { integer: true, min: 1, max: 5 })}
+              onChange={(next) =>
+                patchNumber(["compressor", "max_merge_depth"], next, 5, { integer: true, min: 1, max: 5 })
+              }
             />
           </SettingsRow>
+        </Group>
+
+        <Group
+          title={language.t("settings.contextEngine.group.experimental.title")}
+          description={language.t("settings.contextEngine.group.experimental.description")}
+        >
           <SettingsRow
             title={language.t("settings.contextEngine.experimental.autoSearch.title")}
             description={language.t("settings.contextEngine.experimental.autoSearch.description")}
@@ -879,7 +1022,7 @@ export const ContextEngineTab: Component = () => {
               {language.t("settings.contextEngine.experimental.temporal.title")}
             </Switch>
           </SettingsRow>
-        </>
+        </Group>
       </SectionCard>
     </div>
   )

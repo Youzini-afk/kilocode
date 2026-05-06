@@ -1031,6 +1031,9 @@ export const dict = {
   "settings.contextEngine.mode.recommended": "Recommended",
   "settings.contextEngine.mode.light": "Light",
   "settings.contextEngine.mode.advanced": "Advanced",
+  "settings.contextEngine.general.title": "Basic setup",
+  "settings.contextEngine.general.description":
+    "Enable Context Engine, pick the default profile, and confirm available API models.",
   "settings.contextEngine.noModels.title": "No configured API models",
   "settings.contextEngine.noModels.description": "Configure an API provider first, then select its models here.",
   "settings.contextEngine.api.title": "API",
@@ -1063,9 +1066,29 @@ export const dict = {
   "settings.contextEngine.models.count": "{{count}} models",
   "settings.contextEngine.agents.title": "Agents",
   "settings.contextEngine.agents.description": "Choose Kilo provider models for Historian, Dreamer, and Sidekick.",
+  "settings.contextEngine.group.memory.title": "Project memory",
+  "settings.contextEngine.group.memory.description":
+    "Control whether durable memory is saved, how much is injected, and how repeated facts are promoted.",
+  "settings.contextEngine.group.embedding.title": "Embeddings and vectors",
+  "settings.contextEngine.group.embedding.description":
+    "Configure vector storage and embedding generation for semantic memory retrieval.",
+  "settings.contextEngine.group.contextReduction.title": "Context reduction",
+  "settings.contextEngine.group.contextReduction.description":
+    "Control active-session reduction tools, execution thresholds, and protected recent context.",
+  "settings.contextEngine.group.commitTrigger.title": "Commit trigger",
+  "settings.contextEngine.group.commitTrigger.description":
+    "Trigger Historian after enough commit clusters accumulate.",
+  "settings.contextEngine.group.timeouts.title": "Timeouts",
+  "settings.contextEngine.group.timeouts.description": "Set maximum runtime for long model calls.",
+  "settings.contextEngine.group.compressor.title": "Background compression",
+  "settings.contextEngine.group.compressor.description": "Control background compression after history exceeds budget.",
+  "settings.contextEngine.group.experimental.title": "Experimental features",
+  "settings.contextEngine.group.experimental.description":
+    "Manage auto-search, Git indexing, temporal awareness, and other experimental context features.",
   "settings.contextEngine.historian.core": "Core",
   "settings.contextEngine.historian.twoPass.title": "Two-pass cleanup",
-  "settings.contextEngine.historian.twoPass.description": "Run an editor pass after Historian to remove low-signal or duplicate notes.",
+  "settings.contextEngine.historian.twoPass.description":
+    "Run an editor pass after Historian to remove low-signal or duplicate notes.",
   "settings.contextEngine.historian.timeout.title": "Historian timeout ms",
   "settings.contextEngine.historian.timeout.description": "Maximum runtime for each Historian model call.",
   "settings.contextEngine.thinking.title": "Thinking level",
@@ -1079,18 +1102,23 @@ export const dict = {
   "settings.contextEngine.thinking.xhigh": "XHigh",
   "settings.contextEngine.thinking.max": "Max",
   "settings.contextEngine.dreamer.schedule.title": "Dreamer window",
-  "settings.contextEngine.dreamer.schedule.description": "Time window for scheduled background dreaming, for example 02:00-06:00.",
+  "settings.contextEngine.dreamer.schedule.description":
+    "Time window for scheduled background dreaming, for example 02:00-06:00.",
   "settings.contextEngine.memory.budget.title": "Memory injection tokens",
   "settings.contextEngine.memory.budget.description": "Maximum tokens injected from reusable project memory.",
   "settings.contextEngine.memory.autoPromote.title": "Auto-promote facts",
-  "settings.contextEngine.memory.autoPromote.description": "Automatically promote recurring session facts into project memory.",
+  "settings.contextEngine.memory.autoPromote.description":
+    "Automatically promote recurring session facts into project memory.",
   "settings.contextEngine.memory.promotionThreshold.title": "Promotion threshold",
-  "settings.contextEngine.memory.promotionThreshold.description": "Retrieval count required before a memory becomes permanent.",
+  "settings.contextEngine.memory.promotionThreshold.description":
+    "Retrieval count required before a memory becomes permanent.",
   "settings.contextEngine.embedding.storage.title": "Vector storage",
-  "settings.contextEngine.embedding.storage.description": "Magic Context stores memory vectors in its built-in SQLite database.",
+  "settings.contextEngine.embedding.storage.description":
+    "Magic Context stores memory vectors in its built-in SQLite database.",
   "settings.contextEngine.embedding.storage.sqlite": "SQLite built-in",
   "settings.contextEngine.embedding.provider.title": "Embedding provider",
-  "settings.contextEngine.embedding.provider.description": "Choose how memory embeddings are generated for semantic retrieval.",
+  "settings.contextEngine.embedding.provider.description":
+    "Choose how memory embeddings are generated for semantic retrieval.",
   "settings.contextEngine.embedding.provider.local": "Local",
   "settings.contextEngine.embedding.provider.openai-compatible": "OpenAI Compatible",
   "settings.contextEngine.embedding.provider.off": "Off",
@@ -1101,17 +1129,20 @@ export const dict = {
   "settings.contextEngine.embedding.apiKey.title": "Embedding API key",
   "settings.contextEngine.embedding.apiKey.description": "API key or config variable such as {env:OPENAI_API_KEY}.",
   "settings.contextEngine.runtime.title": "Runtime",
-  "settings.contextEngine.runtime.description": "Thresholds and context-reduction behavior used during active sessions.",
+  "settings.contextEngine.runtime.description":
+    "Thresholds and context-reduction behavior used during active sessions.",
   "settings.contextEngine.ctxReduce.title": "Expose ctx_reduce",
   "settings.contextEngine.ctxReduce.description": "Show the ctx_reduce tool and enable reduction nudges.",
   "settings.contextEngine.executeThreshold.title": "Execute threshold %",
-  "settings.contextEngine.executeThreshold.description": "Context usage percentage that triggers queued context operations.",
+  "settings.contextEngine.executeThreshold.description":
+    "Context usage percentage that triggers queued context operations.",
   "settings.contextEngine.historyBudget.title": "History budget ratio",
   "settings.contextEngine.historyBudget.description": "Fraction of usable context reserved for rendered history.",
   "settings.contextEngine.protectedTags.title": "Protected recent tags",
   "settings.contextEngine.protectedTags.description": "Recent message tags protected from dropping.",
   "settings.contextEngine.compactionMarkers.title": "Compaction markers",
-  "settings.contextEngine.compactionMarkers.description": "Write Kilo-compatible markers after Historian publishes context.",
+  "settings.contextEngine.compactionMarkers.description":
+    "Write Kilo-compatible markers after Historian publishes context.",
   "settings.contextEngine.commitTrigger.title": "Commit-cluster trigger",
   "settings.contextEngine.commitTrigger.description": "Run Historian after enough commit clusters accumulate.",
   "settings.contextEngine.commitTrigger.min.title": "Minimum commit clusters",
@@ -1123,11 +1154,14 @@ export const dict = {
   "settings.contextEngine.compressor.depth.title": "Maximum merge depth",
   "settings.contextEngine.compressor.depth.description": "Maximum compression depth from 1 to 5.",
   "settings.contextEngine.experimental.autoSearch.title": "Auto-search hints",
-  "settings.contextEngine.experimental.autoSearch.description": "Append compact hints when memory search finds relevant context.",
+  "settings.contextEngine.experimental.autoSearch.description":
+    "Append compact hints when memory search finds relevant context.",
   "settings.contextEngine.experimental.gitIndex.title": "Git commit indexing",
-  "settings.contextEngine.experimental.gitIndex.description": "Index recent commit messages as a searchable context source.",
+  "settings.contextEngine.experimental.gitIndex.description":
+    "Index recent commit messages as a searchable context source.",
   "settings.contextEngine.experimental.temporal.title": "Temporal awareness",
-  "settings.contextEngine.experimental.temporal.description": "Inject elapsed-time markers so the agent understands session pacing.",
+  "settings.contextEngine.experimental.temporal.description":
+    "Inject elapsed-time markers so the agent understands session pacing.",
   "settings.plugins.title": "Plugins",
   "settings.plugins.install.url.placeholder": "https://github.com/org/kilo-plugin.git",
   "settings.plugins.install.ref.placeholder": "ref/branch (optional)",
