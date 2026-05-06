@@ -32,7 +32,7 @@ Agent Team is the native Kilo architecture for coordinated specialist-agent work
 | `packages/opencode/src/kilocode/agent-team/session-reuse.ts` | Tracks reusable child sessions and injects resumable-session hints into Team requests. |
 | `packages/opencode/src/kilocode/agent-team/council.ts` | Runs optional multi-model council sessions and formats synthesis input. |
 | `packages/opencode/src/kilocode/agent-team/auto-continue.ts` | Conservatively resumes Team sessions with incomplete todos when enabled. |
-| `packages/kilo-vscode/webview-ui/src/components/settings/agent-team/` | Presents polished settings sections backed by Kilo provider/model pickers. |
+| `packages/kilo-vscode/webview-ui/src/components/settings/AgentTeamTab.tsx` | Presents polished settings sections backed by Kilo provider/model pickers. |
 
 Shared upstream files should only receive thin integration calls. Kilo-specific logic belongs under paths containing `kilocode`.
 
@@ -46,9 +46,21 @@ The user-facing config key is `agentTeam`:
     "enabled": true,
     "takeoverDefault": true,
     "roles": {
-      "librarian": { "enabled": true, "model": "kilo/auto" },
-      "oracle": { "enabled": true },
-      "fixer": { "enabled": true }
+      "orchestrator": {
+        "enabled": true,
+        "model": "kilo/auto",
+        "variant": "high",
+        "temperature": 0.1,
+        "mcps": ["*", "!context7"]
+      },
+      "explorer": { "enabled": true, "model": "kilo/auto" },
+      "librarian": {
+        "enabled": true,
+        "skills": ["openai-docs"],
+        "mcps": ["websearch", "context7", "grep_app"]
+      },
+      "oracle": { "enabled": true, "variant": "xhigh" },
+      "fixer": { "enabled": true, "temperature": 0.2 }
     },
     "sessionReuse": {
       "enabled": true,
@@ -66,11 +78,23 @@ The user-facing config key is `agentTeam`:
 
 The VS Code settings UI owns normal editing. JSON remains a power-user escape hatch only.
 
+Role entries support:
+
+- `enabled` — include or disable the role.
+- `model` — provider/model picked from configured Kilo providers.
+- `variant` — thinking/reasoning effort, such as `low`, `medium`, `high`, or `xhigh`.
+- `temperature` — optional sampling temperature override from `0` to `2`.
+- `skills` — skill allow-list with `*` and `!name` syntax.
+- `mcps` — MCP server allow-list with `*` and `!name` syntax.
+- `displayName` — optional user-facing alias.
+- `options` — provider-specific model options for power users.
+
 ## Agents
 
 | Agent | Mode | Default access | Purpose |
 |---|---|---|---|
 | `team` | primary | Delegation, todo, read/search, web, no shell | Coordinates work and chooses when specialist delegation is worth the overhead. |
+| `explorer` | subagent | Read/search/code discovery | Finds files, symbols, call sites, and architectural entry points quickly. |
 | `librarian` | subagent | Read/search/web/docs | Looks up current external documentation and source examples. |
 | `oracle` | subagent | Read/search | Reviews architecture, debugging strategy, maintainability, and high-risk decisions. |
 | `designer` | subagent | Edit allowed, no delegation | Implements or reviews user-facing UI and UX. |
@@ -79,7 +103,7 @@ The VS Code settings UI owns normal editing. JSON remains a power-user escape ha
 | `council` | all or subagent | Council tool only plus read | Synthesizes optional multi-model opinions. |
 | `councillor` | hidden subagent | Read only | Internal independent advisor spawned by council sessions. |
 
-Existing `explore` remains available and should be preferred for fast local code discovery. The Team prompt should mention both `explore` and the new specialists.
+The upstream `explore` agent remains available for manual use. Agent Team uses its own `explorer` specialist so the built-in coordinator can route discovery work without referencing a missing alias.
 
 ## Default-Agent Takeover
 
@@ -138,7 +162,9 @@ The VS Code settings UI should use clear sections:
 
 - Agent Team overview and master enable switch.
 - Default takeover switch.
-- Role cards with enable switch, role explanation, model picker, and advanced controls.
+- Agent routing grid with coordinator and specialists in one place.
+- Per-role enable switch, model picker, thinking strength, and temperature.
+- Collapsed per-role policy controls for display name, skills, and MCPs.
 - Collaboration settings for session reuse and parallelism.
 - Council settings in a collapsed advanced section.
 - Auto-continue settings in a collapsed advanced section.
