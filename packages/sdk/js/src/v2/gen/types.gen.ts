@@ -1906,6 +1906,443 @@ export type Config = {
    */
   contextEngine?: unknown
   /**
+   * Native Kilo Agent Team configuration
+   */
+  agentTeam?: {
+    /**
+     * Enable native Kilo Agent Team coordination
+     */
+    enabled?: boolean
+    /**
+     * Use Agent Team as the default agent when no explicit default_agent is set
+     */
+    takeoverDefault?: boolean
+    /**
+     * Agent Team role configuration
+     */
+    roles?: {
+      orchestrator?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      team?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      explorer?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      librarian?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      oracle?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      designer?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      fixer?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      observer?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      council?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      councillor?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+    }
+    /**
+     * Agent Team specialist session reuse configuration
+     */
+    sessionReuse?: {
+      /**
+       * Reuse previous specialist child sessions when Team delegates related work
+       */
+      enabled?: boolean
+      /**
+       * Maximum remembered child sessions per specialist role
+       */
+      maxSessionsPerAgent?: number
+    }
+    /**
+     * Agent Team council configuration
+     */
+    council?: {
+      /**
+       * Enable multi-model council consensus for Agent Team
+       */
+      enabled?: boolean
+      /**
+       * Default council preset name
+       */
+      defaultPreset?: string
+      /**
+       * Council session timeout in milliseconds
+       */
+      timeoutMs?: number
+      /**
+       * Council presets keyed by preset name, then councillor name
+       */
+      presets?: {
+        [key: string]: {
+          [key: string]: {
+            model: string
+            variant?: string | null
+            prompt?: string
+          }
+        }
+      }
+    }
+    /**
+     * Agent Team auto-continue configuration
+     */
+    autoContinue?: {
+      /**
+       * Automatically continue Team sessions with incomplete todos
+       */
+      enabled?: boolean
+      /**
+       * Maximum consecutive automatic continuations
+       */
+      maxContinuations?: number
+      /**
+       * Delay before an automatic continuation is injected
+       */
+      cooldownMs?: number
+    }
+  }
+  /**
    * Controls whether terminal command blocks are expanded or collapsed by default in the VS Code chat UI
    */
   terminal_command_display?: "expanded" | "collapsed"
@@ -1942,8 +2379,16 @@ export type Config = {
     debug?: AgentConfig
     orchestrator?: AgentConfig
     ask?: AgentConfig
+    team?: AgentConfig
     general?: AgentConfig
     explore?: AgentConfig
+    librarian?: AgentConfig
+    oracle?: AgentConfig
+    designer?: AgentConfig
+    fixer?: AgentConfig
+    observer?: AgentConfig
+    council?: AgentConfig
+    councillor?: AgentConfig
     title?: AgentConfig
     summary?: AgentConfig
     compaction?: AgentConfig
