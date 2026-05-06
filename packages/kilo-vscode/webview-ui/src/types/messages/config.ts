@@ -241,6 +241,41 @@ export interface ContextEngineDoctorResult {
   checks?: Array<{ name: string; status: string }>
 }
 
+export type AgentTeamRole = "librarian" | "oracle" | "designer" | "fixer" | "observer" | "council" | "councillor"
+
+export interface AgentTeamRoleConfig {
+  enabled?: boolean
+  model?: string | null
+  variant?: string | null
+  temperature?: number | null
+}
+
+export interface AgentTeamSessionReuseConfig {
+  enabled?: boolean
+  maxSessionsPerAgent?: number
+}
+
+export interface AgentTeamCouncilConfig {
+  enabled?: boolean
+  defaultPreset?: string
+  timeoutMs?: number
+}
+
+export interface AgentTeamAutoContinueConfig {
+  enabled?: boolean
+  maxContinuations?: number
+  cooldownMs?: number
+}
+
+export interface AgentTeamConfig {
+  enabled?: boolean
+  takeoverDefault?: boolean
+  roles?: Partial<Record<AgentTeamRole, AgentTeamRoleConfig>>
+  sessionReuse?: AgentTeamSessionReuseConfig
+  council?: AgentTeamCouncilConfig
+  autoContinue?: AgentTeamAutoContinueConfig
+}
+
 export interface BrowserSettings {
   enabled: boolean
   useSystemChrome: boolean
@@ -278,6 +313,7 @@ export interface Config {
   experimental?: ExperimentalConfig
   indexing?: IndexingConfig
   contextEngine?: ContextEngineConfig
+  agentTeam?: AgentTeamConfig
   plugin?: Array<string | [string, Record<string, unknown>]>
 }
 

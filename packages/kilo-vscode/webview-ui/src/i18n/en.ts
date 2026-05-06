@@ -1350,6 +1350,52 @@ export const dict = {
   "settings.agentBehaviour.subtab.rules": "Rules",
   "settings.agentBehaviour.subtab.workflows": "Workflows",
   "settings.agentBehaviour.subtab.skills": "Skills",
+  "settings.agentBehaviour.subtab.agentTeam": "Agent Team",
+
+  "settings.agentTeam.enabled.title": "Enable Agent Team",
+  "settings.agentTeam.enabled.description":
+    "Use Kilo's built-in specialist team for planning, research, implementation, review, and coordination.",
+  "settings.agentTeam.takeover.title": "Use as default agent",
+  "settings.agentTeam.takeover.description":
+    "When no explicit default agent is configured, start new sessions with the team coordinator.",
+  "settings.agentTeam.roles.title": "Specialists",
+  "settings.agentTeam.model.default": "Use team default",
+  "settings.agentTeam.role.librarian.title": "Librarian",
+  "settings.agentTeam.role.librarian.description":
+    "Searches the codebase, docs, history, and references before changes.",
+  "settings.agentTeam.role.oracle.title": "Oracle",
+  "settings.agentTeam.role.oracle.description":
+    "Answers focused technical questions and validates architecture tradeoffs.",
+  "settings.agentTeam.role.designer.title": "Designer",
+  "settings.agentTeam.role.designer.description":
+    "Turns ambiguous requests into concrete implementation plans and interfaces.",
+  "settings.agentTeam.role.fixer.title": "Fixer",
+  "settings.agentTeam.role.fixer.description": "Implements bounded code changes and fixes defects.",
+  "settings.agentTeam.role.observer.title": "Observer",
+  "settings.agentTeam.role.observer.description":
+    "Reviews results, catches regressions, and summarizes remaining risk.",
+  "settings.agentTeam.role.council.title": "Council",
+  "settings.agentTeam.role.council.description": "Runs structured multi-agent review for high-risk decisions.",
+  "settings.agentTeam.collaboration.title": "Collaboration",
+  "settings.agentTeam.sessionReuse.title": "Reuse specialist sessions",
+  "settings.agentTeam.sessionReuse.description":
+    "Keep a small pool of specialist sessions alive so repeated handoffs preserve context.",
+  "settings.agentTeam.sessionReuse.max.title": "Sessions per specialist",
+  "settings.agentTeam.sessionReuse.max.description": "Maximum reusable sessions kept for each specialist role.",
+  "settings.agentTeam.advanced.title": "Advanced",
+  "settings.agentTeam.council.title": "Enable Council",
+  "settings.agentTeam.council.description":
+    "Expose the optional Council workflow for deliberate multi-agent decisions.",
+  "settings.agentTeam.council.timeout.title": "Council timeout",
+  "settings.agentTeam.council.timeout.description": "Maximum milliseconds to wait for Council members.",
+  "settings.agentTeam.autoContinue.title": "Auto-continue",
+  "settings.agentTeam.autoContinue.description":
+    "Allow the team coordinator to continue bounded work automatically when safe.",
+  "settings.agentTeam.autoContinue.max.title": "Maximum continuations",
+  "settings.agentTeam.autoContinue.max.description": "Maximum automatic continuations per session.",
+  "settings.agentTeam.autoContinue.cooldown.title": "Continuation cooldown",
+  "settings.agentTeam.autoContinue.cooldown.description":
+    "Milliseconds to wait before the next automatic continuation.",
 
   "settings.browser.description":
     "When enabled, the AI agent can interact with web pages — navigating, clicking, typing, and taking screenshots. A Chrome window will open so you can watch the agent work.",

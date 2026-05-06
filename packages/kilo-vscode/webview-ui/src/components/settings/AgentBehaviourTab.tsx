@@ -17,11 +17,12 @@ import ModeEditView from "./ModeEditView"
 import ModeCreateView from "./ModeCreateView"
 import McpEditView from "./McpEditView"
 import WorkflowsTab from "./agent-behaviour/WorkflowsTab"
+import AgentTeamTab from "./AgentTeamTab"
 import { selectedDefaultAgentValue } from "./agent-behaviour-patches"
 import { parseImport, MAX_IMPORT_SIZE } from "./mode-io"
 import type { ImportError } from "./mode-io"
 
-type SubtabId = "agents" | "mcpServers" | "rules" | "workflows" | "skills"
+type SubtabId = "agentTeam" | "agents" | "mcpServers" | "rules" | "workflows" | "skills"
 
 interface SubtabConfig {
   id: SubtabId
@@ -29,6 +30,7 @@ interface SubtabConfig {
 }
 
 const subtabs: SubtabConfig[] = [
+  { id: "agentTeam", labelKey: "settings.agentBehaviour.subtab.agentTeam" },
   { id: "agents", labelKey: "settings.agentBehaviour.subtab.agents" },
   { id: "mcpServers", labelKey: "settings.agentBehaviour.subtab.mcpServers" },
   { id: "rules", labelKey: "settings.agentBehaviour.subtab.rules" },
@@ -1085,6 +1087,8 @@ const AgentBehaviourTab: Component = () => {
     switch (activeSubtab()) {
       case "agents":
         return renderAgentsSubtab()
+      case "agentTeam":
+        return <AgentTeamTab />
       case "mcpServers":
         return renderMcpSubtab()
       case "rules":
