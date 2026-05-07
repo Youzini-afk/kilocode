@@ -90,7 +90,15 @@ describe("Agent Team agents", () => {
     })
 
     expect(map.explorer).toBeUndefined()
+    expect(map.team?.prompt).not.toContain("@explorer")
     expect(enabled({ roles: { explorer: { enabled: false } } }, "explorer")).toBe(false)
+  })
+
+  test("describes designer as a UI UX frontend specialist", () => {
+    const map = agents({ enabled: true })
+
+    expect(map.designer?.description).toContain("frontend engineering")
+    expect(map.designer?.prompt).toContain("UI and UX")
   })
 
   test("requires both council settings and role enablement for council", () => {
