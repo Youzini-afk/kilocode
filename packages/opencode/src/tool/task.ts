@@ -144,6 +144,9 @@ export const TaskTool = Tool.define(
           providerID: msg.info.providerID,
         }
       const variant = saved?.variant ?? (saved ? undefined : next.variant)
+      const chain = saved
+        ? [{ model, variant }]
+        : (next.modelChain?.map((item) => ({ model: item, variant })) ?? [{ model, variant }])
       // kilocode_change end
 
       yield* ctx.metadata({
@@ -174,22 +177,39 @@ export const TaskTool = Tool.define(
         () =>
           Effect.gen(function* () {
             const parts = yield* ops.resolvePromptParts(params.prompt)
-            const result = yield* ops.prompt({
-              messageID,
-              sessionID: nextSession.id,
-              model: {
-                modelID: model.modelID,
-                providerID: model.providerID,
-              },
-              variant, // kilocode_change
-              agent: next.name,
-              tools: {
-                ...(canTodo ? {} : { todowrite: false }),
-                ...(canTask ? {} : { task: false }),
-                ...Object.fromEntries((cfg.experimental?.primary_tools ?? []).map((item) => [item, false])),
-              },
-              parts,
-            })
+            // kilocode_change start - retry delegated Agent Team roles through configured fallback models
+            const runChain = (items: typeof chain): Effect.Effect<{ result: MessageV2.WithParts; pick: (typeof chain)[number] }> => {
+              const pick = items[0]
+              if (!pick) return Effect.die(new Error("No task model available"))
+              return ops
+                .prompt({
+                  messageID,
+                  sessionID: nextSession.id,
+                  model: {
+                    modelID: pick.model.modelID,
+                    providerID: pick.model.providerID,
+                  },
+                  variant: pick.variant,
+                  agent: next.name,
+                  tools: {
+                    ...(canTodo ? {} : { todowrite: false }),
+                    ...(canTask ? {} : { task: false }),
+                    ...Object.fromEntries((cfg.experimental?.primary_tools ?? []).map((item) => [item, false])),
+                  },
+                  parts,
+                })
+                .pipe(
+                  Effect.map((result) => ({ result, pick })),
+                  Effect.catchCause((cause) => {
+                    const rest = items.slice(1)
+                    if (rest.length > 0) return runChain(rest)
+                    return Effect.failCause(cause)
+                  }),
+                )
+            }
+            const attempt = yield* runChain(chain)
+            const result = attempt.result
+            // kilocode_change end
 
             const entry = AgentTeamSessionReuse.remember({
               cfg,
@@ -205,8 +225,8 @@ export const TaskTool = Tool.define(
               title: params.description,
               metadata: {
                 sessionId: nextSession.id,
-                model,
-                variant, // kilocode_change
+                model: attempt.pick.model, // kilocode_change
+                variant: attempt.pick.variant, // kilocode_change
               },
               output: [
                 `task_id: ${nextSession.id} (for resuming to continue this task if needed)`,

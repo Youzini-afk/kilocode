@@ -120,6 +120,9 @@ const AgentTeamRole = Schema.Struct({
   model: Schema.optional(Schema.NullOr(ConfigModelID)).annotate({
     description: "Model for this Agent Team role in provider/model format",
   }),
+  fallbackModels: Schema.optional(Schema.Array(ConfigModelID)).annotate({
+    description: "Ordered fallback models for this Agent Team role in provider/model format",
+  }),
   variant: Schema.optional(Schema.NullOr(Schema.String)).annotate({
     description: "Optional model variant for this Agent Team role",
   }),

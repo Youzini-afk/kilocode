@@ -44,6 +44,16 @@ export const Info = Schema.Struct({
       providerID: ProviderID,
     }),
   ),
+  // kilocode_change start - Agent Team per-role fallback chain
+  modelChain: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        modelID: ModelID,
+        providerID: ProviderID,
+      }),
+    ),
+  ),
+  // kilocode_change end
   variant: Schema.optional(Schema.String),
   prompt: Schema.optional(Schema.String),
   options: Schema.Record(Schema.String, Schema.Unknown),

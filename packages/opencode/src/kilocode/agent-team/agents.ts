@@ -28,6 +28,7 @@ export type AgentInfo = {
   color?: string
   permission: Permission.Ruleset
   model?: { modelID: string; providerID: string }
+  modelChain?: Array<{ modelID: string; providerID: string }>
   variant?: string
   prompt?: string
   options: Record<string, unknown>
@@ -39,6 +40,7 @@ export type AgentMap = Record<string, AgentInfo>
 export type RoleConfig = {
   enabled?: boolean
   model?: string | null
+  fallbackModels?: string[]
   variant?: string | null
   temperature?: number | null
   skills?: string[]
@@ -402,8 +404,24 @@ function mcp(ctx: Context, cfg: RoleConfig | undefined): PermissionConfig {
   return rules
 }
 
+function models(cfg: RoleConfig | undefined) {
+  const ids = [cfg?.model, ...(cfg?.fallbackModels ?? [])].filter((item): item is string => !!item)
+  const seen = new Set<string>()
+  return ids
+    .filter((item) => {
+      if (seen.has(item)) return false
+      seen.add(item)
+      return true
+    })
+    .map((item) => Provider.parseModel(item))
+}
+
 function apply(agent: AgentInfo, cfg: RoleConfig | undefined, ctx: Context) {
-  if (cfg?.model) agent.model = Provider.parseModel(cfg.model)
+  const chain = models(cfg)
+  if (chain.length > 0) {
+    agent.model = chain[0]
+    agent.modelChain = chain
+  }
   if (cfg?.variant) agent.variant = cfg.variant
   if (cfg?.temperature !== undefined && cfg.temperature !== null) agent.temperature = cfg.temperature
   if (cfg?.displayName) agent.displayName = cfg.displayName

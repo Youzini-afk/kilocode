@@ -79,6 +79,24 @@ describe("Agent Team agents", () => {
     expect(map.team?.variant).toBe("medium")
   })
 
+  test("builds de-duplicated role model fallback chains", () => {
+    const map = agents({
+      enabled: true,
+      roles: {
+        fixer: {
+          model: "openai/gpt-5.4",
+          fallbackModels: ["anthropic/claude-sonnet-4.5", "openai/gpt-5.4"],
+        },
+      },
+    })
+
+    expect(map.fixer?.model).toEqual({ providerID: "openai", modelID: "gpt-5.4" })
+    expect(map.fixer?.modelChain).toEqual([
+      { providerID: "openai", modelID: "gpt-5.4" },
+      { providerID: "anthropic", modelID: "claude-sonnet-4.5" },
+    ])
+  })
+
   test("allows explorer to be disabled independently", () => {
     const map = agents({
       enabled: true,
