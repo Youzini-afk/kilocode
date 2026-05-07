@@ -36,6 +36,31 @@ Agent Team is the native Kilo architecture for coordinated specialist-agent work
 
 Shared upstream files should only receive thin integration calls. Kilo-specific logic belongs under paths containing `kilocode`.
 
+## Capability Parity Baseline
+
+Agent Team is being aligned to `oh-my-opencode-slim` by capability, not by copying its plugin package shape.
+
+| Capability | OMO Slim source | Kilo status | Native target |
+|---|---|---|---|
+| Specialist roster | `src/agents/` | Implemented, but prompts are compressed | Keep native roles and expand prompts/routing rules. |
+| Orchestrator routing | `src/agents/orchestrator.ts` | Partial | Match delegation, validation routing, parallelism, session reuse, and communication rules. |
+| Task session aliases | `src/hooks/task-session-manager/` | Partial | Keep native `task_id` aliasing and add stale-entry cleanup plus stronger prompt guidance. |
+| Delegation retry hints | `src/hooks/delegate-task-retry/` | Missing | Append recovery guidance after failed `task` calls. |
+| Phase reminders | `src/hooks/phase-reminder/` | Missing | Inject concise workflow reminders into Team turns. |
+| File-tool nudges | `src/hooks/post-file-tool-nudge/` | Missing | Nudge verification after edits and file reads when useful. |
+| JSON error recovery | `src/hooks/json-error-recovery/` | Missing | Add structured recovery guidance for malformed tool/JSON output failures. |
+| Skill filtering | `src/hooks/filter-available-skills/` | Partial via permissions | Filter unavailable skills from Team prompts and role permissions. |
+| Image routing | `src/hooks/image-hook.ts` | Prompt-only | Encourage Observer delegation for visual attachments without moving raw media into Team context. |
+| Foreground fallback | `src/hooks/foreground-fallback/` | Missing | Add per-role fallback chains and retry selected provider/model failures. |
+| Auto-continue | `src/hooks/todo-continuation/` | Partial | Keep conservative native continuation and align defaults/guidance. |
+| Council | `src/tools/council/` | Partial | Keep native council tool and add clearer presets/fallback behavior. |
+| AST grep tools | `src/tools/ast-grep/` | Not native | Prefer Kilo search tools first; add AST grep only if native search cannot cover the workflow. |
+| Web fetch/search MCPs | `src/mcp/` and `src/tools/smartfetch` | Partially covered | Map to Kilo web/MCP tools rather than shipping plugin MCP defaults. |
+| Multiplexer/display extras | `src/multiplexer/`, Divoom | Not implemented | Out of scope for Kilo native integration. |
+| Installer/autoupdate | `src/cli/`, update hooks | Not implemented | Out of scope because Agent Team is built in. |
+
+The main implementation gap is runtime orchestration behavior. UI polish alone cannot close this gap.
+
 ## Configuration Shape
 
 The user-facing config key is `agentTeam`:
