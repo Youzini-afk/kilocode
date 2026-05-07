@@ -1931,6 +1931,10 @@ export type Config = {
          */
         model?: string | null
         /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
+        /**
          * Optional model variant for this Agent Team role
          */
         variant?: string | null
@@ -1966,6 +1970,10 @@ export type Config = {
          * Model for this Agent Team role in provider/model format
          */
         model?: string | null
+        /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
         /**
          * Optional model variant for this Agent Team role
          */
@@ -2003,6 +2011,10 @@ export type Config = {
          */
         model?: string | null
         /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
+        /**
          * Optional model variant for this Agent Team role
          */
         variant?: string | null
@@ -2038,6 +2050,10 @@ export type Config = {
          * Model for this Agent Team role in provider/model format
          */
         model?: string | null
+        /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
         /**
          * Optional model variant for this Agent Team role
          */
@@ -2075,6 +2091,10 @@ export type Config = {
          */
         model?: string | null
         /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
+        /**
          * Optional model variant for this Agent Team role
          */
         variant?: string | null
@@ -2110,6 +2130,10 @@ export type Config = {
          * Model for this Agent Team role in provider/model format
          */
         model?: string | null
+        /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
         /**
          * Optional model variant for this Agent Team role
          */
@@ -2147,6 +2171,10 @@ export type Config = {
          */
         model?: string | null
         /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
+        /**
          * Optional model variant for this Agent Team role
          */
         variant?: string | null
@@ -2182,6 +2210,10 @@ export type Config = {
          * Model for this Agent Team role in provider/model format
          */
         model?: string | null
+        /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
         /**
          * Optional model variant for this Agent Team role
          */
@@ -2219,6 +2251,10 @@ export type Config = {
          */
         model?: string | null
         /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
+        /**
          * Optional model variant for this Agent Team role
          */
         variant?: string | null
@@ -2254,6 +2290,10 @@ export type Config = {
          * Model for this Agent Team role in provider/model format
          */
         model?: string | null
+        /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
         /**
          * Optional model variant for this Agent Team role
          */
@@ -3063,6 +3103,10 @@ export type Agent = {
     modelID: string
     providerID: string
   }
+  modelChain?: Array<{
+    modelID: string
+    providerID: string
+  }>
   variant?: string
   prompt?: string
   options: {
