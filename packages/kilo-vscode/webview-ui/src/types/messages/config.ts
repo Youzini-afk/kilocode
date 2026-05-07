@@ -256,6 +256,7 @@ export type AgentTeamRole =
 export interface AgentTeamRoleConfig {
   enabled?: boolean
   model?: string | null
+  fallbackModels?: string[]
   variant?: string | null
   temperature?: number | null
   skills?: string[]

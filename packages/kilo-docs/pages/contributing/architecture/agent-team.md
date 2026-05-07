@@ -78,7 +78,11 @@ The user-facing config key is `agentTeam`:
         "temperature": 0.1,
         "mcps": ["*", "!context7"]
       },
-      "explorer": { "enabled": true, "model": "kilo/auto" },
+      "explorer": {
+        "enabled": true,
+        "model": "kilo/auto",
+        "fallbackModels": ["openrouter/anthropic/claude-sonnet-4.5"]
+      },
       "librarian": {
         "enabled": true,
         "skills": ["openai-docs"],
@@ -111,6 +115,7 @@ Role entries support:
 
 - `enabled` — include or disable the role.
 - `model` — provider/model picked from configured Kilo providers.
+- `fallbackModels` — ordered provider/model fallback chain for delegated specialist retries.
 - `variant` — thinking/reasoning effort, such as `low`, `medium`, `high`, or `xhigh`.
 - `temperature` — optional sampling temperature override from `0` to `2`.
 - `skills` — skill allow-list with `*` and `!name` syntax.

@@ -32,6 +32,91 @@ interface ModelGroup {
 
 const roles: Role[] = ["orchestrator", "explorer", "librarian", "oracle", "designer", "fixer", "observer", "council"]
 const efforts = ["low", "medium", "high", "xhigh"]
+const maxFallbacks = 3
+
+function groupsFor(groups: ModelGroup[], current: ReturnType<typeof parseModelString>) {
+  if (!current || groups.some((group) => group.providerID === current.providerID)) return groups
+  return [
+    ...groups,
+    {
+      providerID: current.providerID,
+      providerName: current.providerID,
+      models: [{ id: current.modelID, name: current.modelID }],
+    },
+  ]
+}
+
+function first(groups: ModelGroup[]) {
+  const group = groups[0]
+  const model = group?.models[0]
+  if (!group || !model) return undefined
+  return `${group.providerID}/${model.id}`
+}
+
+interface FallbackRowProps {
+  value: string
+  modelGroups: () => ModelGroup[]
+  onChange: (value: string) => void
+  onRemove: () => void
+}
+
+const FallbackRow: Component<FallbackRowProps> = (props) => {
+  const language = useLanguage()
+  const selection = createMemo(() => parseModelString(props.value))
+  const providerID = createMemo(() => selection()?.providerID ?? "")
+  const modelID = createMemo(() => selection()?.modelID ?? "")
+  const groups = createMemo(() => groupsFor(props.modelGroups(), selection()))
+  const models = createMemo(() => groups().find((group) => group.providerID === providerID())?.models ?? [])
+
+  function updateProvider(next: string) {
+    if (!next) {
+      props.onRemove()
+      return
+    }
+    const model = groups().find((group) => group.providerID === next)?.models[0]
+    if (model) props.onChange(`${next}/${model.id}`)
+  }
+
+  function updateModel(next: string) {
+    if (!providerID() || !next) return
+    props.onChange(`${providerID()}/${next}`)
+  }
+
+  return (
+    <div class="agent-team-fallback-row">
+      <select
+        class="agent-team-native-control"
+        value={providerID()}
+        onChange={(event) => updateProvider(event.currentTarget.value)}
+      >
+        <For each={groups()}>
+          {(group) => (
+            <option value={group.providerID} selected={group.providerID === providerID()}>
+              {group.providerName}
+            </option>
+          )}
+        </For>
+      </select>
+      <select
+        class="agent-team-native-control"
+        value={modelID()}
+        disabled={!providerID() || models().length === 0}
+        onChange={(event) => updateModel(event.currentTarget.value)}
+      >
+        <For each={models()}>
+          {(model) => (
+            <option value={model.id} selected={model.id === modelID()}>
+              {model.name}
+            </option>
+          )}
+        </For>
+      </select>
+      <Button variant="ghost" size="small" onClick={props.onRemove}>
+        {language.t("settings.agentTeam.fallback.remove")}
+      </Button>
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Per-role row — isolated component so each role's memos are independent.
@@ -59,19 +144,7 @@ const RoleRow: Component<RoleRowProps> = (props) => {
   const providerID = createMemo(() => modelSelection()?.providerID ?? "")
   const modelID = createMemo(() => modelSelection()?.modelID ?? "")
 
-  const modelGroups = createMemo<ModelGroup[]>(() => {
-    const current = modelSelection()
-    const groups = props.modelGroups()
-    if (!current || groups.some((group) => group.providerID === current.providerID)) return groups
-    return [
-      ...groups,
-      {
-        providerID: current.providerID,
-        providerName: current.providerID,
-        models: [{ id: current.modelID, name: current.modelID }],
-      },
-    ]
-  })
+  const modelGroups = createMemo<ModelGroup[]>(() => groupsFor(props.modelGroups(), modelSelection()))
 
   const selectedProviderModels = createMemo(
     () => modelGroups().find((group) => group.providerID === providerID())?.models ?? [],
@@ -92,6 +165,21 @@ const RoleRow: Component<RoleRowProps> = (props) => {
       return
     }
     props.onPatchRole({ model: `${providerID()}/${nextModelID}` })
+  }
+
+  const fallbackModels = createMemo(() => props.cfg().fallbackModels ?? [])
+
+  function updateFallback(index: number, value: string | undefined) {
+    const next = [...fallbackModels()]
+    if (value) next[index] = value
+    if (!value) next.splice(index, 1)
+    props.onPatchRole({ fallbackModels: next })
+  }
+
+  function addFallback() {
+    const value = first(modelGroups())
+    if (!value) return
+    props.onPatchRole({ fallbackModels: [...fallbackModels(), value] })
   }
 
   const variantList = createMemo<Choice[]>(() => {
@@ -232,38 +320,63 @@ const RoleRow: Component<RoleRowProps> = (props) => {
       </div>
       <Show when={props.open}>
         <div class="agent-team-role-policy">
-          <input
-            class="agent-team-native-control"
-            value={props.cfg().displayName ?? ""}
-            placeholder={language.t("settings.agentTeam.displayName.placeholder")}
-            onChange={(event) => props.onPatchRole({ displayName: event.currentTarget.value.trim() || null })}
-          />
-          <input
-            class="agent-team-native-control"
-            value={(props.cfg().skills ?? []).join(", ")}
-            placeholder={language.t("settings.agentTeam.skills.placeholder")}
-            onChange={(event) =>
-              props.onPatchRole({
-                skills: event.currentTarget.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
-          <input
-            class="agent-team-native-control"
-            value={(props.cfg().mcps ?? []).join(", ")}
-            placeholder={language.t("settings.agentTeam.mcps.placeholder")}
-            onChange={(event) =>
-              props.onPatchRole({
-                mcps: event.currentTarget.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
+          <div class="agent-team-role-policy-section">
+            <div class="agent-team-role-policy-title">{language.t("settings.agentTeam.fallback.title")}</div>
+            <div class="agent-team-role-policy-description">
+              {language.t("settings.agentTeam.fallback.description")}
+            </div>
+            <div class="agent-team-fallback-list">
+              <For each={fallbackModels()}>
+                {(value, index) => (
+                  <FallbackRow
+                    value={value}
+                    modelGroups={modelGroups}
+                    onChange={(next) => updateFallback(index(), next)}
+                    onRemove={() => updateFallback(index(), undefined)}
+                  />
+                )}
+              </For>
+              <Show when={fallbackModels().length < maxFallbacks && modelGroups().length > 0}>
+                <Button variant="secondary" size="small" onClick={addFallback}>
+                  {language.t("settings.agentTeam.fallback.add")}
+                </Button>
+              </Show>
+            </div>
+          </div>
+          <div class="agent-team-role-policy-grid">
+            <input
+              class="agent-team-native-control"
+              value={props.cfg().displayName ?? ""}
+              placeholder={language.t("settings.agentTeam.displayName.placeholder")}
+              onChange={(event) => props.onPatchRole({ displayName: event.currentTarget.value.trim() || null })}
+            />
+            <input
+              class="agent-team-native-control"
+              value={(props.cfg().skills ?? []).join(", ")}
+              placeholder={language.t("settings.agentTeam.skills.placeholder")}
+              onChange={(event) =>
+                props.onPatchRole({
+                  skills: event.currentTarget.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
+              }
+            />
+            <input
+              class="agent-team-native-control"
+              value={(props.cfg().mcps ?? []).join(", ")}
+              placeholder={language.t("settings.agentTeam.mcps.placeholder")}
+              onChange={(event) =>
+                props.onPatchRole({
+                  mcps: event.currentTarget.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
+              }
+            />
+          </div>
         </div>
       </Show>
     </div>

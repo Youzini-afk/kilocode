@@ -1369,6 +1369,11 @@ export const dict = {
   "settings.agentTeam.column.temperature": "Temp",
   "settings.agentTeam.column.enabled": "Enabled",
   "settings.agentTeam.model.default": "Use team default",
+  "settings.agentTeam.fallback.title": "Fallback models",
+  "settings.agentTeam.fallback.description":
+    "Optional retry chain used when a delegated specialist model fails. Pick models from configured providers.",
+  "settings.agentTeam.fallback.add": "Add fallback model",
+  "settings.agentTeam.fallback.remove": "Remove",
   "settings.agentTeam.variant.default": "Default",
   "settings.agentTeam.variant.low": "Low",
   "settings.agentTeam.variant.medium": "Medium",
@@ -1399,7 +1404,7 @@ export const dict = {
   "settings.agentTeam.role.fixer.description": "Implements bounded code changes and fixes defects.",
   "settings.agentTeam.role.observer.title": "Observer",
   "settings.agentTeam.role.observer.description":
-    "Reviews results, catches regressions, and summarizes remaining risk.",
+    "Analyzes screenshots, images, PDFs, diagrams, and visible UI details.",
   "settings.agentTeam.role.council.title": "Council",
   "settings.agentTeam.role.council.description": "Runs structured multi-agent review for high-risk decisions.",
   "settings.agentTeam.collaboration.title": "Collaboration",
