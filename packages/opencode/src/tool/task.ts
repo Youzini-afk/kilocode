@@ -9,7 +9,8 @@ import { Config } from "@/config/config"
 import { KiloTask } from "../kilocode/tool/task" // kilocode_change
 import { KiloCostPropagation } from "../kilocode/session/cost-propagation" // kilocode_change
 import { AgentTeamSessionReuse } from "@/kilocode/agent-team/session-reuse" // kilocode_change
-import { Effect, Schema } from "effect"
+import { AgentTeamRuntime } from "@/kilocode/agent-team/runtime" // kilocode_change
+import { Cause, Effect, Schema } from "effect"
 
 export interface TaskPromptOps {
   cancel(sessionID: SessionID): void
@@ -234,7 +235,24 @@ export const TaskTool = Tool.define(
       description: DESCRIPTION,
       parameters: Parameters,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
-        run(params, ctx).pipe(Effect.orDie),
+        // kilocode_change start - return retry guidance for failed Agent Team delegation
+        Effect.gen(function* () {
+          const cfg = yield* config.get()
+          return yield* run(params, ctx).pipe(
+            Effect.catchCause((cause) => {
+              const result = AgentTeamRuntime.taskFailure({
+                cfg,
+                caller: ctx.agent,
+                sessionID: ctx.sessionID,
+                params,
+                cause: Cause.pretty(cause),
+              })
+              if (result) return Effect.succeed(result)
+              return Effect.failCause(cause)
+            }),
+          )
+        }).pipe(Effect.orDie),
+      // kilocode_change end
     }
   }),
 )
