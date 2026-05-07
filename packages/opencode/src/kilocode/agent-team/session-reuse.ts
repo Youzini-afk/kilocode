@@ -109,7 +109,7 @@ function trim(parent: string, agent: string, limit: number) {
 function line(agent: string, entries: Entry[]) {
   return `- ${agent}: ${entries
     .toSorted((a, b) => b.used - a.used)
-    .map((entry) => `${entry.alias} ${entry.label}`)
+    .map((entry) => `${entry.alias} ${entry.label} [${entry.taskID}]`)
     .join("; ")}`
 }
 
@@ -179,6 +179,22 @@ export namespace AgentTeamSessionReuse {
     if (map.size === 0) state.delete(input.parent)
   }
 
+  export function clear(sessionID: string) {
+    state.delete(sessionID)
+    counters.delete(sessionID)
+    for (const [parent, map] of state.entries()) {
+      for (const [agent, entries] of map.entries()) {
+        const next = entries.filter((entry) => entry.taskID !== sessionID)
+        if (next.length > 0) {
+          map.set(agent, next)
+          continue
+        }
+        map.delete(agent)
+      }
+      if (map.size === 0) state.delete(parent)
+    }
+  }
+
   export function format(input: { cfg: Config.Info; caller: string; parent: string }) {
     if (!active(input.cfg, input.caller)) return undefined
     const map = maps(input.parent, false)
@@ -190,7 +206,9 @@ export namespace AgentTeamSessionReuse {
     if (lines.length === 0) return undefined
     return [
       "### Resumable specialist sessions",
-      "Reuse an alias as task_id only when continuing the same thread. Start fresh for unrelated work.",
+      "Use these aliases as task_id only when continuing the same specialist thread.",
+      "Prefer the newest matching alias. Start fresh for unrelated work or when old context may confuse the agent.",
+      "Each alias shows the raw child session id in brackets for diagnostics; use the short alias in normal task calls.",
       "",
       ...lines,
     ].join("\n")

@@ -31,6 +31,7 @@ describe("AgentTeamSessionReuse", () => {
       AgentTeamSessionReuse.resolve({ cfg: cfg(), caller: "team", parent, agent: "fixer", taskID: "fix-1" }),
     ).toMatchObject({ taskID: "task-1" })
     expect(AgentTeamSessionReuse.format({ cfg: cfg(), caller: "team", parent })).toContain("fix-1 fix cache key")
+    expect(AgentTeamSessionReuse.format({ cfg: cfg(), caller: "team", parent })).toContain("[task-1]")
   })
 
   test("keeps only the configured number of sessions per agent", () => {
@@ -63,6 +64,35 @@ describe("AgentTeamSessionReuse", () => {
     })
 
     expect(entry).toBeUndefined()
+    expect(AgentTeamSessionReuse.format({ cfg: cfg(), caller: "team", parent })).toBeUndefined()
+  })
+
+  test("clears parent and child session references", () => {
+    const parent = "parent-clear"
+    AgentTeamSessionReuse.remember({
+      cfg: cfg(),
+      caller: "team",
+      parent,
+      agent: "designer",
+      taskID: "child-clear",
+      description: "review settings",
+    })
+
+    AgentTeamSessionReuse.clear("child-clear")
+    expect(AgentTeamSessionReuse.format({ cfg: cfg(), caller: "team", parent })).toBeUndefined()
+
+    AgentTeamSessionReuse.remember({
+      cfg: cfg(),
+      caller: "team",
+      parent,
+      agent: "designer",
+      taskID: "child-again",
+      description: "review settings again",
+    })
+    AgentTeamSessionReuse.clear(parent)
+
+    expect(AgentTeamSessionReuse.resolve({ cfg: cfg(), caller: "team", parent, agent: "designer", taskID: "des-2" }))
+      .toMatchObject({ taskID: "des-2" })
     expect(AgentTeamSessionReuse.format({ cfg: cfg(), caller: "team", parent })).toBeUndefined()
   })
 })

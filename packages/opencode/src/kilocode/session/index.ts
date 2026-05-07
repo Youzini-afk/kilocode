@@ -150,6 +150,8 @@ export namespace KiloSession {
   }
 
   export async function removeSession(id: string): Promise<void> {
+    const { AgentTeamSessionReuse } = await import("@/kilocode/agent-team/session-reuse")
+    AgentTeamSessionReuse.clear(id)
     const { KiloSessions } = await import("@/kilo-sessions/kilo-sessions")
     await KiloSessions.remove(id).catch(() => {})
   }
