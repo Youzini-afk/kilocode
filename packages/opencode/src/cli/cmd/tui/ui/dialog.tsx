@@ -155,6 +155,11 @@ export function DialogProvider(props: ParentProps) {
   const value = init()
   const renderer = useRenderer()
   const toast = useToast()
+  // kilocode_change start
+  const copy = !Flag.KILO_EXPERIMENTAL_DISABLE_COPY_ON_SELECT
+    ? () => Selection.copy(renderer, toast)
+    : undefined
+  // kilocode_change end
   return (
     <ctx.Provider value={value}>
       {props.children}
@@ -169,9 +174,7 @@ export function DialogProvider(props: ParentProps) {
           evt.preventDefault()
           evt.stopPropagation()
         }}
-        onMouseUp={
-          !Flag.KILO_EXPERIMENTAL_DISABLE_COPY_ON_SELECT ? () => Selection.copy(renderer, toast) : undefined
-        }
+        onMouseUp={copy}
       >
         <Show when={value.stack.length}>
           <Dialog onClose={() => value.clear()} size={value.size}>

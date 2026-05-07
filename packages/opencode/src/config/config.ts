@@ -348,7 +348,8 @@ export const Info = Schema.Struct({
       [Schema.Record(Schema.String, ConfigAgent.Info)],
     ),
   ).annotate({ description: "Agent configuration, see https://opencode.ai/docs/agents" }),
-  provider: Schema.optional(Schema.Record(Schema.String, Schema.NullOr(ConfigProvider.Info))).annotate({ // kilocode_change - nullable for delete sentinel
+  provider: Schema.optional(Schema.Record(Schema.String, Schema.NullOr(ConfigProvider.Info))).annotate({
+    // kilocode_change - nullable for delete sentinel
     description: "Custom provider configurations and model overrides",
   }),
   mcp: Schema.optional(

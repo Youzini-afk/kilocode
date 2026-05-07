@@ -375,7 +375,9 @@ export const ProvidersLoginCommand = cmd({
           existingProviders: providers,
           disabled,
           enabled,
-          providerNames: Object.fromEntries(Object.entries(config.provider ?? {}).flatMap(([id, p]) => (p ? [[id, p.name]] : []))), // kilocode_change
+          providerNames: Object.fromEntries(
+            Object.entries(config.provider ?? {}).flatMap(([id, p]) => (p ? [[id, p.name]] : [])),
+          ), // kilocode_change
         })
         const options = [
           ...pipe(
