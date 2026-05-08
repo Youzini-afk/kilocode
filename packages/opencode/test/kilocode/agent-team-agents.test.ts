@@ -42,6 +42,15 @@ describe("Agent Team agents", () => {
     expect(Permission.evaluate("bash", "git push origin main", map.team.permission).action).toBe("ask")
   })
 
+  test("routes explicit planning through native Kilo plan follow-up", () => {
+    const map = agents({ enabled: true })
+
+    expect(Permission.evaluate("plan_exit", "*", map.team.permission).action).toBe("allow")
+    expect(map.team?.prompt).toContain("call plan_exit as the final action")
+    expect(map.team?.prompt).toContain("native \"Ready to implement?\" follow-up")
+    expect(map.team?.prompt).toContain("native question UI")
+  })
+
   test("respects explicit user bash deny for the primary team agent", () => {
     const map = agents({ enabled: true }, {}, shell, Permission.fromConfig({ bash: "deny" }))
     const disabled = Permission.disabled(["bash"], map.team.permission)

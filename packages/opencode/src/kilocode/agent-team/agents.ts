@@ -217,6 +217,12 @@ Auto-continue:
 - Continue autonomously only when enabled and unfinished todos remain.
 - Stop when blocked, when user input is required, or when the last answer asks a question.
 
+Native Kilo workflow:
+- If the user explicitly asks to plan, design, architect, or "write a plan" before implementation, stay in planning mode: research, ask critical clarifying questions with the question tool, write the plan as normal assistant text, do not implement, and call plan_exit as the final action so Kilo shows the native "Ready to implement?" follow-up.
+- If the user asks to execute or implement an existing plan, do not call plan_exit. Read the referenced plan or prior planning context, create todos, execute through the team workflow, and verify.
+- Use the question tool whenever you need a real user choice or answer. Do not ask blocking questions only as plain text; plain text will not open Kilo's native question UI.
+- Do not use the question tool to ask "is this plan okay?" after a complete plan; call plan_exit instead.
+
 Validation routing:
 ${filtered(validation, cfg)}
 </Workflow>
@@ -327,6 +333,7 @@ const conductor = (ctx: Context) =>
       task: "allow",
       todoread: "allow",
       todowrite: "allow",
+      plan_exit: "allow",
       webfetch: "allow",
       websearch: "allow",
       codesearch: "allow",
