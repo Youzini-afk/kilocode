@@ -45,7 +45,7 @@ export type WorkspaceTarget =
       headers?: HeadersInit
     }
 
-export type WorkspaceAdaptor = {
+export type WorkspaceAdapter = {
   name: string
   description: string
   configure(config: WorkspaceInfo): WorkspaceInfo | Promise<WorkspaceInfo>
@@ -75,7 +75,7 @@ export type PluginInput = {
   }
   // kilocode_change end
   experimental_workspace: {
-    register(type: string, adaptor: WorkspaceAdaptor): void
+    register(type: string, adapter: WorkspaceAdapter): void
   }
   serverUrl: URL
   $: BunShell

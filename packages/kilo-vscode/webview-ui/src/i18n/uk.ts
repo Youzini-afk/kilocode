@@ -141,6 +141,16 @@ const local = {
   "provider.connect.apiKey.label": "API-ключ {{provider}}",
   "provider.connect.apiKey.placeholder": "API-ключ",
   "provider.connect.apiKey.required": "API-ключ обов'язковий",
+  "provider.connect.prompt.required": "{{field}} є обов'язковим",
+  "provider.connect.azure.endpointType.label": "Виберіть конфігурацію кінцевої точки Azure",
+  "provider.connect.azure.endpointType.resourceName.label": "Назва ресурсу",
+  "provider.connect.azure.endpointType.resourceName.hint": "Створіть кінцеву точку з назви ресурсу Azure",
+  "provider.connect.azure.endpointType.baseURL.label": "Повна URL-адреса кінцевої точки",
+  "provider.connect.azure.endpointType.baseURL.hint": "Використовувати спеціальну кінцеву точку Azure OpenAI",
+  "provider.connect.azure.resourceName.label": "Назва ресурсу Azure",
+  "provider.connect.azure.resourceName.placeholder": "напр. my-models",
+  "provider.connect.azure.baseURL.label": "URL-адреса кінцевої точки Azure OpenAI",
+  "provider.connect.azure.baseURL.placeholder": "напр. https://my-models.openai.azure.com/openai",
   "provider.connect.opencodeZen.line1":
     "OpenCode Zen надає доступ до добірки надійних оптимізованих моделей для агентів кодування.",
   "provider.connect.opencodeZen.line2":
@@ -1045,6 +1055,12 @@ const local = {
   "settings.indexing.status.title": "Статус",
   "settings.indexing.enable.title": "Увімкнути індексування",
   "settings.indexing.enable.description": "Увімкніть або вимкніть семантичне індексування кодової бази.",
+  "settings.indexing.globalEnable.title": "Увімкнути глобально",
+  "settings.indexing.globalEnable.description": "Увімкнути індексування для кожного робочого простору.",
+  "settings.indexing.projectEnable.title": "Увімкнути для цього проєкту",
+  "settings.indexing.projectEnable.description":
+    "Увімкнути індексування для цього робочого простору, коли глобальне індексування вимкнено.",
+  "settings.indexing.projectEnable.disabledTooltip": "Глобальне індексування ввімкнено, тому цей проєкт уже охоплено.",
   "settings.indexing.provider.title": "Провайдер ембедингів",
   "settings.indexing.provider.description": "Виберіть провайдера для генерації ембедингів для семантичного пошуку.",
   "settings.indexing.model.title": "Модель ембедингів",
@@ -1176,6 +1192,7 @@ const local = {
     "Використовувати розумне прив'язування клавіш для активації підказок",
   "settings.autocomplete.chatAutocomplete.title": "Увімкнути автодоповнення в полі чату",
   "settings.autocomplete.chatAutocomplete.description": "Показувати підказки автодоповнення в полі введення чату",
+  "settings.autocomplete.modelsHint": "Щоб вибрати модель для автодоповнення, див. Налаштування моделей.",
 
   "settings.notifications.agent.title": "Завершення агента",
   "settings.notifications.agent.description": "Показувати сповіщення, коли агент завершить завдання",
@@ -1523,6 +1540,10 @@ const local = {
   "notifications.action.close": "Закрити",
   "notifications.action.tryModel": "Спробувати {{model}}",
   "notifications.action.tryModelGeneric": "Спробувати модель",
+  "settings.indexing.kiloModel.title": "Пресет моделі Kilo",
+  "settings.indexing.kiloModel.description": "Виберіть підтримувану модель Kilo-hosted embeddings.",
+  "settings.indexing.kiloSignIn.title": "Потрібен вхід у Kilo",
+  "settings.indexing.kiloSignIn.description": "Увійдіть у Kilo, щоб використовувати hosted embeddings.",
   // Missing translations - English fallbacks until translated
   "profile.switchingAccount": "Перемикання акаунту…",
   "settings.agentBehaviour.createMode": "Створити новий режим",

@@ -8,12 +8,16 @@
  * changes into a single write (which triggers disposeAll on the CLI).
  */
 
-import { batch, createContext, useContext, createSignal, onCleanup } from "solid-js"
+import { batch, createContext, useContext, createSignal, createMemo, onCleanup } from "solid-js"
 import type { ParentComponent, Accessor } from "solid-js"
 import { useVSCode } from "./vscode"
 import type { Config, ExtensionMessage, FeatureFlags } from "../types/messages"
 import { deepMerge, stripNulls, resolveConfig, removeMatchingDraft, patchConfirmed } from "../utils/config-utils"
 import { splitConfigByScope } from "../utils/config-scope"
+
+function has(value: Record<string, unknown>) {
+  return Object.keys(value).length > 0
+}
 
 export interface SaveError {
   message: string
@@ -22,12 +26,16 @@ export interface SaveError {
 
 interface ConfigContextValue {
   config: Accessor<Config>
+  globalConfig: Accessor<Config>
+  settings: Accessor<Record<string, unknown>>
   features: Accessor<FeatureFlags>
   loading: Accessor<boolean>
   isDirty: Accessor<boolean>
   saving: Accessor<boolean>
   saveError: Accessor<SaveError | null>
   updateConfig: (partial: Partial<Config>) => void
+  updateGlobalConfig: (partial: Partial<Config>) => void
+  updateSetting: (key: string, value: unknown) => void
   saveConfig: () => void
   discardConfig: () => void
 }
@@ -38,16 +46,26 @@ export const ConfigProvider: ParentComponent = (props) => {
   const vscode = useVSCode()
 
   const [config, setConfig] = createSignal<Config>({})
+  const [globalConfig, setGlobalConfig] = createSignal<Config>({})
+  const [settings, setSettings] = createSignal<Record<string, unknown>>({})
   const [features, setFeatures] = createSignal<FeatureFlags>({ indexing: false })
   const [loading, setLoading] = createSignal(true)
   const [draft, setDraft] = createSignal<Partial<Config>>({})
-  const [isDirty, setIsDirty] = createSignal(false)
+  const [globalDraft, setGlobalDraft] = createSignal<Partial<Config>>({})
+  const [settingsDraft, setSettingsDraft] = createSignal<Record<string, unknown>>({})
+  const isDirty = createMemo(
+    () =>
+      has(draft() as Record<string, unknown>) || has(globalDraft() as Record<string, unknown>) || has(settingsDraft()),
+  )
   // Last config received from the server — used to revert on discard
   const [saved, setSaved] = createSignal<Config>({})
+  const [savedGlobal, setSavedGlobal] = createSignal<Config>({})
+  const [savedSettings, setSavedSettings] = createSignal<Record<string, unknown>>({})
   // True while a saveConfig() write is in-flight — used to clear draft on success
   // and to guard against stale configLoaded messages overwriting optimistic state.
   const [saving, setSaving] = createSignal(false)
   const [savingDraft, setSavingDraft] = createSignal<Partial<Config>>({})
+  const [savingGlobalDraft, setSavingGlobalDraft] = createSignal<Partial<Config>>({})
   // Error from the most recent saveConfig() attempt, or null if no error.
   // Cleared when the user edits the draft again or starts a new save.
   const [saveError, setSaveError] = createSignal<SaveError | null>(null)
@@ -55,6 +73,17 @@ export const ConfigProvider: ParentComponent = (props) => {
   // Register handler immediately (not in onMount) so we never miss
   // a configLoaded message that arrives before the DOM mount.
   const unsubscribe = vscode.onMessage((message: ExtensionMessage) => {
+    if (message.type === "autocompleteSettingsLoaded") {
+      const patch = {
+        "autocomplete.enableAutoTrigger": message.settings.enableAutoTrigger,
+        "autocomplete.enableSmartInlineTaskKeybinding": message.settings.enableSmartInlineTaskKeybinding,
+        "autocomplete.enableChatAutocomplete": message.settings.enableChatAutocomplete,
+        "autocomplete.model": message.settings.model,
+      }
+      setSavedSettings((prev) => ({ ...prev, ...patch }))
+      setSettings((prev) => ({ ...prev, ...patch, ...settingsDraft() }))
+      return
+    }
     if (message.type === "configLoaded") {
       // Skip if a save is in-flight — a stale configLoaded must not overwrite
       // the optimistically-updated state while the write is being confirmed.
@@ -62,9 +91,13 @@ export const ConfigProvider: ParentComponent = (props) => {
       // Re-apply the draft on top so pending changes (e.g. a toggled switch the
       // user hasn't saved yet) stay visible instead of snapping back.
       batch(() => {
-        setConfig(resolveConfig(message.config, draft(), isDirty()))
+        setConfig(resolveConfig(message.config, draft(), has(draft() as Record<string, unknown>)))
         setFeatures(message.features)
         setSaved(message.config)
+        if (message.globalConfig !== undefined) {
+          setGlobalConfig(stripNulls(deepMerge(message.globalConfig, globalDraft())))
+          setSavedGlobal(message.globalConfig)
+        }
         setLoading(false)
       })
       return
@@ -72,7 +105,7 @@ export const ConfigProvider: ParentComponent = (props) => {
     if (message.type === "contextEngineSettingsLoaded") {
       const next = { ...saved(), contextEngine: message.config }
       batch(() => {
-        setConfig(resolveConfig(next, draft(), isDirty()))
+        setConfig(resolveConfig(next, draft(), has(draft() as Record<string, unknown>)))
         setSaved(next)
         setLoading(false)
       })
@@ -85,34 +118,62 @@ export const ConfigProvider: ParentComponent = (props) => {
         setDraft((prev) => {
           const next = { ...prev }
           delete next.contextEngine
-          setIsDirty(Object.keys(next).length > 0)
           return next
         })
         setSaveError(null)
       })
       return
     }
+    if (message.type === "globalConfigLoaded") {
+      if (saving()) return
+      batch(() => {
+        setGlobalConfig(stripNulls(deepMerge(message.config, globalDraft())))
+        setSavedGlobal(message.config)
+      })
+      return
+    }
     if (message.type === "configUpdated") {
       batch(() => {
         if (saving()) {
-          if (!patchConfirmed(message.config, savingDraft())) {
-            setConfig(resolveConfig(message.config, draft(), isDirty()))
+          const configSaving = savingDraft()
+          const globalSaving = savingGlobalDraft()
+          const configConfirmed =
+            !has(configSaving as Record<string, unknown>) || patchConfirmed(message.config, configSaving)
+          const globalConfirmed =
+            !has(globalSaving as Record<string, unknown>) ||
+            (message.globalConfig !== undefined && patchConfirmed(message.globalConfig, globalSaving))
+
+          if (!configConfirmed || !globalConfirmed) {
+            setConfig(resolveConfig(message.config, draft(), has(draft() as Record<string, unknown>)))
+            if (message.globalConfig !== undefined) {
+              setGlobalConfig(stripNulls(deepMerge(message.globalConfig, globalDraft())))
+              setSavedGlobal(message.globalConfig)
+            }
             setFeatures(message.features)
             setSaved(message.config)
             return
           }
 
-          const remaining = removeMatchingDraft(draft(), savingDraft())
-          const dirty = Object.keys(remaining).length > 0
+          const remaining = removeMatchingDraft(draft(), configSaving)
+          const remainingGlobal = removeMatchingDraft(globalDraft(), globalSaving)
           setSaving(false)
           setSavingDraft({})
+          setSavingGlobalDraft({})
           setDraft(remaining)
-          setIsDirty(dirty)
+          setGlobalDraft(remainingGlobal)
           setSaveError(null)
-          setConfig(resolveConfig(message.config, remaining, dirty))
+          setConfig(resolveConfig(message.config, remaining, has(remaining as Record<string, unknown>)))
+          if (message.globalConfig !== undefined) {
+            setGlobalConfig(stripNulls(deepMerge(message.globalConfig, remainingGlobal)))
+            setSavedGlobal(message.globalConfig)
+          }
           setFeatures(message.features)
         } else {
-          setConfig(resolveConfig(message.config, draft(), isDirty()))
+          setConfig(resolveConfig(message.config, draft(), has(draft() as Record<string, unknown>)))
+          if (message.globalConfig !== undefined) {
+            setGlobalConfig(stripNulls(deepMerge(message.globalConfig, globalDraft())))
+            setSavedGlobal(message.globalConfig)
+          }
           setFeatures(message.features)
         }
         setSaved(message.config)
@@ -122,9 +183,12 @@ export const ConfigProvider: ParentComponent = (props) => {
     if (message.type === "configUpdateFailed") {
       // The write was rejected (e.g. schema validation) — surface the error
       // and keep the draft + isDirty so the user can correct and retry.
-      setSaving(false)
-      setSavingDraft({})
-      setSaveError({ message: message.message, details: message.details })
+      batch(() => {
+        setSaving(false)
+        setSavingDraft({})
+        setSavingGlobalDraft({})
+        setSaveError({ message: message.message, details: message.details })
+      })
       return
     }
   })
@@ -134,10 +198,12 @@ export const ConfigProvider: ParentComponent = (props) => {
   // Request config immediately; if the extension's httpClient is not yet ready,
   // extensionDataReady will fire once initialization completes and we retry once.
   vscode.postMessage({ type: "requestConfig" })
+  vscode.postMessage({ type: "requestAutocompleteSettings" })
 
   const fallback = setTimeout(() => {
     if (loading()) {
       vscode.postMessage({ type: "requestConfig" })
+      vscode.postMessage({ type: "requestAutocompleteSettings" })
     }
   }, 3000)
 
@@ -147,6 +213,7 @@ export const ConfigProvider: ParentComponent = (props) => {
     clearTimeout(fallback)
     if (loading()) {
       vscode.postMessage({ type: "requestConfig" })
+      vscode.postMessage({ type: "requestAutocompleteSettings" })
     }
   })
 
@@ -161,43 +228,93 @@ export const ConfigProvider: ParentComponent = (props) => {
       setConfig((prev) => stripNulls(deepMerge(prev, partial)))
       // Accumulate in draft — will be sent on saveConfig()
       setDraft((prev) => deepMerge(prev as Config, partial))
-      setIsDirty(true)
       // Clear any stale error from a previous failed save — the user is editing
       // again, so the old error message no longer reflects the current draft.
       setSaveError(null)
     })
   }
 
+  function updateGlobalConfig(partial: Partial<Config>) {
+    batch(() => {
+      setGlobalConfig((prev) => stripNulls(deepMerge(prev, partial)))
+      setGlobalDraft((prev) => deepMerge(prev as Config, partial))
+      setSaveError(null)
+    })
+  }
+
+  function updateSetting(key: string, value: unknown) {
+    batch(() => {
+      setSettings((prev) => ({ ...prev, [key]: value }))
+      setSettingsDraft((prev) => ({ ...prev, [key]: value }))
+      setSaveError(null)
+    })
+  }
+
   function saveConfig() {
     const changes = draft()
-    if (saving() || Object.keys(changes).length === 0) return
+    const globals = globalDraft()
+    const pending = settingsDraft()
+    const configDirty = has(changes as Record<string, unknown>)
+    const globalDirty = has(globals as Record<string, unknown>)
+    const settingsDirty = has(pending)
+    if (saving() || (!configDirty && !globalDirty && !settingsDirty)) return
     // Don't clear draft/isDirty yet — wait for configUpdated confirmation.
     // If the write fails, the save bar stays visible so the user can retry.
-    setSaving(true)
-    setSavingDraft(changes)
-    setSaveError(null)
+    batch(() => {
+      setSaving(true)
+      setSavingDraft(changes)
+      setSavingGlobalDraft(globals)
+      setSaveError(null)
+    })
+    if (settingsDirty) {
+      for (const [key, value] of Object.entries(pending)) {
+        vscode.postMessage({ type: "updateSetting", key, value })
+      }
+      setSavedSettings((prev) => ({ ...prev, ...pending }))
+      setSettingsDraft({})
+    }
+    if (!configDirty && !globalDirty) {
+      batch(() => {
+        setSaving(false)
+        setSavingDraft({})
+        setSavingGlobalDraft({})
+      })
+      return
+    }
     // Split so per-project settings (e.g. commit_message.prompt) land in the
     // workspace's kilo.json instead of the global one. Send one message so the
     // extension confirms only after both scopes are saved.
     const split = splitConfigByScope(changes)
-    vscode.postMessage({ type: "updateConfig", config: split.global, projectConfig: split.project })
+    const next = deepMerge(split.global as Config, globals)
+    vscode.postMessage({ type: "updateConfig", config: next, projectConfig: split.project })
   }
 
   function discardConfig() {
-    setConfig(saved())
-    setDraft({})
-    setIsDirty(false)
-    setSaveError(null)
+    batch(() => {
+      setConfig(saved())
+      setGlobalConfig(savedGlobal())
+      setDraft({})
+      setGlobalDraft({})
+      setSettings(savedSettings())
+      setSettingsDraft({})
+      setSavingDraft({})
+      setSavingGlobalDraft({})
+      setSaveError(null)
+    })
   }
 
   const value: ConfigContextValue = {
     config,
+    globalConfig,
+    settings,
     features,
     loading,
     isDirty,
     saving,
     saveError,
     updateConfig,
+    updateGlobalConfig,
+    updateSetting,
     saveConfig,
     discardConfig,
   }

@@ -3,7 +3,7 @@ import type {
   PluginInput,
   Plugin as PluginInstance,
   PluginModule,
-  WorkspaceAdaptor as PluginWorkspaceAdaptor,
+  WorkspaceAdapter as PluginWorkspaceAdapter,
 } from "@kilocode/plugin"
 import { Config } from "@/config/config"
 import { Bus } from "../bus"
@@ -17,6 +17,7 @@ import { CopilotAuthPlugin } from "./github-copilot/copilot"
 import { gitlabAuthPlugin as GitlabAuthPlugin } from "opencode-gitlab-auth"
 import { PoeAuthPlugin } from "opencode-poe-auth"
 import { CloudflareAIGatewayAuthPlugin, CloudflareWorkersAuthPlugin } from "./cloudflare"
+import { AzureAuthPlugin } from "./azure"
 import { Effect, Layer, Context, Stream } from "effect"
 import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
@@ -25,12 +26,12 @@ import { PluginLoader } from "./loader"
 import { PluginConflict } from "./conflict"
 import { PluginManager } from "./manager"
 import { parsePluginSpecifier, readPluginId, readV1Plugin, resolvePluginId } from "./shared"
-import { registerAdaptor } from "@/control-plane/adaptors"
-import type { WorkspaceAdaptor } from "@/control-plane/types"
 import { KiloAuthPlugin } from "@kilocode/kilo-gateway" // kilocode_change
 import { server as MagicContextPlugin } from "@kilocode/magic-context" // kilocode_change
 import { Global } from "@opencode-ai/core/global" // kilocode_change
 import { Path as DatabasePath } from "@/storage/db" // kilocode_change
+import { registerAdapter } from "@/control-plane/adapters"
+import type { WorkspaceAdapter } from "@/control-plane/types"
 
 const log = Log.create({ service: "plugin" })
 
@@ -73,11 +74,14 @@ const INTERNAL_PLUGINS: PluginInstance[] = [
   MagicContextPlugin,
   CodexAuthPlugin,
   CopilotAuthPlugin,
+  // kilocode_change - external auth plugins ship against @opencode-ai/plugin; bridge to our @kilocode/plugin types
   GitlabAuthPlugin as unknown as PluginInstance,
   PoeAuthPlugin as unknown as PluginInstance,
-  CloudflareWorkersAuthPlugin as unknown as PluginInstance,
-  CloudflareAIGatewayAuthPlugin as unknown as PluginInstance,
-] // kilocode_change end
+  CloudflareWorkersAuthPlugin,
+  CloudflareAIGatewayAuthPlugin,
+  AzureAuthPlugin,
+]
+// kilocode_change end
 
 // kilocode_change start
 const OPTIONAL_INTERNAL_PLUGINS = new Map<PluginInstance, () => boolean>([
@@ -177,8 +181,8 @@ export const layer = Layer.effect(
           },
           // kilocode_change end
           experimental_workspace: {
-            register(type: string, adaptor: PluginWorkspaceAdaptor) {
-              registerAdaptor(ctx.project.id, type, adaptor as WorkspaceAdaptor)
+            register(type: string, adapter: PluginWorkspaceAdapter) {
+              registerAdapter(ctx.project.id, type, adapter as WorkspaceAdapter)
             },
           },
           get serverUrl(): URL {

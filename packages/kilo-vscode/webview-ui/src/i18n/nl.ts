@@ -141,6 +141,16 @@ const local = {
   "provider.connect.apiKey.label": "{{provider}} API-sleutel",
   "provider.connect.apiKey.placeholder": "API-sleutel",
   "provider.connect.apiKey.required": "API-sleutel is vereist",
+  "provider.connect.prompt.required": "{{field}} is verplicht",
+  "provider.connect.azure.endpointType.label": "Selecteer Azure-eindpuntconfiguratie",
+  "provider.connect.azure.endpointType.resourceName.label": "Resourcenaam",
+  "provider.connect.azure.endpointType.resourceName.hint": "Bouw het eindpunt op basis van uw Azure-resourcenaam",
+  "provider.connect.azure.endpointType.baseURL.label": "Volledige eindpunt-URL",
+  "provider.connect.azure.endpointType.baseURL.hint": "Gebruik een aangepast Azure OpenAI-eindpunt",
+  "provider.connect.azure.resourceName.label": "Azure-resourcenaam",
+  "provider.connect.azure.resourceName.placeholder": "bijv. my-models",
+  "provider.connect.azure.baseURL.label": "Azure OpenAI-eindpunt-URL",
+  "provider.connect.azure.baseURL.placeholder": "bijv. https://my-models.openai.azure.com/openai",
   "provider.connect.opencodeZen.line1":
     "OpenCode Zen geeft u toegang tot een geselecteerde set betrouwbare en geoptimaliseerde modellen voor programmeer-agents.",
   "provider.connect.opencodeZen.line2":
@@ -1046,6 +1056,13 @@ const local = {
   "settings.indexing.status.title": "Status",
   "settings.indexing.enable.title": "Indexering inschakelen",
   "settings.indexing.enable.description": "Schakel semantische codebase-indexering in of uit.",
+  "settings.indexing.globalEnable.title": "Globaal inschakelen",
+  "settings.indexing.globalEnable.description": "Indexering inschakelen voor elke werkruimte.",
+  "settings.indexing.projectEnable.title": "Inschakelen voor dit project",
+  "settings.indexing.projectEnable.description":
+    "Indexering inschakelen voor deze werkruimte wanneer globale indexering is uitgeschakeld.",
+  "settings.indexing.projectEnable.disabledTooltip":
+    "Globale indexering is ingeschakeld, dus dit project is al opgenomen.",
   "settings.indexing.provider.title": "Embedding-provider",
   "settings.indexing.provider.description":
     "Kies de provider die wordt gebruikt om embeddings te genereren voor semantisch zoeken.",
@@ -1181,6 +1198,8 @@ const local = {
   "settings.autocomplete.chatAutocomplete.title": "Chat tekstveld automatisch aanvullen inschakelen",
   "settings.autocomplete.chatAutocomplete.description":
     "Toon suggesties voor automatisch aanvullen in het chat tekstveld",
+  "settings.autocomplete.modelsHint":
+    "Om te kiezen welk model wordt gebruikt voor automatisch aanvullen, zie de Modellen-instellingen.",
 
   "settings.notifications.agent.title": "Agent Voltooiing",
   "settings.notifications.agent.description": "Toon melding wanneer agent een taak voltooit",
@@ -1535,6 +1554,10 @@ const local = {
   "notifications.action.close": "Sluiten",
   "notifications.action.tryModel": "Probeer {{model}}",
   "notifications.action.tryModelGeneric": "Probeer model",
+  "settings.indexing.kiloModel.title": "Kilo-model voorinstelling",
+  "settings.indexing.kiloModel.description": "Kies een ondersteund Kilo-hosted embeddings model.",
+  "settings.indexing.kiloSignIn.title": "Kilo-aanmelding vereist",
+  "settings.indexing.kiloSignIn.description": "Log in op Kilo om hosted embeddings te gebruiken.",
   // Missing translations - English fallbacks until translated
   "settings.agentBehaviour.createMode": "Nieuwe modus aanmaken",
   "settings.agentBehaviour.createMode.button": "Aanmaken",

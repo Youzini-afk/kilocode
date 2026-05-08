@@ -17,6 +17,7 @@ import type {
   ContextEngineModelOption,
   FeatureFlags,
   IndexingStatus,
+  KiloEmbeddingModelCatalog,
 } from "./config"
 import type { KilocodeNotification, ProfileData } from "./profile"
 import type { PluginListItem } from "./plugins"
@@ -292,6 +293,11 @@ export interface IndexingStatusLoadedMessage {
   status: IndexingStatus
 }
 
+export interface KiloEmbeddingModelsLoadedMessage {
+  type: "kiloEmbeddingModelsLoaded"
+  catalog: KiloEmbeddingModelCatalog
+}
+
 export interface ProvidersLoadedMessage {
   type: "providersLoaded"
   providers: Record<string, Provider>
@@ -417,12 +423,14 @@ export interface ClaudeCompatSettingLoadedMessage {
 export interface ConfigLoadedMessage {
   type: "configLoaded"
   config: Config
+  globalConfig?: Config
   features: FeatureFlags
 }
 
 export interface ConfigUpdatedMessage {
   type: "configUpdated"
   config: Config
+  globalConfig?: Config
   features: FeatureFlags
 }
 
@@ -815,6 +823,11 @@ export interface ExtensionDataReadyMessage {
   type: "extensionDataReady"
 }
 
+export interface TelemetryStateMessage {
+  type: "telemetryState"
+  enabled: boolean
+}
+
 // ============================================
 // Marketplace Messages
 // ============================================
@@ -934,6 +947,7 @@ export type ExtensionMessage =
   | DeviceAuthCancelledMessage
   | NavigateMessage
   | IndexingStatusLoadedMessage
+  | KiloEmbeddingModelsLoadedMessage
   | ProvidersLoadedMessage
   | AgentsLoadedMessage
   | SkillsLoadedMessage
@@ -1037,4 +1051,5 @@ export type ExtensionMessage =
   | McpStatusLoadedMessage
   | ClearPendingPromptsMessage
   | ExtensionDataReadyMessage
+  | TelemetryStateMessage
   | RemoteStatusMessage

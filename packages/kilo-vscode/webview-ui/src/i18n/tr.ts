@@ -141,6 +141,16 @@ const local = {
   "provider.connect.apiKey.label": "{{provider}} API anahtarı",
   "provider.connect.apiKey.placeholder": "API anahtarı",
   "provider.connect.apiKey.required": "API anahtarı gerekli",
+  "provider.connect.prompt.required": "{{field}} zorunludur",
+  "provider.connect.azure.endpointType.label": "Azure uç nokta yapılandırmasını seçin",
+  "provider.connect.azure.endpointType.resourceName.label": "Kaynak adı",
+  "provider.connect.azure.endpointType.resourceName.hint": "Azure kaynak adınızdan uç nokta oluşturun",
+  "provider.connect.azure.endpointType.baseURL.label": "Tam uç nokta URL'si",
+  "provider.connect.azure.endpointType.baseURL.hint": "Özel bir Azure OpenAI uç noktası kullanın",
+  "provider.connect.azure.resourceName.label": "Azure kaynak adı",
+  "provider.connect.azure.resourceName.placeholder": "örn. my-models",
+  "provider.connect.azure.baseURL.label": "Azure OpenAI uç nokta URL'si",
+  "provider.connect.azure.baseURL.placeholder": "örn. https://my-models.openai.azure.com/openai",
   "provider.connect.opencodeZen.line1":
     "OpenCode Zen, kodlama ajanları için seçilmiş güvenilir optimize edilmiş modellere erişim sağlar.",
   "provider.connect.opencodeZen.line2":
@@ -1045,6 +1055,13 @@ const local = {
   "settings.indexing.status.title": "Durum",
   "settings.indexing.enable.title": "İndekslemeyi etkinleştir",
   "settings.indexing.enable.description": "Anlamsal kod tabanı indekslemeyi açın veya kapatın.",
+  "settings.indexing.globalEnable.title": "Genel olarak etkinleştir",
+  "settings.indexing.globalEnable.description": "Her çalışma alanı için dizine eklemeyi etkinleştir.",
+  "settings.indexing.projectEnable.title": "Bu proje için etkinleştir",
+  "settings.indexing.projectEnable.description":
+    "Genel dizine ekleme kapalı olduğunda bu çalışma alanı için dizine eklemeyi etkinleştir.",
+  "settings.indexing.projectEnable.disabledTooltip":
+    "Küresel indeksleme etkinleştirildi, bu nedenle bu proje zaten kapsanıyor.",
   "settings.indexing.provider.title": "Yerleştirme sağlayıcısı",
   "settings.indexing.provider.description":
     "Anlamsal arama için yerleştirmeleri oluşturmak amacıyla kullanılacak sağlayıcıyı seçin.",
@@ -1174,6 +1191,8 @@ const local = {
   "settings.autocomplete.smartKeybinding.description": "Satır içi görevleri tetiklemek için akıllı tuş ataması kullan",
   "settings.autocomplete.chatAutocomplete.title": "Sohbet metin alanı otomatik tamamlamasını etkinleştir",
   "settings.autocomplete.chatAutocomplete.description": "Sohbet metin alanında otomatik tamamlama önerileri göster",
+  "settings.autocomplete.modelsHint":
+    "Otomatik tamamlama için kullanılacak modeli seçmek için Modeller ayarlarına bakın.",
 
   "settings.notifications.agent.title": "Ajan Tamamlanması",
   "settings.notifications.agent.description": "Ajan bir görevi tamamladığında bildirim göster",
@@ -1523,6 +1542,10 @@ const local = {
   "notifications.action.close": "Kapat",
   "notifications.action.tryModel": "Dene {{model}}",
   "notifications.action.tryModelGeneric": "Modeli Dene",
+  "settings.indexing.kiloModel.title": "Kilo model önayarı",
+  "settings.indexing.kiloModel.description": "Desteklenen bir Kilo-hosted embeddings modeli seçin.",
+  "settings.indexing.kiloSignIn.title": "Kilo oturumu açmak gerekiyor",
+  "settings.indexing.kiloSignIn.description": "Hosted embeddings kullanmak için Kilo'da oturum açın.",
   // Missing translations - English fallbacks until translated
   "profile.switchingAccount": "Hesap değiştiriliyor…",
   "settings.agentBehaviour.createMode": "Yeni Mod Oluştur",

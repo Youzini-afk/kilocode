@@ -141,6 +141,16 @@ const local = {
   "provider.connect.apiKey.label": "{{provider}} API-Schlüssel",
   "provider.connect.apiKey.placeholder": "API-Schlüssel",
   "provider.connect.apiKey.required": "API-Schlüssel ist erforderlich",
+  "provider.connect.prompt.required": "{{field}} ist erforderlich",
+  "provider.connect.azure.endpointType.label": "Azure-Endpunktkonfiguration auswählen",
+  "provider.connect.azure.endpointType.resourceName.label": "Ressourcenname",
+  "provider.connect.azure.endpointType.resourceName.hint": "Erstellen Sie den Endpunkt aus Ihrem Azure-Ressourcennamen",
+  "provider.connect.azure.endpointType.baseURL.label": "Vollständige Endpunkt-URL",
+  "provider.connect.azure.endpointType.baseURL.hint": "Einen benutzerdefinierten Azure OpenAI-Endpunkt verwenden",
+  "provider.connect.azure.resourceName.label": "Azure-Ressourcenname",
+  "provider.connect.azure.resourceName.placeholder": "z. B. my-models",
+  "provider.connect.azure.baseURL.label": "Azure OpenAI-Endpunkt-URL",
+  "provider.connect.azure.baseURL.placeholder": "z. B. https://my-models.openai.azure.com/openai",
   "provider.connect.opencodeZen.line1":
     "OpenCode Zen bietet Ihnen Zugriff auf eine kuratierte Auswahl zuverlässiger, optimierter Modelle für Coding-Agenten.",
   "provider.connect.opencodeZen.line2":
@@ -765,6 +775,13 @@ const local = {
   "settings.indexing.dimension.title": "Vektordimension",
   "settings.indexing.enable.description": "Semantische Codebasis-Indizierung ein- oder ausschalten.",
   "settings.indexing.enable.title": "Indizierung aktivieren",
+  "settings.indexing.globalEnable.title": "Global aktivieren",
+  "settings.indexing.globalEnable.description": "Indizierung für jeden Workspace aktivieren.",
+  "settings.indexing.projectEnable.title": "Für dieses Projekt aktivieren",
+  "settings.indexing.projectEnable.description":
+    "Indizierung für diesen Workspace aktivieren, wenn die globale Indizierung deaktiviert ist.",
+  "settings.indexing.projectEnable.disabledTooltip":
+    "Die globale Indizierung ist aktiviert, dieses Projekt wird also bereits erfasst.",
   "settings.indexing.lancedbDirectory.description": "Optionaler Ordner für den lokalen LanceDB-Speicher.",
   "settings.indexing.lancedbDirectory.placeholder": "Leer lassen für Standard",
   "settings.indexing.lancedbDirectory.title": "LanceDB-Ordner",
@@ -772,6 +789,10 @@ const local = {
   "settings.indexing.model.title": "Embedding-Modell",
   "settings.indexing.provider.description":
     "Wählen Sie den Anbieter, der für die Generierung von Embeddings für die semantische Suche verwendet wird.",
+  "settings.indexing.kiloModel.title": "Kilo-Modellvoreinstellung",
+  "settings.indexing.kiloModel.description": "Wählen Sie ein unterstütztes von Kilo gehostetes Embedding-Modell.",
+  "settings.indexing.kiloSignIn.title": "Kilo-Anmeldung erforderlich",
+  "settings.indexing.kiloSignIn.description": "Melden Sie sich bei Kilo an, um gehostete Embeddings zu verwenden.",
   "settings.indexing.provider.title": "Embedding-Anbieter",
   "settings.indexing.providerField.description": "Anbieterspezifische Verbindungseinstellung.",
   "settings.indexing.qdrantApiKey.description": "Optionaler API-Schlüssel für die Qdrant-Instanz.",
@@ -1191,6 +1212,8 @@ const local = {
     "Eine intelligente Tastenkombination zum Auslösen von Inline-Aufgaben verwenden",
   "settings.autocomplete.chatAutocomplete.title": "Chat-Textfeld-Autovervollständigung aktivieren",
   "settings.autocomplete.chatAutocomplete.description": "Autovervollständigungsvorschläge im Chat-Textfeld anzeigen",
+  "settings.autocomplete.modelsHint":
+    "Um zu wählen, welches Modell für die Autovervollständigung verwendet wird, siehe Modelleinstellungen.",
   "settings.notifications.agent.title": "Agent-Abschluss",
   "settings.notifications.agent.description": "Benachrichtigung anzeigen, wenn der Agent eine Aufgabe abschließt",
   "settings.notifications.permissions.title": "Berechtigungsanfragen",
