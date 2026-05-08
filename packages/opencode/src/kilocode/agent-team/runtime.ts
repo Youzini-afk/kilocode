@@ -24,9 +24,15 @@ type TaskResult = {
   output: string
 }
 
+function primary(caller: string) {
+  return caller === "team" || caller === "secretary"
+}
+
 function active(cfg: Config.Info | undefined, caller = "team") {
-  if (caller !== "team") return false
-  return cfg?.agentTeam?.enabled === true
+  if (!primary(caller)) return false
+  if (cfg?.agentTeam?.enabled !== true) return false
+  if (caller === "secretary") return cfg.agentTeam.secretary?.enabled === true
+  return true
 }
 
 function text(msg: MessageV2.WithParts) {
@@ -85,7 +91,7 @@ function retry(input: {
     agents(input.cfg),
     "Retry guidance:",
     `- Requested subagent: @${input.params.subagent_type}. Use the exact name of an enabled specialist.`,
-    "- Do not delegate to primary agents such as team, code, plan, ask, or debug.",
+    "- Do not delegate to primary agents such as secretary, team, code, plan, ask, or debug.",
     input.params.task_id
       ? "- If this was a resume attempt, omit task_id or use a current resumable-session alias from the prompt."
       : "- If this is unrelated to an existing child session, do not set task_id.",
@@ -98,9 +104,9 @@ function retry(input: {
 
 export namespace AgentTeamRuntime {
   export function inject(input: { cfg: Config.Info; messages: MessageV2.WithParts[] }) {
-    if (!active(input.cfg)) return
-    const msg = input.messages.findLast((item) => item.info.role === "user" && item.info.agent === "team")
+    const msg = input.messages.findLast((item) => item.info.role === "user" && primary(item.info.agent))
     if (!msg) return
+    if (!active(input.cfg, msg.info.agent)) return
     const part = text(msg)
     if (!part) return
     if (part.text.includes(START)) return

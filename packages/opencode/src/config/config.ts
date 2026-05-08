@@ -150,6 +150,7 @@ const AgentTeamRole = Schema.Struct({
 })
 
 const AgentTeamRoles = Schema.Struct({
+  secretary: Schema.optional(AgentTeamRole),
   orchestrator: Schema.optional(AgentTeamRole),
   team: Schema.optional(AgentTeamRole),
   explorer: Schema.optional(AgentTeamRole),
@@ -168,6 +169,12 @@ const AgentTeamSessionReuse = Schema.Struct({
   }),
   maxSessionsPerAgent: Schema.optional(PositiveInt).annotate({
     description: "Maximum remembered child sessions per specialist role",
+  }),
+})
+
+const AgentTeamSecretary = Schema.Struct({
+  enabled: Schema.optional(Schema.Boolean).annotate({
+    description: "Start Agent Team sessions with Secretary intake before specialist routing",
   }),
 })
 
@@ -222,6 +229,9 @@ const AgentTeam = Schema.Struct({
   }),
   roles: Schema.optional(AgentTeamRoles).annotate({
     description: "Agent Team role configuration",
+  }),
+  secretary: Schema.optional(AgentTeamSecretary).annotate({
+    description: "Agent Team Secretary intake configuration",
   }),
   sessionReuse: Schema.optional(AgentTeamSessionReuse).annotate({
     description: "Agent Team specialist session reuse configuration",

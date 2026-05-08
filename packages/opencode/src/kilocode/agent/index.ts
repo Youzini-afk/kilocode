@@ -269,7 +269,7 @@ type DefaultableAgent = {
 export function defaultTeam(cfg: Config.Info, agents: Record<string, DefaultableAgent>) {
   if (cfg.agentTeam?.enabled !== true) return undefined
   if (cfg.agentTeam.takeoverDefault === false) return undefined
-  const agent = agents.team
+  const agent = cfg.agentTeam.secretary?.enabled === true ? agents.secretary : agents.team
   if (!agent) return undefined
   if (agent.mode === "subagent") return undefined
   if (agent.hidden === true) return undefined

@@ -1373,13 +1373,16 @@ export const dict = {
 
   "settings.agentTeam.enabled.title": "Enable Agent Team",
   "settings.agentTeam.enabled.description":
-    "Use Kilo's built-in specialist team for planning, research, implementation, review, and coordination.",
+    "Use Kilo's built-in Orchestrator and specialist agents for planning, research, implementation, review, and coordination.",
+  "settings.agentTeam.secretary.title": "Secretary mode",
+  "settings.agentTeam.secretary.description":
+    "Start new Agent Team sessions with Secretary intake. Turn this off to talk directly to Orchestrator for faster simple work.",
   "settings.agentTeam.takeover.title": "Use as default agent",
   "settings.agentTeam.takeover.description":
-    "When no explicit default agent is configured, start new sessions with the team coordinator.",
-  "settings.agentTeam.roles.title": "Specialists",
+    "When no explicit default agent is configured, start new sessions with Secretary mode when enabled, otherwise Orchestrator.",
+  "settings.agentTeam.roles.title": "Routing and models",
   "settings.agentTeam.roles.description":
-    "Route work across the coordinator and specialist agents without editing raw JSON.",
+    "Configure Secretary, Orchestrator, and specialist routing without editing raw JSON.",
   "settings.agentTeam.section.expand": "Expand",
   "settings.agentTeam.section.collapse": "Collapse",
   "settings.agentTeam.column.agent": "Agent",
@@ -1404,9 +1407,12 @@ export const dict = {
   "settings.agentTeam.mcps.placeholder": "MCPs: *, !context7, github",
   "settings.agentTeam.role.advanced.show": "Show policy",
   "settings.agentTeam.role.advanced.hide": "Hide policy",
+  "settings.agentTeam.role.secretary.title": "Secretary",
+  "settings.agentTeam.role.secretary.description":
+    "Clarifies user intent, keeps simple work fast, and routes substantial work to specialists.",
   "settings.agentTeam.role.orchestrator.title": "Orchestrator",
   "settings.agentTeam.role.orchestrator.description":
-    "Coordinates the full workflow and decides when delegation is worth it.",
+    "Commands the workflow, handles quick work directly, and delegates substantial work to specialists.",
   "settings.agentTeam.role.explorer.title": "Explorer",
   "settings.agentTeam.role.explorer.description":
     "Finds files, symbols, call sites, and architecture entry points quickly.",
@@ -1415,17 +1421,19 @@ export const dict = {
     "Searches the codebase, docs, history, and references before changes.",
   "settings.agentTeam.role.oracle.title": "Oracle",
   "settings.agentTeam.role.oracle.description":
-    "Answers focused technical questions and validates architecture tradeoffs.",
+    "Performs final acceptance review for architecture, implementation quality, risk, and maintainability.",
   "settings.agentTeam.role.designer.title": "Designer",
   "settings.agentTeam.role.designer.description":
     "Improves UI/UX and front-end implementation with responsive, accessible interaction polish.",
   "settings.agentTeam.role.fixer.title": "Fixer",
-  "settings.agentTeam.role.fixer.description": "Implements bounded code changes and fixes defects.",
+  "settings.agentTeam.role.fixer.description":
+    "Implements bounded backend, service, CLI, config, fixture, test, and non-UI code changes.",
   "settings.agentTeam.role.observer.title": "Observer",
   "settings.agentTeam.role.observer.description":
     "Analyzes screenshots, images, PDFs, diagrams, and visible UI details.",
   "settings.agentTeam.role.council.title": "Council",
-  "settings.agentTeam.role.council.description": "Runs structured multi-agent review for high-risk decisions.",
+  "settings.agentTeam.role.council.description":
+    "Runs independent councillor debate for complex, ambiguous, architectural, or high-risk decisions.",
   "settings.agentTeam.collaboration.title": "Collaboration",
   "settings.agentTeam.collaboration.description": "Control how specialist sessions are reused across related tasks.",
   "settings.agentTeam.sessionReuse.title": "Reuse specialist sessions",

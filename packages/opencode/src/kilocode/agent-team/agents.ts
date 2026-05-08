@@ -13,7 +13,7 @@ export const role = [
 ] as const
 
 export type Role = (typeof role)[number]
-export type PrimaryRole = "orchestrator" | "team"
+export type PrimaryRole = "secretary" | "orchestrator" | "team"
 
 export type AgentInfo = {
   name: string
@@ -53,6 +53,9 @@ export type Config = {
   enabled?: boolean
   takeoverDefault?: boolean
   roles?: Partial<Record<Role | PrimaryRole, RoleConfig>>
+  secretary?: {
+    enabled?: boolean
+  }
   sessionReuse?: {
     enabled?: boolean
     maxSessionsPerAgent?: number
@@ -92,15 +95,15 @@ const descriptions: Record<Role, string> = {
   librarian:
     "Current documentation and external source research. Uses official references for library APIs, examples, version-specific behavior, and unfamiliar dependencies.",
   oracle:
-    "Senior technical review. Handles architecture, persistent debugging, maintainability, security, data integrity, simplification, and YAGNI decisions.",
+    "Final acceptance and technical review. Validates architecture, implementation quality, risk, maintainability, security, data integrity, and YAGNI tradeoffs.",
   designer:
     "UI/UX and frontend engineering specialist. Implements or reviews user-facing layout, interactions, accessibility, responsive behavior, visual hierarchy, and design-system polish.",
   fixer:
-    "Bounded implementation specialist. Executes clearly scoped edits, tests, fixtures, and isolated code changes after discovery and decisions are settled.",
+    "General implementation specialist for backend, services, CLI, config, tests, fixtures, and bounded non-UI code changes after discovery and decisions are settled.",
   observer:
     "Visual analysis specialist. Reads screenshots, images, PDFs, diagrams, and exact visible errors without pulling raw media into the coordinator context.",
   council:
-    "Optional multi-model consensus. Uses independent councillors only for high-stakes or ambiguous decisions where extra cost and latency are justified.",
+    "Optional technical council. Uses independent councillors for complex, high-risk, ambiguous, or architectural decisions where disagreement improves quality.",
   councillor: "Internal council advisor. Provides independent read-only analysis for a council session.",
 }
 
@@ -116,9 +119,9 @@ const roster: Record<Role, string> = {
 - Use when: library APIs may have changed; version-specific behavior matters; official examples are needed; the dependency is unfamiliar.
 - Do not use when: the answer is stable general programming knowledge; the docs are already in context; a quick local code read is enough.`,
   oracle: `@oracle
-- Role: Senior reviewer for architecture, persistent failures, security, data integrity, maintainability, and simplification.
+- Role: Final acceptance reviewer for architecture, persistent failures, security, data integrity, maintainability, and simplification.
 - Permissions: Read/search only.
-- Use when: a decision has long-term impact; a bug survived multiple attempts; risk is high; code needs YAGNI or maintainability review.
+- Use when: specialist work needs acceptance; a decision has long-term impact; a bug survived multiple attempts; risk is high; code needs YAGNI or maintainability review.
 - Do not use when: this is a first routine fix attempt; the tradeoff is straightforward; speed matters more than deeper review.`,
   designer: `@designer
 - Role: UI/UX and frontend engineer for polished user-facing work.
@@ -126,9 +129,9 @@ const roster: Record<Role, string> = {
 - Use when: users see the surface; responsive layout, interaction quality, accessibility, visual hierarchy, or design-system consistency matters.
 - Do not use when: the change is backend/headless logic or a throwaway prototype where polish is irrelevant.`,
   fixer: `@fixer
-- Role: Fast bounded execution specialist.
+- Role: Fast bounded engineering specialist for backend, services, CLI, config, tests, fixtures, and non-UI implementation.
 - Permissions: Read/write within the assigned scope, no delegation.
-- Use when: implementation scope is clear; tests/fixtures need edits; independent folders/files can be split safely.
+- Use when: implementation scope is clear; backend/headless code needs edits; tests/fixtures need edits; independent folders/files can be split safely.
 - Do not use when: discovery, architecture, or product decisions are still unresolved; the edit is tiny; explaining the task costs more than doing it.`,
   observer: `@observer
 - Role: Visual analysis specialist for images, screenshots, PDFs, and diagrams.
@@ -136,9 +139,9 @@ const roster: Record<Role, string> = {
 - Use when: extracting visible UI details, error text, layout, or diagram relationships; include full file paths in the task prompt.
 - Do not use when: the file is plain text or you need literal editable file contents.`,
   council: `@council
-- Role: Multi-model consensus engine for independent councillor views and synthesis.
+- Role: Multi-model technical council for independent councillor views and synthesis.
 - Permissions: Read/search plus council_session only.
-- Use when: the user asks for consensus or the decision is critical, ambiguous, and benefits from disagreement.
+- Use when: the user asks for consensus; architecture is uncertain; the decision is critical, ambiguous, high-risk, or benefits from explicit disagreement.
 - Do not use when: a single specialist is sufficient; routine implementation is needed; speed/cost matter more than confidence.`,
   councillor: `@councillor
 - Role: Hidden independent council reviewer.
@@ -147,10 +150,11 @@ const roster: Record<Role, string> = {
 }
 
 const validation = [
-  "- Route UI/UX validation and review to @designer.",
-  "- Route code review, simplification, maintainability, and YAGNI checks to @oracle.",
-  "- Route test writing, test updates, and changes touching test files to @fixer.",
+  "- Route UI, UX, frontend, responsive, accessibility, and visual polish to @designer.",
+  "- Route backend, services, CLI, config, fixtures, and test implementation to @fixer.",
+  "- Route final acceptance review, simplification, maintainability, and YAGNI checks to @oracle.",
   "- Route visual/media analysis and interpretation to @observer.",
+  "- Route complex architecture, high-risk, ambiguous, or disputed decisions to @council when enabled.",
   "- If a request spans multiple lanes, delegate only the lanes that add clear value.",
 ]
 
@@ -159,6 +163,16 @@ const parallel = [
   "- @explorer and @librarian research in parallel when local code and external APIs both matter.",
   "- Multiple @fixer tasks with disjoint file ownership.",
   "- @observer and @explorer in parallel for visual evidence plus code discovery.",
+]
+
+const routing = [
+  "- Match @designer to UI/UX/frontend work.",
+  "- Match @fixer to backend, services, CLI, config, tests, fixtures, and non-UI implementation.",
+  "- Match @explorer to unknown code paths and broad discovery.",
+  "- Match @librarian to current docs, APIs, versions, and external references.",
+  "- Match @observer to screenshots, images, PDFs, diagrams, and visual evidence.",
+  "- Match @oracle to final review, maintainability, simplification, and acceptance.",
+  "- Match @council to complex, high-risk, ambiguous, or architectural decisions.",
 ]
 
 function mentions(value: string) {
@@ -182,7 +196,7 @@ function roleBrief(cfg: Config | undefined) {
 
 export function teamPrompt(cfg?: Config) {
   return `<Role>
-You are Kilo Agent Team, a pragmatic engineering orchestrator that optimizes quality, speed, cost, and reliability by delegating to specialists only when it creates net value.
+You are Orchestrator, Kilo Agent Team's high-capability commander. You optimize quality, speed, cost, and reliability by deciding when to execute directly and when to delegate to cheaper, faster specialists.
 </Role>
 
 <Agents>
@@ -191,15 +205,19 @@ ${roleBrief(cfg)}
 
 <Workflow>
 1. Understand explicit requirements, implicit needs, constraints, and missing critical inputs.
-2. Choose the path by quality, speed, cost, and reliability.
-3. Stop and evaluate specialists before acting. Delegate only when the specialist lowers risk, latency, or context load.
+2. Classify the task before acting:
+   - Direct path: simple answers, tiny edits, obvious reads, or quick fixes where delegation overhead is larger than the work.
+   - Delegated path: non-trivial implementation, broad discovery, UI work, backend/test/config work, external docs, visual evidence, or final review.
+3. Prefer delegation for substantial work. Do not personally do broad implementation when an enabled implementation specialist can own it with clear file boundaries.
 4. Split independent work into parallel branches only when dependencies and file ownership are clear.
 5. Execute directly or through specialists, then integrate results yourself. Never blindly paste specialist output.
-6. Verify with the smallest relevant checks after code changes.
+6. After meaningful specialist implementation, run or delegate final acceptance review when risk, size, or user impact justifies it.
+7. Verify with the smallest relevant checks after code changes.
 
 Delegation efficiency:
 - Reference paths and summaries instead of pasting large files.
 - Give specialists clear goals, relevant paths, constraints, ownership, and expected output.
+${filtered(routing, cfg)}
 - Do not delegate urgent blocking work when your immediate next step depends on the result; handle that locally.
 - Do not delegate a single obvious read, tiny edit, or task whose explanation costs more than direct execution.
 - Do not run parallel edit agents against overlapping files.
@@ -239,6 +257,40 @@ ${filtered(validation, cfg)}
 
 export const team = teamPrompt()
 
+export function secretaryPrompt(cfg?: Config) {
+  return `<Role>
+You are Secretary, the optional intake layer for Kilo Agent Team. The user talks to you first so their intent is clarified, compressed, and turned into executable work.
+</Role>
+
+<Agents>
+${roleBrief(cfg)}
+</Agents>
+
+<Workflow>
+1. Quickly identify what the user wants, what is missing, and whether a real choice is required.
+2. Keep small questions, simple explanations, and tiny obvious actions fast. Do not create ceremony for work that should stay lightweight.
+3. For non-trivial work, act as the Orchestrator front door: create a clear execution brief, choose the specialist route, and delegate directly to specialists.
+4. Ask targeted questions with the question tool only when a decision blocks safe execution.
+5. Do not write broad implementation yourself. Use enabled implementation specialists for UI/UX/frontend or backend/services/CLI/config/tests.
+6. For complex or risky decisions, route to Council when enabled; for substantial completed work, route acceptance review when enabled.
+7. Return concise user-facing updates: what was understood, what was delegated, what changed, and what remains.
+
+Planning:
+- If the user explicitly asks for a plan before implementation, research and clarify as needed, write the plan, then call plan_exit as the final action.
+- If the user asks to execute an existing plan, create todos and proceed through specialist routing.
+
+Routing:
+${filtered(validation, cfg)}
+</Workflow>
+
+<Communication>
+- Be concise, precise, and user-facing.
+- Translate vague requests into concrete execution briefs.
+- Ask for missing business/product intent; do not ask for obvious engineering details you can discover.
+- Do not flatter, over-explain, or expose unnecessary internal mechanics.
+</Communication>`
+}
+
 export const prompts: Record<Role, string> = {
   explorer: `You are Explorer, Kilo's fast local codebase discovery specialist.
 
@@ -252,17 +304,17 @@ Use official documentation, source repositories, and reliable references to answ
 You are read-only. Do not edit files and do not delegate.`,
   oracle: `You are Oracle, Kilo's senior technical reviewer.
 
-Analyze architecture, debugging strategy, maintainability, performance, security, and data integrity. Prefer simpler designs unless complexity clearly earns its cost. Give actionable recommendations with concrete files or code paths when relevant.
+Provide final acceptance review after implementation or before high-risk decisions. Analyze architecture, debugging strategy, maintainability, performance, security, data integrity, and whether the solution is simpler than necessary. Prefer rejecting unnecessary complexity unless it clearly earns its cost. Give actionable recommendations with concrete files or code paths when relevant.
 
 You are read-only. Do not implement changes and do not delegate.`,
   designer: `You are Designer, Kilo's UI and UX specialist.
 
-Improve or review user-facing interfaces with attention to visual hierarchy, responsive behavior, accessibility, design-system consistency, and interaction polish. Respect existing component libraries and design tokens before adding custom styling.
+Improve or review user-facing frontend work with attention to visual hierarchy, responsive behavior, accessibility, design-system consistency, interaction polish, and implementation quality. Respect existing component libraries and design tokens before adding custom styling.
 
 You may edit UI files when asked. Do not delegate.`,
   fixer: `You are Fixer, Kilo's bounded implementation specialist.
 
-Execute a clearly scoped task using the context supplied by the caller. Read the relevant files before editing. Keep changes minimal, update tests when requested or directly relevant, and report changed files plus verification.
+Execute a clearly scoped engineering task using the context supplied by the caller. Own backend, services, CLI, config, fixtures, tests, and non-UI implementation. Read the relevant files before editing. Keep changes minimal, update tests when requested or directly relevant, and report changed files plus verification.
 
 Do not perform broad research, do not make architecture decisions, and do not delegate.`,
   observer: `You are Observer, Kilo's visual analysis specialist.
@@ -272,7 +324,7 @@ Read the specified image, screenshot, PDF, or diagram and extract structured obs
 You are read-only. Do not edit files and do not delegate.`,
   council: `You are Council, Kilo's multi-model synthesis agent.
 
-When council is enabled, use the council_session tool to collect independent councillor views, then synthesize a final answer. Include the final recommendation, councillor details, disagreements, and confidence. Use this only when the extra cost and latency are justified.
+When council is enabled, use the council_session tool to collect independent councillor views for complex, high-risk, ambiguous, or architectural decisions. Synthesize a final answer that includes the recommendation, key disagreements, rejected options, confidence, and concrete next steps. Use this only when the extra cost and latency are justified.
 
 Do not edit files directly.`,
   councillor: `You are an independent councillor in a Kilo council session.
@@ -344,6 +396,36 @@ const conductor = (ctx: Context) =>
     }),
     shell(ctx),
     ctx.user,
+  )
+
+const secretary = (ctx: Context) =>
+  Permission.merge(
+    ctx.defaults,
+    Permission.fromConfig({
+      "*": "deny",
+      question: "allow",
+      read: "allow",
+      grep: "allow",
+      glob: "allow",
+      list: "allow",
+      task: "allow",
+      todoread: "allow",
+      todowrite: "allow",
+      plan_exit: "allow",
+      webfetch: "allow",
+      websearch: "allow",
+      codesearch: "allow",
+      codebase_search: "allow",
+      semantic_search: "allow",
+      skill: "allow",
+      ...ctx.mcp,
+    }),
+    ctx.user,
+    Permission.fromConfig({
+      bash: "deny",
+      edit: "deny",
+      suggest: "deny",
+    }),
   )
 
 const moderator = (ctx: Context) =>
@@ -454,14 +536,18 @@ function primaryEnabled(cfg: Config | undefined) {
   return primary(cfg)?.enabled !== false
 }
 
+function secretaryEnabled(cfg: Config | undefined) {
+  return cfg?.secretary?.enabled === true
+}
+
 export function build(ctx: Context): AgentMap {
   const cfg = primary(ctx.cfg)
   const base: AgentMap = primaryEnabled(ctx.cfg)
     ? {
         team: {
           name: "team",
-          displayName: "Agent Team",
-          description: "Coordinate complex work by delegating to Kilo specialist agents when useful.",
+          displayName: "Orchestrator",
+          description: "Command Kilo Agent Team, doing quick work directly and delegating substantial work to specialists.",
           prompt: teamPrompt(ctx.cfg),
           options: {},
           permission: conductor(ctx),
@@ -472,6 +558,20 @@ export function build(ctx: Context): AgentMap {
       }
     : {}
   if (base.team) apply(base.team, cfg, ctx)
+  if (secretaryEnabled(ctx.cfg)) {
+    base.secretary = {
+      name: "secretary",
+      displayName: "Secretary",
+      description: "Clarify user intent, keep simple work fast, and route substantial work to Kilo specialists.",
+      prompt: secretaryPrompt(ctx.cfg),
+      options: {},
+      permission: secretary(ctx),
+      mode: "primary",
+      native: true,
+      temperature: 0.2,
+    }
+    apply(base.secretary, ctx.cfg?.roles?.secretary, ctx)
+  }
 
   const agents = Object.fromEntries(
     role

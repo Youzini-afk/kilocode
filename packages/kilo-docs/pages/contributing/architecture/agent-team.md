@@ -27,9 +27,9 @@ Agent Team is the native Kilo architecture for coordinated specialist-agent work
 
 | Module | Responsibility |
 |---|---|
-| `packages/opencode/src/kilocode/agent-team/agents.ts` | Defines Team and specialist agent prompts, descriptions, defaults, and permissions. |
+| `packages/opencode/src/kilocode/agent-team/agents.ts` | Defines Secretary, Orchestrator, and specialist agent prompts, descriptions, defaults, and permissions. |
 | `packages/opencode/src/kilocode/agent-team/config.ts` | Normalizes `agentTeam` config and resolves role model overrides. |
-| `packages/opencode/src/kilocode/agent-team/session-reuse.ts` | Tracks reusable child sessions and injects resumable-session hints into Team requests. |
+| `packages/opencode/src/kilocode/agent-team/session-reuse.ts` | Tracks reusable child sessions and injects resumable-session hints into Orchestrator or Secretary requests. |
 | `packages/opencode/src/kilocode/agent-team/council.ts` | Runs optional multi-model council sessions and formats synthesis input. |
 | `packages/opencode/src/kilocode/agent-team/auto-continue.ts` | Conservatively resumes Team sessions with incomplete todos when enabled. |
 | `packages/kilo-vscode/webview-ui/src/components/settings/AgentTeamTab.tsx` | Presents polished settings sections backed by Kilo provider/model pickers. |
@@ -44,6 +44,7 @@ Agent Team is being aligned to `oh-my-opencode-slim` by capability, not by copyi
 |---|---|---|---|
 | Specialist roster | `src/agents/` | Implemented, but prompts are compressed | Keep native roles and expand prompts/routing rules. |
 | Orchestrator routing | `src/agents/orchestrator.ts` | Partial | Match delegation, validation routing, parallelism, session reuse, and communication rules. |
+| Secretary intake | OMO-style front-door workflow | Implemented natively | Optional entry agent that clarifies user intent, keeps simple work fast, and routes substantial work to specialists. |
 | Task session aliases | `src/hooks/task-session-manager/` | Partial | Keep native `task_id` aliasing and add stale-entry cleanup plus stronger prompt guidance. |
 | Delegation retry hints | `src/hooks/delegate-task-retry/` | Missing | Append recovery guidance after failed `task` calls. |
 | Phase reminders | `src/hooks/phase-reminder/` | Missing | Inject concise workflow reminders into Team turns. |
@@ -70,7 +71,14 @@ The user-facing config key is `agentTeam`:
   "agentTeam": {
     "enabled": true,
     "takeoverDefault": true,
+    "secretary": {
+      "enabled": false
+    },
     "roles": {
+      "secretary": {
+        "model": "kilo/auto",
+        "variant": "medium"
+      },
       "orchestrator": {
         "enabled": true,
         "model": "kilo/auto",
@@ -127,12 +135,13 @@ Role entries support:
 
 | Agent | Mode | Default access | Purpose |
 |---|---|---|---|
-| `team` | primary | Delegation, todo, read/search, web, no shell | Coordinates work and chooses when specialist delegation is worth the overhead. |
+| `secretary` | primary | Delegation, todo, read/search, web, no shell | Optional intake layer that clarifies intent, avoids ceremony for simple tasks, and routes substantial work to specialists. |
+| `team` | primary | Delegation, todo, read/search, web, shell from defaults | Orchestrator. Commands the workflow, handles quick work directly, and delegates substantial work to specialists. |
 | `explorer` | subagent | Read/search/code discovery | Finds files, symbols, call sites, and architectural entry points quickly. |
 | `librarian` | subagent | Read/search/web/docs | Looks up current external documentation and source examples. |
 | `oracle` | subagent | Read/search | Reviews architecture, debugging strategy, maintainability, and high-risk decisions. |
 | `designer` | subagent | Edit allowed, no delegation | Implements or reviews user-facing UI and UX. |
-| `fixer` | subagent | Edit allowed, no delegation | Executes bounded implementation and test changes. |
+| `fixer` | subagent | Edit allowed, no delegation | Executes bounded backend, service, CLI, config, fixture, test, and non-UI implementation changes. |
 | `observer` | subagent | Read only | Analyzes images, screenshots, PDFs, and diagrams. |
 | `council` | all or subagent | Council tool only plus read | Synthesizes optional multi-model opinions. |
 | `councillor` | hidden subagent | Read only | Internal independent advisor spawned by council sessions. |
@@ -144,26 +153,28 @@ The upstream `explore` agent remains available for manual use. Agent Team uses i
 When `agentTeam.enabled` and `agentTeam.takeoverDefault` are true:
 
 1. If the user explicitly sets `default_agent`, honor it.
-2. If no explicit default exists, choose `team`.
-3. If `team` is disabled, hidden, or unavailable, fall back to `code`.
+2. If no explicit default exists and `agentTeam.secretary.enabled` is true, choose `secretary`.
+3. Otherwise choose `team` as Orchestrator.
+4. If the selected Agent Team primary is disabled, hidden, or unavailable, fall back to `code`.
 
 This preserves user intent and makes disabling Agent Team a clean rollback.
 
 ## Delegation Rules
 
-- `team` can delegate to enabled subagents.
+- `team` and `secretary` can delegate to enabled specialists.
+- `secretary` is not a nested wrapper around `team`; it routes directly to specialists so delegated sessions remain leaf sessions.
 - `fixer` and `designer` are leaf implementation agents and must not delegate.
 - Read-only roles must not receive edit or shell permissions.
 - Primary agents must not be used as subagents.
 - Child sessions inherit edit, shell, and MCP restrictions from the caller.
-- `task_id` session reuse should be automatic only for Team-managed sessions.
+- `task_id` session reuse should be automatic only for Agent Team primary sessions.
 
 ## Session Reuse
 
 Kilo already returns `task_id` from delegated tasks. Agent Team adds memory around it:
 
 1. Record `parent session -> role -> recent child sessions`.
-2. Append resumable-session hints to the latest Team user message.
+2. Append resumable-session hints to the latest Orchestrator or Secretary user message.
 3. Resolve short aliases to real `task_id` values before Task execution.
 4. Drop stale entries when child sessions are deleted or fail as missing.
 
@@ -184,7 +195,7 @@ Council is an advanced feature:
 Auto-continue is intentionally conservative:
 
 - Disabled by default.
-- Only applies to Team sessions.
+- Only applies to Orchestrator and Secretary sessions.
 - Requires incomplete todos.
 - Can auto-enable only when unfinished todos meet the configured threshold.
 - Must not continue when the last assistant message asks a question.
@@ -196,8 +207,9 @@ Auto-continue is intentionally conservative:
 The VS Code settings UI should use clear sections:
 
 - Agent Team overview and master enable switch.
+- Secretary mode switch for quickly choosing Secretary intake versus direct Orchestrator conversation.
 - Default takeover switch.
-- Agent routing grid with coordinator and specialists in one place.
+- Agent routing grid with Secretary, Orchestrator, and specialists in one place.
 - Per-role enable switch, model picker, thinking strength, and temperature.
 - Collapsed per-role policy controls for display name, skills, and MCPs.
 - Collaboration settings for session reuse and parallelism.

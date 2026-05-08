@@ -60,18 +60,29 @@ describe("AgentTeamRuntime", () => {
     expect((messages[0].parts[0] as MessageV2.TextPart).text).toContain("@observer")
   })
 
+  test("injects workflow reminders into Secretary turns", () => {
+    const messages = [msg("msg_secretary", [text("msg_secretary", "review this")], "secretary")]
+
+    AgentTeamRuntime.inject({ cfg: cfg({ enabled: true, secretary: { enabled: true } }), messages })
+
+    expect((messages[0].parts[0] as MessageV2.TextPart).text).toContain("<agent_team_runtime>")
+  })
+
   test("skips disabled Agent Team and non-Team turns", () => {
     const disabled = [msg("msg_disabled", [text("msg_disabled", "review this")])]
     const code = [msg("msg_code", [text("msg_code", "review this")], "code")]
+    const secretary = [msg("msg_secretary_disabled", [text("msg_secretary_disabled", "review this")], "secretary")]
 
     AgentTeamRuntime.inject({ cfg: cfg({ enabled: false }), messages: disabled })
     AgentTeamRuntime.inject({ cfg: cfg(), messages: code })
+    AgentTeamRuntime.inject({ cfg: cfg({ enabled: true, secretary: { enabled: false } }), messages: secretary })
 
     expect((disabled[0].parts[0] as MessageV2.TextPart).text).not.toContain("<agent_team_runtime>")
     expect((code[0].parts[0] as MessageV2.TextPart).text).not.toContain("<agent_team_runtime>")
+    expect((secretary[0].parts[0] as MessageV2.TextPart).text).not.toContain("<agent_team_runtime>")
   })
 
-  test("formats Team-only delegation retry guidance", () => {
+  test("formats Agent Team delegation retry guidance", () => {
     const result = AgentTeamRuntime.taskFailure({
       cfg: cfg(),
       caller: "team",
@@ -82,7 +93,18 @@ describe("AgentTeamRuntime", () => {
 
     expect(result?.output).toContain("<agent_team_delegation_retry>")
     expect(result?.output).toContain("omit task_id")
+    expect(result?.output).toContain("secretary")
     expect(result?.metadata.failed).toBe(true)
+
+    expect(
+      AgentTeamRuntime.taskFailure({
+        cfg: cfg({ enabled: true, secretary: { enabled: true } }),
+        caller: "secretary",
+        sessionID,
+        params: { description: "bad delegate", subagent_type: "unknown" },
+        cause: "Unknown agent type",
+      })?.output,
+    ).toContain("<agent_team_delegation_retry>")
 
     expect(
       AgentTeamRuntime.taskFailure({

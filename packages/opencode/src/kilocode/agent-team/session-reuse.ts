@@ -33,9 +33,14 @@ const prefix: Record<string, string> = {
 const START = "<resumable_sessions>"
 const END = "</resumable_sessions>"
 
+function primary(caller: string) {
+  return caller === "team" || caller === "secretary"
+}
+
 function active(cfg: Config.Info, caller = "team") {
-  if (caller !== "team") return false
+  if (!primary(caller)) return false
   if (cfg.agentTeam?.enabled !== true) return false
+  if (caller === "secretary" && cfg.agentTeam.secretary?.enabled !== true) return false
   return cfg.agentTeam.sessionReuse?.enabled !== false
 }
 
@@ -215,10 +220,10 @@ export namespace AgentTeamSessionReuse {
   }
 
   export function inject(input: { cfg: Config.Info; messages: MessageV2.WithParts[] }) {
-    if (!active(input.cfg)) return
-    const message = input.messages.findLast((item) => item.info.role === "user" && item.info.agent === "team")
+    const message = input.messages.findLast((item) => item.info.role === "user" && primary(item.info.agent))
     if (!message) return
-    const reminder = format({ cfg: input.cfg, caller: "team", parent: message.info.sessionID })
+    if (!active(input.cfg, message.info.agent)) return
+    const reminder = format({ cfg: input.cfg, caller: message.info.agent, parent: message.info.sessionID })
     if (!reminder) return
     const part = message.parts.find((item): item is MessageV2.TextPart => item.type === "text")
     if (!part) return

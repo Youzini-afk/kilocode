@@ -30,7 +30,17 @@ interface ModelGroup {
   models: ModelOption[]
 }
 
-const roles: Role[] = ["orchestrator", "explorer", "librarian", "oracle", "designer", "fixer", "observer", "council"]
+const roles: Role[] = [
+  "secretary",
+  "orchestrator",
+  "explorer",
+  "librarian",
+  "oracle",
+  "designer",
+  "fixer",
+  "observer",
+  "council",
+]
 const efforts = ["low", "medium", "high", "xhigh"]
 const maxFallbacks = 3
 
@@ -415,6 +425,10 @@ const AgentTeamTab: Component = () => {
     patch({ roles: { [id]: next } })
   }
 
+  function patchSecretary(enabled: boolean) {
+    patch({ secretary: { enabled } })
+  }
+
   function patchReuse(next: NonNullable<AgentTeamConfig["sessionReuse"]>) {
     patch({ sessionReuse: next })
   }
@@ -428,11 +442,16 @@ const AgentTeamTab: Component = () => {
   }
 
   function roleEnabled(id: Role) {
+    if (id === "secretary") return team().secretary?.enabled === true
     if (id === "council") return team().council?.enabled === true && cfg(id).enabled !== false
     return cfg(id).enabled ?? true
   }
 
   function toggle(id: Role, value: boolean) {
+    if (id === "secretary") {
+      patchSecretary(value)
+      return
+    }
     if (id !== "council") {
       patchRole(id, { enabled: value })
       return
@@ -530,6 +549,14 @@ const AgentTeamTab: Component = () => {
         >
           <Switch checked={team().enabled === true} onChange={(enabled) => patch({ enabled })} hideLabel>
             {language.t("settings.agentTeam.enabled.title")}
+          </Switch>
+        </SettingsRow>
+        <SettingsRow
+          title={language.t("settings.agentTeam.secretary.title")}
+          description={language.t("settings.agentTeam.secretary.description")}
+        >
+          <Switch checked={team().secretary?.enabled === true} onChange={patchSecretary} hideLabel>
+            {language.t("settings.agentTeam.secretary.title")}
           </Switch>
         </SettingsRow>
         <SettingsRow

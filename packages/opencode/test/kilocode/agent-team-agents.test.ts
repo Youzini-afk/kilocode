@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Permission } from "@/permission"
 import { build, enabled, type Config } from "@/kilocode/agent-team/agents"
+import { defaultTeam } from "@/kilocode/agent"
 
 function agents(
   cfg?: Config,
@@ -16,6 +17,10 @@ function agents(
   })
 }
 
+function app(agentTeam: Parameters<typeof defaultTeam>[0]["agentTeam"]) {
+  return { agentTeam } as Parameters<typeof defaultTeam>[0]
+}
+
 const shell = Permission.fromConfig({
   bash: {
     "*": "ask",
@@ -24,13 +29,58 @@ const shell = Permission.fromConfig({
 })
 
 describe("Agent Team agents", () => {
-  test("registers the primary team and explorer specialist", () => {
+  test("registers Orchestrator as the primary team agent and explorer specialist", () => {
     const map = agents({ enabled: true })
 
     expect(map.team?.mode).toBe("primary")
+    expect(map.team?.displayName).toBe("Orchestrator")
+    expect(map.team?.description).toContain("delegating substantial work")
     expect(map.explorer?.mode).toBe("subagent")
     expect(map.explorer?.description).toContain("codebase discovery")
     expect(map.team?.prompt).toContain("@explorer")
+  })
+
+  test("builds optional Secretary intake as a primary agent", () => {
+    const map = agents({
+      enabled: true,
+      secretary: {
+        enabled: true,
+      },
+      roles: {
+        secretary: {
+          model: "openai/gpt-5.4",
+          variant: "high",
+        },
+      },
+    })
+
+    expect(map.secretary?.mode).toBe("primary")
+    expect(map.secretary?.displayName).toBe("Secretary")
+    expect(map.secretary?.model).toEqual({ providerID: "openai", modelID: "gpt-5.4" })
+    expect(map.secretary?.variant).toBe("high")
+    expect(map.secretary?.prompt).toContain("You are Secretary")
+    expect(map.secretary?.prompt).toContain("@fixer")
+    expect(Permission.evaluate("task", "fixer", map.secretary.permission).action).toBe("allow")
+    expect(Permission.evaluate("bash", "git status --short", map.secretary.permission).action).toBe("deny")
+  })
+
+  test("prefers Secretary as default only when Secretary mode is enabled", () => {
+    const direct = agents({ enabled: true })
+    const intake = agents({ enabled: true, secretary: { enabled: true } })
+
+    expect(defaultTeam(app({ enabled: true }), direct)).toBe("team")
+    expect(defaultTeam(app({ enabled: true, secretary: { enabled: true } }), intake)).toBe("secretary")
+  })
+
+  test("states Orchestrator delegation policy explicitly", () => {
+    const map = agents({ enabled: true, council: { enabled: true } })
+
+    expect(map.team?.prompt).toContain("You are Orchestrator")
+    expect(map.team?.prompt).toContain("Direct path")
+    expect(map.team?.prompt).toContain("Prefer delegation for substantial work")
+    expect(map.team?.prompt).toContain("Match @designer to UI/UX/frontend work")
+    expect(map.team?.prompt).toContain("Match @fixer to backend, services, CLI, config, tests")
+    expect(map.team?.prompt).toContain("Match @council to complex, high-risk")
   })
 
   test("keeps default bash available for the primary team agent", () => {
@@ -125,7 +175,18 @@ describe("Agent Team agents", () => {
     const map = agents({ enabled: true })
 
     expect(map.designer?.description).toContain("frontend engineering")
-    expect(map.designer?.prompt).toContain("UI and UX")
+    expect(map.designer?.prompt).toContain("user-facing frontend work")
+  })
+
+  test("describes fixer, oracle, and council with team workflow responsibilities", () => {
+    const map = agents({ enabled: true, council: { enabled: true } })
+
+    expect(map.fixer?.description).toContain("backend")
+    expect(map.fixer?.prompt).toContain("CLI, config, fixtures, tests")
+    expect(map.oracle?.description).toContain("Final acceptance")
+    expect(map.oracle?.prompt).toContain("final acceptance review")
+    expect(map.council?.description).toContain("technical council")
+    expect(map.council?.prompt).toContain("rejected options")
   })
 
   test("requires both council settings and role enablement for council", () => {

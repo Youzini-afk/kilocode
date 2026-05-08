@@ -2,10 +2,11 @@ import { describe, expect, test } from "bun:test"
 import type { Config } from "@/config/config"
 import { AgentTeamSessionReuse } from "@/kilocode/agent-team/session-reuse"
 
-const cfg = (maxSessionsPerAgent = 2) =>
+const cfg = (maxSessionsPerAgent = 2, secretary = false) =>
   ({
     agentTeam: {
       enabled: true,
+      secretary: secretary ? { enabled: true } : undefined,
       sessionReuse: {
         enabled: true,
         maxSessionsPerAgent,
@@ -65,6 +66,34 @@ describe("AgentTeamSessionReuse", () => {
 
     expect(entry).toBeUndefined()
     expect(AgentTeamSessionReuse.format({ cfg: cfg(), caller: "team", parent })).toBeUndefined()
+  })
+
+  test("supports Secretary sessions", () => {
+    const parent = "parent-secretary"
+    const entry = AgentTeamSessionReuse.remember({
+      cfg: cfg(),
+      caller: "secretary",
+      parent,
+      agent: "designer",
+      taskID: "task-1",
+      description: "polish layout",
+    })
+
+    expect(entry?.alias).toBeUndefined()
+
+    const remembered = AgentTeamSessionReuse.remember({
+      cfg: cfg(2, true),
+      caller: "secretary",
+      parent,
+      agent: "designer",
+      taskID: "task-2",
+      description: "polish layout",
+    })
+
+    expect(remembered?.alias).toBe("des-1")
+    expect(AgentTeamSessionReuse.format({ cfg: cfg(2, true), caller: "secretary", parent })).toContain(
+      "des-1 polish layout",
+    )
   })
 
   test("clears parent and child session references", () => {
