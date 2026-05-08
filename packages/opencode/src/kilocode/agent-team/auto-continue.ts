@@ -22,9 +22,8 @@ function enabled(cfg: Config.Info) {
   return auto?.enabled === true || auto?.autoEnable === true
 }
 
-function primary(cfg: Config.Info, agent: string) {
-  if (agent === "secretary") return cfg.agentTeam?.secretary?.enabled === true
-  return agent === "team"
+function primary(agent: string) {
+  return agent === "team" || agent === "secretary"
 }
 
 function allowed(cfg: Config.Info, todos: Todo.Info[]) {
@@ -99,7 +98,7 @@ export namespace AgentTeamAutoContinue {
       fn: async () => {
         const messages = await Session.messages({ sessionID: input.sessionID, limit: 20 })
         const user = messages.findLast((msg): msg is UserMessage => msg.info.role === "user")
-        if (!user || !primary(input.cfg, user.info.agent)) {
+        if (!user || !primary(user.info.agent)) {
           counts.delete(input.sessionID)
           return
         }

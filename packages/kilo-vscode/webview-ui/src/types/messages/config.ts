@@ -261,6 +261,8 @@ export type AgentTeamRole =
   | "secretary"
   | "orchestrator"
   | "team"
+  | "architect"
+  | "planner"
   | "explorer"
   | "librarian"
   | "oracle"

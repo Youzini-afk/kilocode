@@ -30,9 +30,7 @@ function primary(caller: string) {
 
 function active(cfg: Config.Info | undefined, caller = "team") {
   if (!primary(caller)) return false
-  if (cfg?.agentTeam?.enabled !== true) return false
-  if (caller === "secretary") return cfg.agentTeam.secretary?.enabled === true
-  return true
+  return cfg?.agentTeam?.enabled === true
 }
 
 function text(msg: MessageV2.WithParts) {
@@ -59,6 +57,7 @@ function guidance(input: { cfg: Config.Info; msg: MessageV2.WithParts }) {
   const lines = [
     "Agent Team runtime reminders:",
     "- Re-check whether specialist delegation has net value before doing broad discovery, UI review, docs research, or bounded implementation yourself.",
+    "- Use @architect only for large design/architecture choices; use @planner for concrete multi-step implementation plans; keep tiny work direct.",
     "- If you delegate, pass concise scope, paths, constraints, ownership, and expected output.",
     "- Keep independent branches parallel only when their file ownership does not overlap.",
     "- After edits, run the smallest relevant verification or explain why it cannot run.",
@@ -91,7 +90,7 @@ function retry(input: {
     agents(input.cfg),
     "Retry guidance:",
     `- Requested subagent: @${input.params.subagent_type}. Use the exact name of an enabled specialist.`,
-    "- Do not delegate to primary agents such as secretary, team, code, plan, ask, or debug.",
+    "- Primary agents are normally not subagents. The only exception is Secretary handing off to @team.",
     input.params.task_id
       ? "- If this was a resume attempt, omit task_id or use a current resumable-session alias from the prompt."
       : "- If this is unrelated to an existing child session, do not set task_id.",

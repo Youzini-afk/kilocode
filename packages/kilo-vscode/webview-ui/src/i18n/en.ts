@@ -1376,7 +1376,7 @@ export const dict = {
     "Use Kilo's built-in Orchestrator and specialist agents for planning, research, implementation, review, and coordination.",
   "settings.agentTeam.secretary.title": "Secretary mode",
   "settings.agentTeam.secretary.description":
-    "Start new Agent Team sessions with Secretary intake. Turn this off to talk directly to Orchestrator for faster simple work.",
+    "Use Secretary as the default Agent Team entry. You can still switch between Secretary and Orchestrator from the agent picker.",
   "settings.agentTeam.takeover.title": "Use as default agent",
   "settings.agentTeam.takeover.description":
     "When no explicit default agent is configured, start new sessions with Secretary mode when enabled, otherwise Orchestrator.",
@@ -1407,12 +1407,29 @@ export const dict = {
   "settings.agentTeam.mcps.placeholder": "MCPs: *, !context7, github",
   "settings.agentTeam.role.advanced.show": "Show policy",
   "settings.agentTeam.role.advanced.hide": "Hide policy",
+  "settings.agentTeam.role.alwaysAvailable": "Always available",
+  "settings.agentTeam.group.entry.title": "Entry",
+  "settings.agentTeam.group.entry.description": "Choose how the user enters the team workflow.",
+  "settings.agentTeam.group.strategy.title": "Design and planning",
+  "settings.agentTeam.group.strategy.description": "Split high-level design from concrete implementation planning.",
+  "settings.agentTeam.group.discovery.title": "Discovery",
+  "settings.agentTeam.group.discovery.description": "Gather code, documentation, and visual context before decisions or edits.",
+  "settings.agentTeam.group.execution.title": "Execution",
+  "settings.agentTeam.group.execution.description": "Assign bounded implementation work to the right engineering specialist.",
+  "settings.agentTeam.group.review.title": "Review",
+  "settings.agentTeam.group.review.description": "Use deeper acceptance checks or council debate only when risk justifies it.",
   "settings.agentTeam.role.secretary.title": "Secretary",
   "settings.agentTeam.role.secretary.description":
     "Clarifies user intent, keeps simple work fast, and routes substantial work to specialists.",
   "settings.agentTeam.role.orchestrator.title": "Orchestrator",
   "settings.agentTeam.role.orchestrator.description":
-    "Commands the workflow, handles quick work directly, and delegates substantial work to specialists.",
+    "Commands the workflow, handles quick work directly, and decides when to use Design, Plan, or specialists.",
+  "settings.agentTeam.role.architect.title": "Design",
+  "settings.agentTeam.role.architect.description":
+    "Advises on architecture, product/system shape, data/API/plugin boundaries, migrations, and long-term tradeoffs.",
+  "settings.agentTeam.role.planner.title": "Plan",
+  "settings.agentTeam.role.planner.description":
+    "Turns settled goals into executable tasks with ownership, dependencies, specialist lanes, and verification checks.",
   "settings.agentTeam.role.explorer.title": "Explorer",
   "settings.agentTeam.role.explorer.description":
     "Finds files, symbols, call sites, and architecture entry points quickly.",

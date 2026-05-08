@@ -20,6 +20,8 @@ const counters = new Map<string, Map<string, number>>()
 const clock = { value: 0 }
 
 const prefix: Record<string, string> = {
+  architect: "arc",
+  planner: "pln",
   explore: "exp",
   librarian: "lib",
   oracle: "ora",
@@ -40,7 +42,6 @@ function primary(caller: string) {
 function active(cfg: Config.Info, caller = "team") {
   if (!primary(caller)) return false
   if (cfg.agentTeam?.enabled !== true) return false
-  if (caller === "secretary" && cfg.agentTeam.secretary?.enabled !== true) return false
   return cfg.agentTeam.sessionReuse?.enabled !== false
 }
 

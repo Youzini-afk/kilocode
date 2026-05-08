@@ -153,6 +153,8 @@ const AgentTeamRoles = Schema.Struct({
   secretary: Schema.optional(AgentTeamRole),
   orchestrator: Schema.optional(AgentTeamRole),
   team: Schema.optional(AgentTeamRole),
+  architect: Schema.optional(AgentTeamRole),
+  planner: Schema.optional(AgentTeamRole),
   explorer: Schema.optional(AgentTeamRole),
   librarian: Schema.optional(AgentTeamRole),
   oracle: Schema.optional(AgentTeamRole),

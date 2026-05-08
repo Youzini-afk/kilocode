@@ -71,7 +71,7 @@ describe("AgentTeamRuntime", () => {
   test("skips disabled Agent Team and non-Team turns", () => {
     const disabled = [msg("msg_disabled", [text("msg_disabled", "review this")])]
     const code = [msg("msg_code", [text("msg_code", "review this")], "code")]
-    const secretary = [msg("msg_secretary_disabled", [text("msg_secretary_disabled", "review this")], "secretary")]
+    const secretary = [msg("msg_secretary_direct", [text("msg_secretary_direct", "review this")], "secretary")]
 
     AgentTeamRuntime.inject({ cfg: cfg({ enabled: false }), messages: disabled })
     AgentTeamRuntime.inject({ cfg: cfg(), messages: code })
@@ -79,7 +79,7 @@ describe("AgentTeamRuntime", () => {
 
     expect((disabled[0].parts[0] as MessageV2.TextPart).text).not.toContain("<agent_team_runtime>")
     expect((code[0].parts[0] as MessageV2.TextPart).text).not.toContain("<agent_team_runtime>")
-    expect((secretary[0].parts[0] as MessageV2.TextPart).text).not.toContain("<agent_team_runtime>")
+    expect((secretary[0].parts[0] as MessageV2.TextPart).text).toContain("<agent_team_runtime>")
   })
 
   test("formats Agent Team delegation retry guidance", () => {
@@ -93,7 +93,7 @@ describe("AgentTeamRuntime", () => {
 
     expect(result?.output).toContain("<agent_team_delegation_retry>")
     expect(result?.output).toContain("omit task_id")
-    expect(result?.output).toContain("secretary")
+    expect(result?.output).toContain("Secretary handing off to @team")
     expect(result?.metadata.failed).toBe(true)
 
     expect(

@@ -40,12 +40,9 @@ describe("Agent Team agents", () => {
     expect(map.team?.prompt).toContain("@explorer")
   })
 
-  test("builds optional Secretary intake as a primary agent", () => {
+  test("builds Secretary intake as a selectable primary agent", () => {
     const map = agents({
       enabled: true,
-      secretary: {
-        enabled: true,
-      },
       roles: {
         secretary: {
           model: "openai/gpt-5.4",
@@ -59,15 +56,21 @@ describe("Agent Team agents", () => {
     expect(map.secretary?.model).toEqual({ providerID: "openai", modelID: "gpt-5.4" })
     expect(map.secretary?.variant).toBe("high")
     expect(map.secretary?.prompt).toContain("You are Secretary")
-    expect(map.secretary?.prompt).toContain("@fixer")
-    expect(Permission.evaluate("task", "fixer", map.secretary.permission).action).toBe("allow")
+    expect(map.secretary?.prompt).toContain('subagent_type "team"')
+    expect(map.secretary?.prompt).toContain("Forbidden task targets")
+    expect(map.secretary?.prompt).toContain("@architect")
+    expect(map.secretary?.prompt).toContain("@planner")
+    expect(Permission.evaluate("task", "team", map.secretary.permission).action).toBe("allow")
+    expect(Permission.evaluate("task", "fixer", map.secretary.permission).action).toBe("deny")
     expect(Permission.evaluate("bash", "git status --short", map.secretary.permission).action).toBe("deny")
+    expect(Permission.evaluate("edit", "*", map.secretary.permission).action).toBe("deny")
   })
 
-  test("prefers Secretary as default only when Secretary mode is enabled", () => {
+  test("prefers Secretary as default only when Secretary default mode is enabled", () => {
     const direct = agents({ enabled: true })
     const intake = agents({ enabled: true, secretary: { enabled: true } })
 
+    expect(direct.secretary?.mode).toBe("primary")
     expect(defaultTeam(app({ enabled: true }), direct)).toBe("team")
     expect(defaultTeam(app({ enabled: true, secretary: { enabled: true } }), intake)).toBe("secretary")
   })
@@ -77,7 +80,11 @@ describe("Agent Team agents", () => {
 
     expect(map.team?.prompt).toContain("You are Orchestrator")
     expect(map.team?.prompt).toContain("Direct path")
+    expect(map.team?.prompt).toContain("Planning path")
+    expect(map.team?.prompt).toContain("Design path")
     expect(map.team?.prompt).toContain("Prefer delegation for substantial work")
+    expect(map.team?.prompt).toContain("Match @architect to large, architectural")
+    expect(map.team?.prompt).toContain("Match @planner to medium-or-larger implementation planning")
     expect(map.team?.prompt).toContain("Match @designer to UI/UX/frontend work")
     expect(map.team?.prompt).toContain("Match @fixer to backend, services, CLI, config, tests")
     expect(map.team?.prompt).toContain("Match @council to complex, high-risk")
@@ -176,6 +183,26 @@ describe("Agent Team agents", () => {
 
     expect(map.designer?.description).toContain("frontend engineering")
     expect(map.designer?.prompt).toContain("user-facing frontend work")
+  })
+
+  test("builds Design and Plan as read-only advisory specialists", () => {
+    const map = agents({ enabled: true })
+
+    expect(map.architect?.mode).toBe("subagent")
+    expect(map.architect?.displayName).toBe("Design")
+    expect(map.architect?.description).toContain("High-level design")
+    expect(map.architect?.prompt).toContain("Directives for Planner")
+    expect(map.planner?.mode).toBe("subagent")
+    expect(map.planner?.displayName).toBe("Plan")
+    expect(map.planner?.description).toContain("Concrete implementation planning")
+    expect(map.planner?.prompt).toContain("File ownership")
+    for (const item of [map.architect!, map.planner!]) {
+      expect(Permission.evaluate("task", "fixer", item.permission).action).toBe("deny")
+      expect(Permission.evaluate("bash", "git status --short", item.permission).action).toBe("deny")
+      expect(Permission.evaluate("edit", "*", item.permission).action).toBe("deny")
+      expect(Permission.evaluate("question", "*", item.permission).action).toBe("deny")
+      expect(Permission.evaluate("read", "*", item.permission).action).toBe("allow")
+    }
   })
 
   test("describes fixer, oracle, and council with team workflow responsibilities", () => {

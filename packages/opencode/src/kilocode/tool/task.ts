@@ -19,16 +19,45 @@ const ModelState = z
   .passthrough()
 
 export namespace KiloTask {
-  /** Reject primary agents used as subagents */
-  export function validate(info: Agent.Info, name: string) {
-    if (info.mode === "primary") throw new Error(`Agent "${name}" is a primary agent and cannot be used as a subagent`)
+  const HANDOFF = "agent_team_orchestrator_handoff"
+
+  export function handoff(input: { cfg: Config.Info; caller: Agent.Info; next: Agent.Info; name: string }) {
+    if (input.cfg.agentTeam?.enabled !== true) return false
+    return input.caller.name === "secretary" && input.next.name === "team" && input.name === "team"
+  }
+
+  /** Reject primary agents used as subagents unless this is the Secretary -> Orchestrator handoff. */
+  export function validate(info: Agent.Info, name: string, opts?: { handoff?: boolean }) {
+    if (info.mode === "primary" && opts?.handoff !== true) {
+      throw new Error(`Agent "${name}" is a primary agent and cannot be used as a subagent`)
+    }
     if (info.hidden === true) throw new Error(`Agent "${name}" is hidden and cannot be used as a subagent`)
   }
 
-  /** Reject nested delegation from already-delegated child sessions. */
+  function marked(session: Session.Info) {
+    return session.permission?.some((rule) => rule.permission === HANDOFF && rule.action === "allow") === true
+  }
+
+  /** Reject nested delegation except Orchestrator sessions created by Secretary handoff. */
   export function validateCaller(input: { caller: Agent.Info; session: Session.Info }) {
     if (!input.session.parentID) return
+    if (input.caller.name === "team" && marked(input.session)) return
     throw new Error(`Agent "${input.caller.name}" is already running as a subagent and cannot delegate again`)
+  }
+
+  export function marker(): Permission.Ruleset {
+    return [{ permission: HANDOFF, pattern: "*", action: "allow" }]
+  }
+
+  function unguard(rules: Permission.Ruleset): Permission.Ruleset {
+    const skip = new Set<number>()
+    for (const permission of ["edit", "bash"]) {
+      const index = rules.findLastIndex(
+        (rule) => rule.permission === permission && rule.pattern === "*" && rule.action === "deny",
+      )
+      if (index >= 0) skip.add(index)
+    }
+    return rules.filter((_, index) => !skip.has(index))
   }
 
   /**
@@ -43,17 +72,21 @@ export namespace KiloTask {
     caller: Agent.Info
     session: Session.Info
     mcp: Config.Info["mcp"]
+    handoff?: boolean
   }): Permission.Ruleset {
     const rules = Permission.merge(input.caller.permission ?? [], input.session.permission ?? [])
     const prefixes = Object.keys(input.mcp ?? {}).map((k) => k.replace(/[^a-zA-Z0-9_-]/g, "_") + "_")
     const isMcp = (p: string) => prefixes.some((prefix) => p.startsWith(prefix))
-    return rules.filter(
+    const filtered = rules.filter(
       (r: Permission.Rule) => r.permission === "edit" || r.permission === "bash" || isMcp(r.permission),
     )
+    if (input.handoff && input.caller.name === "secretary") return unguard(filtered)
+    return filtered
   }
 
   /** Extra permission rules appended to subagent sessions */
-  export function permissions(rules: Permission.Ruleset): Permission.Ruleset {
+  export function permissions(rules: Permission.Ruleset, opts?: { task?: boolean }): Permission.Ruleset {
+    if (opts?.task) return rules
     return [{ permission: "task", pattern: "*", action: "deny" }, ...rules]
   }
 

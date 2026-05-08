@@ -60,19 +60,18 @@ export const TaskTool = Tool.define(
       if (!next) {
         return yield* Effect.fail(new Error(`Unknown agent type: ${params.subagent_type} is not a valid agent type`))
       }
-      // kilocode_change start — reject primary agents; only subagent/all modes allowed
-      KiloTask.validate(next, params.subagent_type)
-      // kilocode_change end
-
-      const canTask = next.permission.some((rule) => rule.permission === id)
-      const canTodo = next.permission.some((rule) => rule.permission === "todowrite")
 
       const parent = yield* sessions.get(ctx.sessionID)
       // kilocode_change start — inherit edit/bash/MCP restrictions from calling agent
       const caller = yield* agent.get(ctx.agent)
+      const handoff = KiloTask.handoff({ cfg, caller, next, name: params.subagent_type })
+      KiloTask.validate(next, params.subagent_type, { handoff })
       KiloTask.validateCaller({ caller, session: parent })
-      const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp })
+      const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp, handoff })
       // kilocode_change end
+
+      const canTask = next.permission.some((rule) => rule.permission === id)
+      const canTodo = next.permission.some((rule) => rule.permission === "todowrite")
 
       const reuse = AgentTeamSessionReuse.resolve({
         cfg,
@@ -130,8 +129,9 @@ export const TaskTool = Tool.define(
               action: "allow" as const,
               permission: item,
             })) ?? []),
-            // kilocode_change start — deny task + propagate caller restrictions
-            ...KiloTask.permissions(rules),
+            // kilocode_change start — deny task + propagate caller restrictions, except Secretary -> Orchestrator handoff
+            ...(handoff ? KiloTask.marker() : []),
+            ...KiloTask.permissions(rules, { task: handoff }),
             // kilocode_change end
           ],
         }))

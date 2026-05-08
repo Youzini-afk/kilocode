@@ -30,16 +30,17 @@ interface ModelGroup {
   models: ModelOption[]
 }
 
-const roles: Role[] = [
-  "secretary",
-  "orchestrator",
-  "explorer",
-  "librarian",
-  "oracle",
-  "designer",
-  "fixer",
-  "observer",
-  "council",
+interface RoleGroup {
+  key: string
+  roles: Role[]
+}
+
+const roleGroups: RoleGroup[] = [
+  { key: "entry", roles: ["secretary", "orchestrator"] },
+  { key: "strategy", roles: ["architect", "planner"] },
+  { key: "discovery", roles: ["explorer", "librarian", "observer"] },
+  { key: "execution", roles: ["designer", "fixer"] },
+  { key: "review", roles: ["oracle", "council"] },
 ]
 const efforts = ["low", "medium", "high", "xhigh"]
 const maxFallbacks = 3
@@ -144,6 +145,7 @@ interface RoleRowProps {
   modelGroups: () => ModelGroup[]
   onToggleEnabled: (v: boolean) => void
   onPatchRole: (next: Partial<RoleConfig>) => void
+  fixedEnabled?: boolean
 }
 
 const RoleRow: Component<RoleRowProps> = (props) => {
@@ -318,14 +320,23 @@ const RoleRow: Component<RoleRowProps> = (props) => {
         </div>
         <div class="agent-team-role-control agent-team-role-control-enabled">
           <span class="agent-team-role-control-label">{language.t("settings.agentTeam.column.enabled")}</span>
-          <label class="agent-team-native-check">
-            <input
-              type="checkbox"
-              checked={props.enabled()}
-              onChange={(event) => props.onToggleEnabled(event.currentTarget.checked)}
-            />
-            <span>{props.title}</span>
-          </label>
+          <Show
+            when={!props.fixedEnabled}
+            fallback={
+              <div class="agent-team-native-check">
+                <span>{language.t("settings.agentTeam.role.alwaysAvailable")}</span>
+              </div>
+            }
+          >
+            <label class="agent-team-native-check">
+              <input
+                type="checkbox"
+                checked={props.enabled()}
+                onChange={(event) => props.onToggleEnabled(event.currentTarget.checked)}
+              />
+              <span>{props.title}</span>
+            </label>
+          </Show>
         </div>
       </div>
       <Show when={props.open}>
@@ -442,7 +453,7 @@ const AgentTeamTab: Component = () => {
   }
 
   function roleEnabled(id: Role) {
-    if (id === "secretary") return team().secretary?.enabled === true
+    if (id === "secretary") return true
     if (id === "council") return team().council?.enabled === true && cfg(id).enabled !== false
     return cfg(id).enabled ?? true
   }
@@ -502,10 +513,15 @@ const AgentTeamTab: Component = () => {
   const Advanced = section("advanced")
 
   const rows = createMemo(() =>
-    roles.map((id) => ({
-      id,
-      title: language.t(`settings.agentTeam.role.${id}.title`),
-      description: language.t(`settings.agentTeam.role.${id}.description`),
+    roleGroups.map((group) => ({
+      key: group.key,
+      title: language.t(`settings.agentTeam.group.${group.key}.title`),
+      description: language.t(`settings.agentTeam.group.${group.key}.description`),
+      roles: group.roles.map((id) => ({
+        id,
+        title: language.t(`settings.agentTeam.role.${id}.title`),
+        description: language.t(`settings.agentTeam.role.${id}.description`),
+      })),
     })),
   )
 
@@ -580,19 +596,38 @@ const AgentTeamTab: Component = () => {
       >
         <div class="agent-team-role-list">
           <For each={rows()}>
-            {(item) => (
-              <RoleRow
-                id={item.id}
-                title={item.title}
-                description={item.description}
-                open={!!open()[`role:${item.id}`]}
-                onToggleOpen={() => setOpen((prev) => ({ ...prev, [`role:${item.id}`]: !prev[`role:${item.id}`] }))}
-                cfg={() => cfg(item.id)}
-                enabled={() => roleEnabled(item.id)}
-                modelGroups={modelGroups}
-                onToggleEnabled={(v) => toggle(item.id, v)}
-                onPatchRole={(next) => patchRole(item.id, next)}
-              />
+            {(group) => (
+              <div style={{ display: "flex", "flex-direction": "column", gap: "8px" }}>
+                <div
+                  style={{
+                    padding: "2px 2px 0",
+                    color: "var(--text-muted)",
+                    "font-size": "12px",
+                  }}
+                >
+                  <div style={{ color: "var(--text-base)", "font-weight": 600 }}>{group.title}</div>
+                  <div style={{ "margin-top": "2px" }}>{group.description}</div>
+                </div>
+                <For each={group.roles}>
+                  {(item) => (
+                    <RoleRow
+                      id={item.id}
+                      title={item.title}
+                      description={item.description}
+                      open={!!open()[`role:${item.id}`]}
+                      onToggleOpen={() =>
+                        setOpen((prev) => ({ ...prev, [`role:${item.id}`]: !prev[`role:${item.id}`] }))
+                      }
+                      cfg={() => cfg(item.id)}
+                      enabled={() => roleEnabled(item.id)}
+                      modelGroups={modelGroups}
+                      onToggleEnabled={(v) => toggle(item.id, v)}
+                      onPatchRole={(next) => patchRole(item.id, next)}
+                      fixedEnabled={item.id === "secretary"}
+                    />
+                  )}
+                </For>
+              </div>
             )}
           </For>
         </div>

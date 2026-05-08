@@ -43,8 +43,8 @@ Agent Team is being aligned to `oh-my-opencode-slim` by capability, not by copyi
 | Capability | OMO Slim source | Kilo status | Native target |
 |---|---|---|---|
 | Specialist roster | `src/agents/` | Implemented, but prompts are compressed | Keep native roles and expand prompts/routing rules. |
-| Orchestrator routing | `src/agents/orchestrator.ts` | Partial | Match delegation, validation routing, parallelism, session reuse, and communication rules. |
-| Secretary intake | OMO-style front-door workflow | Implemented natively | Optional entry agent that clarifies user intent, keeps simple work fast, and routes substantial work to specialists. |
+| Orchestrator routing | `src/agents/orchestrator.ts` | Partial | Match delegation, validation routing, parallelism, design/plan splitting, session reuse, and communication rules. |
+| Secretary intake | OMO-style front-door workflow | Implemented natively | Selectable entry agent that clarifies user intent and hands a clean brief to Orchestrator. |
 | Task session aliases | `src/hooks/task-session-manager/` | Partial | Keep native `task_id` aliasing and add stale-entry cleanup plus stronger prompt guidance. |
 | Delegation retry hints | `src/hooks/delegate-task-retry/` | Missing | Append recovery guidance after failed `task` calls. |
 | Phase reminders | `src/hooks/phase-reminder/` | Missing | Inject concise workflow reminders into Team turns. |
@@ -85,6 +85,14 @@ The user-facing config key is `agentTeam`:
         "variant": "high",
         "temperature": 0.1,
         "mcps": ["*", "!context7"]
+      },
+      "architect": {
+        "enabled": true,
+        "variant": "xhigh"
+      },
+      "planner": {
+        "enabled": true,
+        "variant": "high"
       },
       "explorer": {
         "enabled": true,
@@ -135,8 +143,10 @@ Role entries support:
 
 | Agent | Mode | Default access | Purpose |
 |---|---|---|---|
-| `secretary` | primary | Delegation, todo, read/search, web, no shell | Optional intake layer that clarifies intent, avoids ceremony for simple tasks, and routes substantial work to specialists. |
+| `secretary` | primary | `task` only to `team`, todo, read/search, web, no shell/edit | Selectable intake layer that clarifies intent and hands a clean execution brief to Orchestrator. |
 | `team` | primary | Delegation, todo, read/search, web, shell from defaults | Orchestrator. Commands the workflow, handles quick work directly, and delegates substantial work to specialists. |
+| `architect` | subagent | Read/search/web/docs, no question/edit/shell/delegation | Design advisor. Evaluates architecture, product/system shape, data/API/plugin boundaries, migration risk, and long-term tradeoffs before implementation planning. |
+| `planner` | subagent | Read/search/web/docs, no question/edit/shell/delegation | Implementation planner. Converts settled goals or architecture into task breakdowns, ownership boundaries, dependencies, specialist lanes, and verification steps. |
 | `explorer` | subagent | Read/search/code discovery | Finds files, symbols, call sites, and architectural entry points quickly. |
 | `librarian` | subagent | Read/search/web/docs | Looks up current external documentation and source examples. |
 | `oracle` | subagent | Read/search | Reviews architecture, debugging strategy, maintainability, and high-risk decisions. |
@@ -157,15 +167,18 @@ When `agentTeam.enabled` and `agentTeam.takeoverDefault` are true:
 3. Otherwise choose `team` as Orchestrator.
 4. If the selected Agent Team primary is disabled, hidden, or unavailable, fall back to `code`.
 
-This preserves user intent and makes disabling Agent Team a clean rollback.
+This setting only controls the default entry. When Agent Team is enabled, users can still switch between `secretary` and `team` from the agent picker for each conversation.
 
 ## Delegation Rules
 
-- `team` and `secretary` can delegate to enabled specialists.
-- `secretary` is not a nested wrapper around `team`; it routes directly to specialists so delegated sessions remain leaf sessions.
+- `secretary` can only delegate to `team` and cannot directly call specialist agents.
+- `team` can delegate to enabled specialists.
+- The only allowed nested delegation chain is `secretary -> team -> specialist`.
+- `architect` and `planner` are advisory specialists. They must not directly question users, edit files, run shell commands, or delegate further.
+- `team` should keep simple tasks direct, route medium multi-step work to `planner`, and route large/cross-module design decisions to `architect` before `planner`.
 - `fixer` and `designer` are leaf implementation agents and must not delegate.
 - Read-only roles must not receive edit or shell permissions.
-- Primary agents must not be used as subagents.
+- Primary agents must not be used as subagents except the controlled `secretary -> team` handoff.
 - Child sessions inherit edit, shell, and MCP restrictions from the caller.
 - `task_id` session reuse should be automatic only for Agent Team primary sessions.
 
@@ -209,7 +222,7 @@ The VS Code settings UI should use clear sections:
 - Agent Team overview and master enable switch.
 - Secretary mode switch for quickly choosing Secretary intake versus direct Orchestrator conversation.
 - Default takeover switch.
-- Agent routing grid with Secretary, Orchestrator, and specialists in one place.
+- Agent routing grid grouped into entry, design/planning, discovery, execution, and review layers.
 - Per-role enable switch, model picker, thinking strength, and temperature.
 - Collapsed per-role policy controls for display name, skills, and MCPs.
 - Collaboration settings for session reuse and parallelism.

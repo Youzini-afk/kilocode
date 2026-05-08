@@ -2,11 +2,10 @@ import { describe, expect, test } from "bun:test"
 import type { Config } from "@/config/config"
 import { AgentTeamSessionReuse } from "@/kilocode/agent-team/session-reuse"
 
-const cfg = (maxSessionsPerAgent = 2, secretary = false) =>
+const cfg = (maxSessionsPerAgent = 2) =>
   ({
     agentTeam: {
       enabled: true,
-      secretary: secretary ? { enabled: true } : undefined,
       sessionReuse: {
         enabled: true,
         maxSessionsPerAgent,
@@ -54,6 +53,29 @@ describe("AgentTeamSessionReuse", () => {
     expect(text).toContain("ora-3")
   })
 
+  test("uses readable aliases for design and planning sessions", () => {
+    const parent = "parent-strategy"
+    const design = AgentTeamSessionReuse.remember({
+      cfg: cfg(),
+      caller: "team",
+      parent,
+      agent: "architect",
+      taskID: "task-design",
+      description: "review plugin architecture",
+    })
+    const plan = AgentTeamSessionReuse.remember({
+      cfg: cfg(),
+      caller: "team",
+      parent,
+      agent: "planner",
+      taskID: "task-plan",
+      description: "split implementation",
+    })
+
+    expect(design?.alias).toBe("arc-1")
+    expect(plan?.alias).toBe("pln-1")
+  })
+
   test("stays inactive outside team sessions", () => {
     const parent = "parent-disabled"
     const entry = AgentTeamSessionReuse.remember({
@@ -79,21 +101,8 @@ describe("AgentTeamSessionReuse", () => {
       description: "polish layout",
     })
 
-    expect(entry?.alias).toBeUndefined()
-
-    const remembered = AgentTeamSessionReuse.remember({
-      cfg: cfg(2, true),
-      caller: "secretary",
-      parent,
-      agent: "designer",
-      taskID: "task-2",
-      description: "polish layout",
-    })
-
-    expect(remembered?.alias).toBe("des-1")
-    expect(AgentTeamSessionReuse.format({ cfg: cfg(2, true), caller: "secretary", parent })).toContain(
-      "des-1 polish layout",
-    )
+    expect(entry?.alias).toBe("des-1")
+    expect(AgentTeamSessionReuse.format({ cfg: cfg(), caller: "secretary", parent })).toContain("des-1 polish layout")
   })
 
   test("clears parent and child session references", () => {
