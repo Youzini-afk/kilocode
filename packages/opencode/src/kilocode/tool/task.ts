@@ -34,6 +34,20 @@ export namespace KiloTask {
     if (info.hidden === true) throw new Error(`Agent "${name}" is hidden and cannot be used as a subagent`)
   }
 
+  /** Enforce Agent Team routing beyond generic primary/subagent mode checks. */
+  export function validateRoute(input: {
+    cfg: Config.Info
+    caller: Agent.Info
+    next: Agent.Info
+    name: string
+    handoff?: boolean
+  }) {
+    if (input.cfg.agentTeam?.enabled === true && input.caller.name === "secretary" && input.handoff !== true) {
+      throw new Error(`Secretary can only delegate to Orchestrator (@team), not "${input.name}"`)
+    }
+    validate(input.next, input.name, { handoff: input.handoff })
+  }
+
   function marked(session: Session.Info) {
     return session.permission?.some((rule) => rule.permission === HANDOFF && rule.action === "allow") === true
   }

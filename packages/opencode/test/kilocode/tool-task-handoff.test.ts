@@ -20,12 +20,17 @@ describe("KiloTask Agent Team handoff rules", () => {
     const secretary = agent("secretary", "primary")
     const team = agent("team", "primary")
     const code = agent("code", "primary")
+    const fixer = agent("fixer", "subagent")
 
     const handoff = KiloTask.handoff({ cfg, caller: secretary, next: team, name: "team" })
 
     expect(handoff).toBe(true)
-    expect(() => KiloTask.validate(team, "team", { handoff })).not.toThrow()
-    expect(() => KiloTask.validate(code, "code")).toThrow("primary agent")
+    expect(() => KiloTask.validateRoute({ cfg, caller: secretary, next: team, name: "team", handoff })).not.toThrow()
+    expect(() => KiloTask.validateRoute({ cfg, caller: secretary, next: fixer, name: "fixer" })).toThrow(
+      "Secretary can only delegate to Orchestrator",
+    )
+    expect(() => KiloTask.validateRoute({ cfg, caller: team, next: code, name: "code" })).toThrow("primary agent")
+    expect(() => KiloTask.validateRoute({ cfg, caller: team, next: fixer, name: "fixer" })).not.toThrow()
     expect(KiloTask.handoff({ cfg, caller: team, next: code, name: "code" })).toBe(false)
   })
 

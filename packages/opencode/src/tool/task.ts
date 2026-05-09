@@ -44,6 +44,20 @@ export const TaskTool = Tool.define(
     ) {
       const cfg = yield* config.get()
 
+      const next = yield* agent.get(params.subagent_type)
+      if (!next) {
+        return yield* Effect.fail(new Error(`Unknown agent type: ${params.subagent_type} is not a valid agent type`))
+      }
+
+      const parent = yield* sessions.get(ctx.sessionID)
+      // kilocode_change start — inherit edit/bash/MCP restrictions from calling agent
+      const caller = yield* agent.get(ctx.agent)
+      const handoff = KiloTask.handoff({ cfg, caller, next, name: params.subagent_type })
+      KiloTask.validateRoute({ cfg, caller, next, name: params.subagent_type, handoff })
+      KiloTask.validateCaller({ caller, session: parent })
+      const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp, handoff })
+      // kilocode_change end
+
       if (!ctx.extra?.bypassAgentCheck) {
         yield* ctx.ask({
           permission: id,
@@ -55,20 +69,6 @@ export const TaskTool = Tool.define(
           },
         })
       }
-
-      const next = yield* agent.get(params.subagent_type)
-      if (!next) {
-        return yield* Effect.fail(new Error(`Unknown agent type: ${params.subagent_type} is not a valid agent type`))
-      }
-
-      const parent = yield* sessions.get(ctx.sessionID)
-      // kilocode_change start — inherit edit/bash/MCP restrictions from calling agent
-      const caller = yield* agent.get(ctx.agent)
-      const handoff = KiloTask.handoff({ cfg, caller, next, name: params.subagent_type })
-      KiloTask.validate(next, params.subagent_type, { handoff })
-      KiloTask.validateCaller({ caller, session: parent })
-      const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp, handoff })
-      // kilocode_change end
 
       const canTask = next.permission.some((rule) => rule.permission === id)
       const canTodo = next.permission.some((rule) => rule.permission === "todowrite")
