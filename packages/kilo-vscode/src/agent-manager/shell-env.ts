@@ -28,6 +28,24 @@ const FALLBACK_TTL = 10_000
 let fixing: Promise<boolean> | null = null
 let fixed = false
 
+function normalize(env: Record<string, string>): Record<string, string> {
+  const path = env.PATH ?? env.Path ?? env.path
+  const home = env.HOME ?? os.homedir()
+  return {
+    ...env,
+    ...(path ? { PATH: path } : {}),
+    HOME: home,
+  }
+}
+
+function fallback(): Record<string, string> {
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === "string") env[key] = value
+  }
+  return normalize(env)
+}
+
 /**
  * Parse `env` output, handling multiline variable values correctly.
  *
@@ -65,6 +83,14 @@ export async function getShellEnvironment(): Promise<Record<string, string>> {
   const ttl = wasFallback ? FALLBACK_TTL : TTL
   if (cached && now - cacheTime < ttl) return { ...cached }
 
+  if (process.platform === "win32") {
+    const env = fallback()
+    cached = env
+    cacheTime = now
+    wasFallback = true
+    return { ...env }
+  }
+
   const shell = process.env.SHELL || (process.platform === "darwin" ? "/bin/zsh" : "/bin/bash")
 
   try {
@@ -73,17 +99,14 @@ export async function getShellEnvironment(): Promise<Record<string, string>> {
       env: { ...process.env, HOME: os.homedir() },
     })
 
-    const env = parseEnvOutput(stdout)
+    const env = normalize(parseEnvOutput(stdout))
     cached = env
     cacheTime = now
     wasFallback = false
     return { ...env }
   } catch (error) {
     console.warn(`[shell-env] Failed to get shell environment: ${error}. Falling back to process.env`)
-    const env: Record<string, string> = {}
-    for (const [key, value] of Object.entries(process.env)) {
-      if (typeof value === "string") env[key] = value
-    }
+    const env = fallback()
     cached = env
     cacheTime = now
     wasFallback = true

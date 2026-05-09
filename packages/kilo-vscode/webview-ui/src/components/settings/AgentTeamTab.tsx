@@ -361,7 +361,9 @@ const RoleRow: Component<RoleRowProps> = (props) => {
     >
       <div class="agent-team-role-summary">
         <div style={{ "font-weight": 600 }}>{props.title}</div>
-        <div style={{ color: "var(--text-muted)", "font-size": "12px", "margin-top": "3px" }}>{props.description}</div>
+        <div style={{ color: "var(--text-muted)", "font-size": "var(--font-size-small)", "margin-top": "3px" }}>
+          {props.description}
+        </div>
         <Button variant="ghost" size="small" onClick={props.onToggleOpen} style={{ padding: "0", "margin-top": "6px" }}>
           {props.open
             ? language.t("settings.agentTeam.role.advanced.hide")
@@ -801,7 +803,7 @@ const AgentTeamTab: Component = () => {
                   style={{
                     padding: "2px 2px 0",
                     color: "var(--text-muted)",
-                    "font-size": "12px",
+                    "font-size": "var(--font-size-small)",
                   }}
                 >
                   <div style={{ color: "var(--text-base)", "font-weight": 600 }}>{group.title}</div>

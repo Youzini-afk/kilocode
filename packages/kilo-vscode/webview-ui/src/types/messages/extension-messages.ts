@@ -343,7 +343,7 @@ export interface ChatCompletionResultMessage {
 
 export interface FileSearchItem {
   path: string
-  type: "file" | "folder"
+  type: "file" | "folder" | "opened-file"
 }
 
 export interface FileSearchResultMessage {
@@ -815,6 +815,22 @@ export interface DiffViewerNoticeMessage {
   notice: DiffViewerNotice | undefined
 }
 
+/**
+ * Branch list and current base state for the workspace source's base picker.
+ * Sent in response to `diffViewer.requestBranches`. `currentBase` is the
+ * active base (override when set, otherwise `autoBase`); `isAuto` is true
+ * when no override is active.
+ */
+export interface DiffViewerBranchesLoadedMessage {
+  type: "diffViewer.branches"
+  branches: BranchInfo[]
+  defaultBranch: string
+  autoBase: string | undefined
+  currentBase: string | undefined
+  isAuto: boolean
+  currentBranch: string | undefined
+}
+
 export interface ClearPendingPromptsMessage {
   type: "clearPendingPrompts"
 }
@@ -1034,6 +1050,7 @@ export type ExtensionMessage =
   | SetAvailableSourcesMessage
   | DiffViewerCapabilitiesMessage
   | DiffViewerNoticeMessage
+  | DiffViewerBranchesLoadedMessage
   | MarketplaceDataMessage
   | MarketplaceInstallResultMessage
   | MarketplaceRemoveResultMessage

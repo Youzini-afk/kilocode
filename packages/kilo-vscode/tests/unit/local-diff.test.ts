@@ -38,6 +38,7 @@ async function withRepo(run: (dir: string, base: string) => Promise<void>): Prom
     runSync(dir, ["config", "user.email", "test@example.com"])
     runSync(dir, ["config", "user.name", "Test"])
     runSync(dir, ["config", "commit.gpgsign", "false"])
+    runSync(dir, ["config", "core.autocrlf", "false"])
     // Seed commit so `merge-base HEAD main` resolves.
     await fs.writeFile(path.join(dir, "seed.txt"), "seed\n")
     runSync(dir, ["add", "seed.txt"])

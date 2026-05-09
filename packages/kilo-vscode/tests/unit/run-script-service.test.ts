@@ -8,6 +8,16 @@ function tmpdir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "run-script-service-test-"))
 }
 
+function symlink(target: string, file: string): boolean {
+  try {
+    fs.symlinkSync(target, file)
+    return true
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") return false
+    throw error
+  }
+}
+
 describe("RunScriptService", () => {
   let root: string
   let dir: string
@@ -76,14 +86,14 @@ describe("RunScriptService", () => {
   it("rejects symlinks pointing outside the .kilo directory", () => {
     const outside = path.join(root, "evil.sh")
     fs.writeFileSync(outside, "echo pwned")
-    fs.symlinkSync(outside, path.join(dir, "run-script"))
+    if (!symlink(outside, path.join(dir, "run-script"))) return
     expect(new RunScriptService(root).resolveScript("darwin")).toBeUndefined()
   })
 
   it("accepts symlinks pointing inside the .kilo directory", () => {
     const target = path.join(dir, "real-script")
     fs.writeFileSync(target, "bun test")
-    fs.symlinkSync(target, path.join(dir, "run-script"))
+    if (!symlink(target, path.join(dir, "run-script"))) return
     const result = new RunScriptService(root).resolveScript("darwin")
     expect(result).toBeDefined()
     expect(result!.kind).toBe("posix")
