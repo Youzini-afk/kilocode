@@ -28,10 +28,12 @@ Agent Team is the native Kilo architecture for coordinated specialist-agent work
 | Module | Responsibility |
 |---|---|
 | `packages/opencode/src/kilocode/agent-team/agents.ts` | Defines Secretary, Orchestrator, and specialist agent prompts, descriptions, defaults, and permissions. |
+| `packages/opencode/src/kilocode/agent-team/capabilities.ts` | Defines role capability profiles: routing metadata, recommended skills, and recommended MCP access. |
 | `packages/opencode/src/kilocode/agent-team/config.ts` | Normalizes `agentTeam` config and resolves role model overrides. |
 | `packages/opencode/src/kilocode/agent-team/session-reuse.ts` | Tracks reusable child sessions and injects resumable-session hints into Orchestrator or Secretary requests. |
 | `packages/opencode/src/kilocode/agent-team/council.ts` | Runs optional multi-model council sessions and formats synthesis input. |
 | `packages/opencode/src/kilocode/agent-team/auto-continue.ts` | Conservatively resumes Team sessions with incomplete todos when enabled. |
+| `packages/opencode/src/kilocode/skills/` | Ships Kilo-native built-in skills used by Agent Team roles. |
 | `packages/kilo-vscode/webview-ui/src/components/settings/AgentTeamTab.tsx` | Presents polished settings sections backed by Kilo provider/model pickers. |
 
 Shared upstream files should only receive thin integration calls. Kilo-specific logic belongs under paths containing `kilocode`.
@@ -138,6 +140,28 @@ Role entries support:
 - `mcps` — MCP server allow-list with `*` and `!name` syntax.
 - `displayName` — optional user-facing alias.
 - `options` — provider-specific model options for power users.
+
+If `skills` or `mcps` is omitted for a role, Kilo applies the recommended Agent Team capability profile. If the field is present, including an empty array, the user override is authoritative.
+
+## Capability Profiles
+
+Agent Team roles are capability-driven. Profiles define what each role is good at, when Orchestrator should route to it, and which built-in skills or MCP servers are recommended by default.
+
+| Role | Recommended skills | Recommended MCPs |
+|---|---|---|
+| `secretary` | `kilo-config` | none |
+| `team` / Orchestrator | `*` | `*`, `!context7` |
+| `architect` | `kilo-config`, `review-work` | `websearch`, `context7` |
+| `planner` | `kilo-config`, `review-work` | none |
+| `explorer` | `kilo-config` | none |
+| `librarian` | `kilo-config` | `websearch`, `context7`, `grep_app` |
+| `oracle` | `review-work`, `ai-slop-remover`, `kilo-config` | none |
+| `designer` | `frontend-ui-ux`, `browser-verification` | `kilo-playwright` |
+| `fixer` | `kilo-config`, `git-master` | none |
+| `observer` | none | none |
+| `council` | `review-work` | none |
+
+The VS Code settings UI renders these as selectable options rather than raw comma-separated JSON fields. The same `*` and `!name` semantics remain available through the UI and JSON config.
 
 ## Agents
 

@@ -1,4 +1,4 @@
-import { Component, For, JSX, Show, createMemo, createSignal } from "solid-js"
+import { Component, For, JSX, Show, createMemo, createSignal, onMount } from "solid-js"
 import { Button } from "@kilocode/kilo-ui/button"
 import { Card } from "@kilocode/kilo-ui/card"
 import { Switch } from "@kilocode/kilo-ui/switch"
@@ -7,6 +7,7 @@ import { parseModelString } from "../../../../src/shared/provider-model"
 import { useConfig } from "../../context/config"
 import { useLanguage } from "../../context/language"
 import { useProvider } from "../../context/provider"
+import { useSession } from "../../context/session"
 import type { AgentTeamConfig, AgentTeamRole, AgentTeamRoleConfig } from "../../types/messages"
 import { KILO_GATEWAY_ID, isSmall, providerSortKey, sanitizeName } from "../shared/model-selector-utils"
 import SettingsRow from "./SettingsRow"
@@ -30,6 +31,12 @@ interface ModelGroup {
   models: ModelOption[]
 }
 
+interface PolicyOption {
+  value: string
+  label: string
+  description: string
+}
+
 interface RoleGroup {
   key: string
   roles: Role[]
@@ -44,6 +51,35 @@ const roleGroups: RoleGroup[] = [
 ]
 const efforts = ["low", "medium", "high", "xhigh"]
 const maxFallbacks = 3
+const roleCapabilities: Record<Role, { skills: string[]; mcps: string[] }> = {
+  secretary: { skills: ["kilo-config"], mcps: [] },
+  orchestrator: { skills: ["*"], mcps: ["*", "!context7"] },
+  architect: { skills: ["kilo-config", "review-work"], mcps: ["websearch", "context7"] },
+  planner: { skills: ["kilo-config", "review-work"], mcps: [] },
+  explorer: { skills: ["kilo-config"], mcps: [] },
+  librarian: { skills: ["kilo-config"], mcps: ["websearch", "context7", "grep_app"] },
+  oracle: { skills: ["review-work", "ai-slop-remover", "kilo-config"], mcps: [] },
+  designer: { skills: ["frontend-ui-ux", "browser-verification"], mcps: ["kilo-playwright"] },
+  fixer: { skills: ["kilo-config", "git-master"], mcps: [] },
+  observer: { skills: [], mcps: [] },
+  council: { skills: ["review-work"], mcps: [] },
+}
+
+function token(value: string) {
+  if (value.startsWith("!")) return value.slice(1)
+  return value
+}
+
+function names(lists: string[][]) {
+  return Array.from(
+    new Set(
+      lists
+        .flat()
+        .map(token)
+        .filter((item) => item && item !== "*"),
+    ),
+  ).sort((a, b) => a.localeCompare(b))
+}
 
 function groupsFor(groups: ModelGroup[], current: ReturnType<typeof parseModelString>) {
   if (!current || groups.some((group) => group.providerID === current.providerID)) return groups
@@ -129,6 +165,105 @@ const FallbackRow: Component<FallbackRowProps> = (props) => {
   )
 }
 
+type TokenState = "allow" | "deny" | "inherit" | "off"
+
+interface PolicyPickerProps {
+  title: string
+  description: string
+  allLabel: string
+  empty: string
+  values: () => string[]
+  options: () => PolicyOption[]
+  defaulted: () => boolean
+  defaults: string[]
+  onChange: (values: string[]) => void
+}
+
+function state(values: string[], value: string): TokenState {
+  if (values.includes(`!${value}`)) return "deny"
+  if (values.includes(value)) return "allow"
+  if (values.includes("*")) return "inherit"
+  return "off"
+}
+
+function set(values: string[], value: string, next: Exclude<TokenState, "inherit">) {
+  const rest = values.filter((item) => item !== value && item !== `!${value}`)
+  if (next === "allow") return [...rest, value]
+  if (next === "deny") return [...rest, `!${value}`]
+  return rest
+}
+
+const PolicyPicker: Component<PolicyPickerProps> = (props) => {
+  const language = useLanguage()
+  const active = createMemo(() => props.values())
+
+  function toggleAll(checked: boolean) {
+    const rest = active().filter((item) => item !== "*" && (checked || !item.startsWith("!")))
+    props.onChange(checked ? ["*", ...rest] : rest)
+  }
+
+  function cycle(value: string) {
+    const current = state(active(), value)
+    if (current === "off") {
+      props.onChange(set(active(), value, "allow"))
+      return
+    }
+    if (current === "deny") {
+      props.onChange(set(active(), value, "off"))
+      return
+    }
+    props.onChange(set(active(), value, "deny"))
+  }
+
+  return (
+    <div class="agent-team-role-policy-section">
+      <div class="agent-team-policy-header">
+        <div>
+          <div class="agent-team-role-policy-title">{props.title}</div>
+          <div class="agent-team-role-policy-description">{props.description}</div>
+        </div>
+        <Button variant="ghost" size="small" onClick={() => props.onChange([...props.defaults])}>
+          {props.defaulted()
+            ? language.t("settings.agentTeam.policy.recommendedActive")
+            : language.t("settings.agentTeam.policy.restore")}
+        </Button>
+      </div>
+      <label class="agent-team-native-check agent-team-policy-all">
+        <input
+          type="checkbox"
+          checked={active().includes("*")}
+          onChange={(event) => toggleAll(event.currentTarget.checked)}
+        />
+        <span>{props.allLabel}</span>
+      </label>
+      <Show when={props.options().length > 0} fallback={<div class="agent-team-policy-empty">{props.empty}</div>}>
+        <div class="agent-team-policy-token-list">
+          <For each={props.options()}>
+            {(option) => {
+              const current = createMemo(() => state(active(), option.value))
+              return (
+                <button
+                  type="button"
+                  class={`agent-team-policy-token agent-team-policy-token-${current()}`}
+                  onClick={() => cycle(option.value)}
+                >
+                  <span class="agent-team-policy-token-label">{option.label}</span>
+                  <span class="agent-team-policy-token-state">
+                    {language.t(`settings.agentTeam.policy.state.${current()}`)}
+                  </span>
+                  <Show when={option.description}>
+                    <span class="agent-team-policy-token-description">{option.description}</span>
+                  </Show>
+                </button>
+              )
+            }}
+          </For>
+        </div>
+      </Show>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Per-role row — isolated component so each role's memos are independent.
 // This prevents a model change in one role from invalidating other roles'
@@ -143,6 +278,10 @@ interface RoleRowProps {
   cfg: () => RoleConfig
   enabled: () => boolean
   modelGroups: () => ModelGroup[]
+  skillOptions: () => PolicyOption[]
+  mcpOptions: () => PolicyOption[]
+  defaultSkills: string[]
+  defaultMcps: string[]
   onToggleEnabled: (v: boolean) => void
   onPatchRole: (next: Partial<RoleConfig>) => void
   fixedEnabled?: boolean
@@ -180,6 +319,8 @@ const RoleRow: Component<RoleRowProps> = (props) => {
   }
 
   const fallbackModels = createMemo(() => props.cfg().fallbackModels ?? [])
+  const roleSkills = createMemo(() => props.cfg().skills ?? props.defaultSkills)
+  const roleMcps = createMemo(() => props.cfg().mcps ?? props.defaultMcps)
 
   function updateFallback(index: number, value: string | undefined) {
     const next = [...fallbackModels()]
@@ -364,40 +505,37 @@ const RoleRow: Component<RoleRowProps> = (props) => {
               </Show>
             </div>
           </div>
-          <div class="agent-team-role-policy-grid">
+          <div class="agent-team-role-policy-section">
+            <div class="agent-team-role-policy-title">{language.t("settings.agentTeam.displayName.title")}</div>
             <input
               class="agent-team-native-control"
               value={props.cfg().displayName ?? ""}
               placeholder={language.t("settings.agentTeam.displayName.placeholder")}
               onChange={(event) => props.onPatchRole({ displayName: event.currentTarget.value.trim() || null })}
             />
-            <input
-              class="agent-team-native-control"
-              value={(props.cfg().skills ?? []).join(", ")}
-              placeholder={language.t("settings.agentTeam.skills.placeholder")}
-              onChange={(event) =>
-                props.onPatchRole({
-                  skills: event.currentTarget.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                })
-              }
-            />
-            <input
-              class="agent-team-native-control"
-              value={(props.cfg().mcps ?? []).join(", ")}
-              placeholder={language.t("settings.agentTeam.mcps.placeholder")}
-              onChange={(event) =>
-                props.onPatchRole({
-                  mcps: event.currentTarget.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                })
-              }
-            />
           </div>
+          <PolicyPicker
+            title={language.t("settings.agentTeam.skills.title")}
+            description={language.t("settings.agentTeam.skills.description")}
+            allLabel={language.t("settings.agentTeam.skills.all")}
+            empty={language.t("settings.agentTeam.skills.empty")}
+            values={roleSkills}
+            options={props.skillOptions}
+            defaulted={() => props.cfg().skills === undefined}
+            defaults={props.defaultSkills}
+            onChange={(skills) => props.onPatchRole({ skills })}
+          />
+          <PolicyPicker
+            title={language.t("settings.agentTeam.mcps.title")}
+            description={language.t("settings.agentTeam.mcps.description")}
+            allLabel={language.t("settings.agentTeam.mcps.all")}
+            empty={language.t("settings.agentTeam.mcps.empty")}
+            values={roleMcps}
+            options={props.mcpOptions}
+            defaulted={() => props.cfg().mcps === undefined}
+            defaults={props.defaultMcps}
+            onChange={(mcps) => props.onPatchRole({ mcps })}
+          />
         </div>
       </Show>
     </div>
@@ -420,7 +558,13 @@ const AgentTeamTab: Component = () => {
   const language = useLanguage()
   const { config, updateConfig } = useConfig()
   const { connected, models } = useProvider()
+  const session = useSession()
   const [open, setOpen] = createSignal<Record<string, boolean>>({})
+
+  onMount(() => {
+    session.refreshSkills()
+    session.refreshMcpStatus()
+  })
 
   const team = () => config().agentTeam ?? {}
   const cfg = (id: AgentTeamRole): RoleConfig => {
@@ -456,6 +600,18 @@ const AgentTeamTab: Component = () => {
     if (id === "secretary") return true
     if (id === "council") return team().council?.enabled === true && cfg(id).enabled !== false
     return cfg(id).enabled ?? true
+  }
+
+  function capability(id: Role) {
+    return roleCapabilities[id]
+  }
+
+  function mcpStatus(name: string) {
+    const cfg = config().mcp?.[name]
+    if (cfg?.enabled === false) return language.t("settings.agentTeam.mcps.status.disabled")
+    const status = session.mcpStatus()[name]?.status
+    if (!status) return language.t("settings.agentTeam.mcps.status.configured")
+    return language.t(`settings.agentTeam.mcps.status.${status}`)
   }
 
   function toggle(id: Role, value: boolean) {
@@ -524,6 +680,49 @@ const AgentTeamTab: Component = () => {
       })),
     })),
   )
+
+  const skillOptions = createMemo<PolicyOption[]>(() => {
+    const map = new Map<string, PolicyOption>()
+    for (const skill of session.skills()) {
+      map.set(skill.name, {
+        value: skill.name,
+        label: skill.name,
+        description:
+          skill.location === "builtin"
+            ? `${language.t("settings.agentTeam.skills.builtin")} · ${skill.description}`
+            : skill.description,
+      })
+    }
+    for (const name of names(Object.values(roleCapabilities).map((item) => item.skills))) {
+      if (map.has(name)) continue
+      map.set(name, {
+        value: name,
+        label: name,
+        description: language.t("settings.agentTeam.skills.missing"),
+      })
+    }
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
+  })
+
+  const mcpOptions = createMemo<PolicyOption[]>(() => {
+    const map = new Map<string, PolicyOption>()
+    for (const name of Object.keys(config().mcp ?? {})) {
+      map.set(name, {
+        value: name,
+        label: name,
+        description: mcpStatus(name),
+      })
+    }
+    for (const name of names(Object.values(roleCapabilities).map((item) => item.mcps))) {
+      if (map.has(name)) continue
+      map.set(name, {
+        value: name,
+        label: name,
+        description: language.t("settings.agentTeam.mcps.missing"),
+      })
+    }
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
+  })
 
   const connectedSet = createMemo(() => new Set(connected()))
   const modelGroups = createMemo<ModelGroup[]>(() => {
@@ -621,6 +820,10 @@ const AgentTeamTab: Component = () => {
                       cfg={() => cfg(item.id)}
                       enabled={() => roleEnabled(item.id)}
                       modelGroups={modelGroups}
+                      skillOptions={skillOptions}
+                      mcpOptions={mcpOptions}
+                      defaultSkills={capability(item.id).skills}
+                      defaultMcps={capability(item.id).mcps}
                       onToggleEnabled={(v) => toggle(item.id, v)}
                       onPatchRole={(next) => patchRole(item.id, next)}
                       fixedEnabled={item.id === "secretary"}

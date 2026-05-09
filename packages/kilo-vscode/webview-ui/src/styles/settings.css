@@ -267,6 +267,83 @@
   font-size: var(--font-size-small);
 }
 
+.agent-team-policy-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.agent-team-policy-all {
+  align-self: flex-start;
+}
+
+.agent-team-policy-empty {
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+}
+
+.agent-team-policy-token-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.agent-team-policy-token {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border-weak-base);
+  border-radius: 6px;
+  color: var(--text-base);
+  background: var(--input-base);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-team-policy-token:hover {
+  border-color: var(--border-base, var(--vscode-focusBorder));
+}
+
+.agent-team-policy-token-allow,
+.agent-team-policy-token-inherit {
+  border-color: var(--accent-base, var(--vscode-focusBorder));
+  background: var(--selection-base, rgba(0, 122, 204, 0.16));
+}
+
+.agent-team-policy-token-deny {
+  border-color: var(--danger-base, var(--vscode-errorForeground));
+  background: color-mix(in srgb, var(--vscode-errorForeground) 12%, transparent);
+}
+
+.agent-team-policy-token-label {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-team-policy-token-state {
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+}
+
+.agent-team-policy-token-description {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .agent-team-fallback-list {
   display: flex;
   flex-direction: column;

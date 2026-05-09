@@ -1,5 +1,6 @@
 import { Permission } from "@/permission"
 import { Provider } from "@/provider/provider"
+import { capabilitySummary, defaults, profile, type CapabilityRole } from "./capabilities"
 
 export const role = [
   "architect",
@@ -90,28 +91,6 @@ function shell(ctx: Context) {
 }
 
 const visible = role.filter((item) => item !== "councillor")
-
-const descriptions: Record<Role, string> = {
-  architect:
-    "High-level design and architecture advisor. Evaluates system shape, cross-module tradeoffs, data/API/plugin boundaries, migration risk, and minimum viable design before implementation planning.",
-  planner:
-    "Concrete implementation planning specialist. Turns settled goals or architecture into scoped tasks, ownership boundaries, dependencies, specialist routing, verification steps, and rollback checkpoints.",
-  explorer:
-    "Parallel codebase discovery. Finds files, symbols, call sites, architecture seams, and unknown implementation paths quickly.",
-  librarian:
-    "Current documentation and external source research. Uses official references for library APIs, examples, version-specific behavior, and unfamiliar dependencies.",
-  oracle:
-    "Final acceptance and technical review. Validates architecture, implementation quality, risk, maintainability, security, data integrity, and YAGNI tradeoffs.",
-  designer:
-    "UI/UX and frontend engineering specialist. Implements or reviews user-facing layout, interactions, accessibility, responsive behavior, visual hierarchy, and design-system polish.",
-  fixer:
-    "General implementation specialist for backend, services, CLI, config, tests, fixtures, and bounded non-UI code changes after discovery and decisions are settled.",
-  observer:
-    "Visual analysis specialist. Reads screenshots, images, PDFs, diagrams, and exact visible errors without pulling raw media into the coordinator context.",
-  council:
-    "Optional technical council. Uses independent councillors for complex, high-risk, ambiguous, or architectural decisions where disagreement improves quality.",
-  councillor: "Internal council advisor. Provides independent read-only analysis for a council session.",
-}
 
 const roster: Record<Role, string> = {
   architect: `@architect
@@ -216,6 +195,11 @@ function roleBrief(cfg: Config | undefined) {
     .join("\n\n")
 }
 
+function capabilityRoles(cfg: Config | undefined) {
+  const base: CapabilityRole[] = cfg?.secretary?.enabled === true ? ["secretary", "orchestrator"] : ["orchestrator"]
+  return [...base, ...available(cfg)] as CapabilityRole[]
+}
+
 export function teamPrompt(cfg?: Config) {
   return `<Role>
 You are Orchestrator, Kilo Agent Team's high-capability commander. You optimize quality, speed, cost, and reliability by routing work to the right layer: direct execution for small tasks, @planner for concrete implementation planning, @architect for large design decisions, specialists for execution, and @oracle or @council for review.
@@ -224,6 +208,10 @@ You are Orchestrator, Kilo Agent Team's high-capability commander. You optimize 
 <Agents>
 ${roleBrief(cfg)}
 </Agents>
+
+<DefaultCapabilities>
+${capabilitySummary(capabilityRoles(cfg))}
+</DefaultCapabilities>
 
 <Workflow>
 1. Understand explicit requirements, implicit needs, constraints, and missing critical inputs.
@@ -604,20 +592,31 @@ function models(cfg: RoleConfig | undefined) {
     .map((item) => Provider.parseModel(item))
 }
 
-function apply(agent: AgentInfo, cfg: RoleConfig | undefined, ctx: Context) {
-  const chain = models(cfg)
+function effective(item: CapabilityRole | undefined, cfg: RoleConfig | undefined) {
+  if (!item) return cfg
+  const d = defaults(item)
+  return {
+    ...cfg,
+    skills: cfg?.skills === undefined ? d.skills : cfg.skills,
+    mcps: cfg?.mcps === undefined ? d.mcps : cfg.mcps,
+  }
+}
+
+function apply(agent: AgentInfo, cfg: RoleConfig | undefined, ctx: Context, item?: CapabilityRole) {
+  const next = effective(item, cfg)
+  const chain = models(next)
   if (chain.length > 0) {
     agent.model = chain[0]
     agent.modelChain = chain
   }
-  if (cfg?.variant) agent.variant = cfg.variant
-  if (cfg?.temperature !== undefined && cfg.temperature !== null) agent.temperature = cfg.temperature
-  if (cfg?.displayName) agent.displayName = cfg.displayName
-  if (cfg?.options) agent.options = { ...agent.options, ...cfg.options }
+  if (next?.variant) agent.variant = next.variant
+  if (next?.temperature !== undefined && next.temperature !== null) agent.temperature = next.temperature
+  if (next?.displayName) agent.displayName = next.displayName
+  if (next?.options) agent.options = { ...agent.options, ...next.options }
   agent.permission = Permission.merge(
     agent.permission,
-    Permission.fromConfig(skill(cfg)),
-    Permission.fromConfig(mcp(ctx, cfg)),
+    Permission.fromConfig(skill(next)),
+    Permission.fromConfig(mcp(ctx, next)),
   )
 }
 
@@ -642,7 +641,8 @@ export function build(ctx: Context): AgentMap {
         team: {
           name: "team",
           displayName: "Orchestrator",
-          description: "Command Kilo Agent Team, doing quick work directly and delegating substantial work to specialists.",
+          description:
+            "Command Kilo Agent Team, doing quick work directly and delegating substantial work to specialists.",
           prompt: teamPrompt(ctx.cfg),
           options: {},
           permission: conductor(ctx),
@@ -652,7 +652,7 @@ export function build(ctx: Context): AgentMap {
         },
       }
     : {}
-  if (base.team) apply(base.team, cfg, ctx)
+  if (base.team) apply(base.team, cfg, ctx, "orchestrator")
   if (primaryEnabled(ctx.cfg)) {
     base.secretary = {
       name: "secretary",
@@ -665,7 +665,7 @@ export function build(ctx: Context): AgentMap {
       native: true,
       temperature: 0.2,
     }
-    apply(base.secretary, ctx.cfg?.roles?.secretary, ctx)
+    apply(base.secretary, ctx.cfg?.roles?.secretary, ctx, "secretary")
   }
 
   const agents = Object.fromEntries(
@@ -675,7 +675,7 @@ export function build(ctx: Context): AgentMap {
         const cfg = ctx.cfg?.roles?.[item]
         const agent: AgentInfo = {
           name: item,
-          description: descriptions[item],
+          description: profile(item).description,
           prompt: prompts[item],
           options: {},
           permission:
@@ -683,9 +683,9 @@ export function build(ctx: Context): AgentMap {
               ? editable(ctx)
               : item === "architect" || item === "planner"
                 ? advisory(ctx)
-              : item === "council"
-                ? moderator(ctx)
-                : readonly(ctx),
+                : item === "council"
+                  ? moderator(ctx)
+                  : readonly(ctx),
           mode: item === "council" ? ("all" as const) : ("subagent" as const),
           native: true,
           displayName: item === "architect" ? "Design" : item === "planner" ? "Plan" : undefined,
@@ -693,7 +693,7 @@ export function build(ctx: Context): AgentMap {
           temperature:
             item === "designer" ? 0.5 : item === "fixer" || item === "planner" || item === "councillor" ? 0.2 : 0.1,
         }
-        apply(agent, cfg, ctx)
+        apply(agent, cfg, ctx, item)
         return [item, agent]
       }),
   ) as AgentMap

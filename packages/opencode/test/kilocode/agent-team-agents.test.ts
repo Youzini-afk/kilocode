@@ -104,7 +104,7 @@ describe("Agent Team agents", () => {
 
     expect(Permission.evaluate("plan_exit", "*", map.team.permission).action).toBe("allow")
     expect(map.team?.prompt).toContain("call plan_exit as the final action")
-    expect(map.team?.prompt).toContain("native \"Ready to implement?\" follow-up")
+    expect(map.team?.prompt).toContain('native "Ready to implement?" follow-up')
     expect(map.team?.prompt).toContain("native question UI")
   })
 
@@ -236,6 +236,28 @@ describe("Agent Team agents", () => {
 
     expect(map.oracle?.displayName).toBe("advisor")
     expect(map.oracle?.options).toEqual({ reasoningEffort: "high" })
+  })
+
+  test("applies recommended capability defaults when roles omit skills and MCPs", () => {
+    const map = agents(
+      { enabled: true },
+      {
+        "context7_*": "ask",
+        "github_*": "ask",
+        "kilo-playwright_*": "ask",
+      },
+    )
+
+    expect(Permission.evaluate("skill", "openai-docs", map.team.permission).action).toBe("allow")
+    expect(Permission.evaluate("skill", "review-work", map.oracle.permission).action).toBe("allow")
+    expect(Permission.evaluate("skill", "ai-slop-remover", map.oracle.permission).action).toBe("allow")
+    expect(Permission.evaluate("skill", "frontend-ui-ux", map.designer.permission).action).toBe("allow")
+    expect(Permission.evaluate("skill", "git-master", map.fixer.permission).action).toBe("allow")
+    expect(Permission.evaluate("skill", "imagegen", map.oracle.permission).action).toBe("deny")
+    expect(Permission.evaluate("context7_query_docs", "*", map.team.permission).action).toBe("deny")
+    expect(Permission.evaluate("github_create_issue", "*", map.team.permission).action).toBe("ask")
+    expect(Permission.evaluate("context7_query_docs", "*", map.planner.permission).action).toBe("deny")
+    expect(Permission.evaluate("kilo-playwright_browser_click", "*", map.designer.permission).action).toBe("ask")
   })
 
   test("restricts skills with wildcard syntax", () => {
