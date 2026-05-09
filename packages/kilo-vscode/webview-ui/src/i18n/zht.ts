@@ -1298,12 +1298,8 @@ const local = {
 
   "settings.agentTeam.enabled.title": "啟用智慧體團隊",
   "settings.agentTeam.enabled.description": "使用 Kilo 內建的專家團隊處理規劃、檢索、實作、審查和協調。",
-  "settings.agentTeam.secretary.title": "秘書模式",
-  "settings.agentTeam.secretary.description":
-    "把 Secretary 作為智慧體團隊預設入口。仍可在智慧體選擇器裡隨時切換 Secretary 和 Orchestrator。",
   "settings.agentTeam.takeover.title": "作為預設智慧體",
-  "settings.agentTeam.takeover.description":
-    "未明確設定預設智慧體時，若開啟秘書模式則新對話從 Secretary 開始，否則從 Orchestrator 開始。",
+  "settings.agentTeam.takeover.description": "未明確設定預設智慧體時，新對話預設從 Orchestrator 開始。",
   "settings.agentTeam.roles.title": "路由與模型",
   "settings.agentTeam.roles.description": "用排列好的選項設定 Secretary、Orchestrator 和專家路由，不再編輯原始 JSON。",
   "settings.agentTeam.section.expand": "展開",

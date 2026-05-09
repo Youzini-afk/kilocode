@@ -176,7 +176,8 @@ const AgentTeamSessionReuse = Schema.Struct({
 
 const AgentTeamSecretary = Schema.Struct({
   enabled: Schema.optional(Schema.Boolean).annotate({
-    description: "Start Agent Team sessions with Secretary intake before specialist routing",
+    description:
+      "@deprecated No longer controls Agent Team's default entry. Select Secretary or Orchestrator from the agent picker.",
   }),
 })
 
@@ -233,7 +234,7 @@ const AgentTeam = Schema.Struct({
     description: "Agent Team role configuration",
   }),
   secretary: Schema.optional(AgentTeamSecretary).annotate({
-    description: "Agent Team Secretary intake configuration",
+    description: "@deprecated Legacy Agent Team Secretary default-entry configuration",
   }),
   sessionReuse: Schema.optional(AgentTeamSessionReuse).annotate({
     description: "Agent Team specialist session reuse configuration",

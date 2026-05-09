@@ -1338,12 +1338,8 @@ const local = {
   "settings.agentTeam.enabled.title": "启用智能体团队",
   "settings.agentTeam.enabled.description":
     "使用 Kilo 内置 Orchestrator 和专家智能体处理规划、检索、实现、审查和协调。",
-  "settings.agentTeam.secretary.title": "秘书模式",
-  "settings.agentTeam.secretary.description":
-    "把 Secretary 作为智能体团队默认入口。仍可在智能体选择器里随时切换 Secretary 和 Orchestrator。",
   "settings.agentTeam.takeover.title": "作为默认智能体",
-  "settings.agentTeam.takeover.description":
-    "未显式配置默认智能体时，若开启秘书模式则新会话从 Secretary 开始，否则从 Orchestrator 开始。",
+  "settings.agentTeam.takeover.description": "未显式配置默认智能体时，新会话默认从 Orchestrator 开始。",
   "settings.agentTeam.roles.title": "路由与模型",
   "settings.agentTeam.roles.description": "用排列好的选项配置 Secretary、Orchestrator 和专家路由，不再编辑原始 JSON。",
   "settings.agentTeam.section.expand": "展开",

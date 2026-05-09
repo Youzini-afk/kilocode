@@ -1930,6 +1930,46 @@ export type Config = {
      * Agent Team role configuration
      */
     roles?: {
+      secretary?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
       orchestrator?: {
         /**
          * Enable this Agent Team role
@@ -1971,6 +2011,86 @@ export type Config = {
         displayName?: string | null
       }
       team?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      architect?: {
+        /**
+         * Enable this Agent Team role
+         */
+        enabled?: boolean
+        /**
+         * Model for this Agent Team role in provider/model format
+         */
+        model?: string | null
+        /**
+         * Ordered fallback models for this Agent Team role in provider/model format
+         */
+        fallbackModels?: Array<string>
+        /**
+         * Optional model variant for this Agent Team role
+         */
+        variant?: string | null
+        /**
+         * Optional temperature override for this Agent Team role
+         */
+        temperature?: number | null
+        /**
+         * Optional skill allow-list for this Agent Team role. Supports * and !name entries
+         */
+        skills?: Array<string>
+        /**
+         * Optional MCP server allow-list for this Agent Team role. Supports * and !name entries
+         */
+        mcps?: Array<string>
+        /**
+         * Optional provider-specific model options for this Agent Team role
+         */
+        options?: {
+          [key: string]: unknown
+        }
+        /**
+         * Optional display name for this Agent Team role
+         */
+        displayName?: string | null
+      }
+      planner?: {
         /**
          * Enable this Agent Team role
          */
@@ -2330,6 +2450,15 @@ export type Config = {
          */
         displayName?: string | null
       }
+    }
+    /**
+     * @deprecated Legacy Agent Team Secretary default-entry configuration
+     */
+    secretary?: {
+      /**
+       * @deprecated No longer controls Agent Team's default entry. Select Secretary or Orchestrator from the agent picker.
+       */
+      enabled?: boolean
     }
     /**
      * Agent Team specialist session reuse configuration

@@ -289,10 +289,6 @@ export interface AgentTeamSessionReuseConfig {
   maxSessionsPerAgent?: number
 }
 
-export interface AgentTeamSecretaryConfig {
-  enabled?: boolean
-}
-
 export interface AgentTeamCouncilConfig {
   enabled?: boolean
   defaultPreset?: string
@@ -311,7 +307,6 @@ export interface AgentTeamConfig {
   enabled?: boolean
   takeoverDefault?: boolean
   roles?: Partial<Record<AgentTeamRole, AgentTeamRoleConfig>>
-  secretary?: AgentTeamSecretaryConfig
   sessionReuse?: AgentTeamSessionReuseConfig
   council?: AgentTeamCouncilConfig
   autoContinue?: AgentTeamAutoContinueConfig

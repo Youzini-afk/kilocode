@@ -187,11 +187,10 @@ The upstream `explore` agent remains available for manual use. Agent Team uses i
 When `agentTeam.enabled` and `agentTeam.takeoverDefault` are true:
 
 1. If the user explicitly sets `default_agent`, honor it.
-2. If no explicit default exists and `agentTeam.secretary.enabled` is true, choose `secretary`.
-3. Otherwise choose `team` as Orchestrator.
-4. If the selected Agent Team primary is disabled, hidden, or unavailable, fall back to `code`.
+2. If no explicit default exists, choose `team` as Orchestrator.
+3. If Orchestrator is disabled, hidden, or unavailable, fall back to `code`.
 
-This setting only controls the default entry. When Agent Team is enabled, users can still switch between `secretary` and `team` from the agent picker for each conversation.
+This setting only controls the default entry. When Agent Team is enabled, users can switch between `secretary` and `team` from the agent picker for each conversation.
 
 ## Delegation Rules
 
@@ -244,7 +243,6 @@ Auto-continue is intentionally conservative:
 The VS Code settings UI should use clear sections:
 
 - Agent Team overview and master enable switch.
-- Secretary mode switch for quickly choosing Secretary intake versus direct Orchestrator conversation.
 - Default takeover switch.
 - Agent routing grid grouped into entry, design/planning, discovery, execution, and review layers.
 - Per-role enable switch, model picker, thinking strength, and temperature.

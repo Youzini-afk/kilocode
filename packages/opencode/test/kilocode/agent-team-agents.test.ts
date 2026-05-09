@@ -66,13 +66,12 @@ describe("Agent Team agents", () => {
     expect(Permission.evaluate("edit", "*", map.secretary.permission).action).toBe("deny")
   })
 
-  test("prefers Secretary as default only when Secretary default mode is enabled", () => {
+  test("keeps Orchestrator as default while Secretary remains selectable", () => {
     const direct = agents({ enabled: true })
-    const intake = agents({ enabled: true, secretary: { enabled: true } })
 
     expect(direct.secretary?.mode).toBe("primary")
     expect(defaultTeam(app({ enabled: true }), direct)).toBe("team")
-    expect(defaultTeam(app({ enabled: true, secretary: { enabled: true } }), intake)).toBe("secretary")
+    expect(defaultTeam(app({ enabled: true, secretary: { enabled: true } }), direct)).toBe("team")
   })
 
   test("states Orchestrator delegation policy explicitly", () => {
@@ -82,7 +81,18 @@ describe("Agent Team agents", () => {
     expect(map.team?.prompt).toContain("Direct path")
     expect(map.team?.prompt).toContain("Planning path")
     expect(map.team?.prompt).toContain("Design path")
-    expect(map.team?.prompt).toContain("Prefer delegation for substantial work")
+    expect(map.team?.prompt).toContain("Prefer delegation for every non-small task")
+    expect(map.team?.prompt).toContain("normally decide whether @planner adds execution value")
+    expect(map.team?.prompt).toContain("for example: execution would become confusing without a listed plan")
+    expect(map.team?.prompt).toContain("Specialist-first routing")
+    expect(map.team?.prompt).toContain("Default to specialist execution for every non-small engineering task")
+    expect(map.team?.prompt).toContain("Direct path stays local; Planning, Design, and Specialist paths activate relevant agents by default")
+    expect(map.team?.prompt).toContain("dispatch @designer with explicit frontend file ownership")
+    expect(map.team?.prompt).toContain("dispatch @fixer with explicit backend/test file ownership")
+    expect(map.team?.prompt).toContain("split it into separate @designer and @fixer tasks")
+    expect(map.team?.prompt).toContain("dispatch @explorer before implementation")
+    expect(map.team?.prompt).toContain("dispatch @librarian before implementation")
+    expect(map.team?.prompt).toContain("dispatch @oracle for acceptance review")
     expect(map.team?.prompt).toContain("Match @architect to large, architectural")
     expect(map.team?.prompt).toContain("Match @planner to medium-or-larger implementation planning")
     expect(map.team?.prompt).toContain("Match @designer to UI/UX/frontend work")

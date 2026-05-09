@@ -31,7 +31,7 @@ export const profiles = {
     skills: ["kilo-config"],
     mcps: [],
     triggers: ["vague request", "product intent", "user-facing clarification"],
-    use: ["User intent needs compression before execution.", "Secretary mode is selected as the entry agent."],
+    use: ["User intent needs compression before execution.", "Secretary is selected as the entry agent."],
     avoid: ["Implementation is needed directly.", "A specialist should be called directly."],
   },
   orchestrator: {

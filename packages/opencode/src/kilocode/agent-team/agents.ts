@@ -56,9 +56,6 @@ export type Config = {
   enabled?: boolean
   takeoverDefault?: boolean
   roles?: Partial<Record<Role | PrimaryRole, RoleConfig>>
-  secretary?: {
-    enabled?: boolean
-  }
   sessionReuse?: {
     enabled?: boolean
     maxSessionsPerAgent?: number
@@ -155,6 +152,16 @@ const validation = [
   "- If a request spans multiple lanes, delegate only the lanes that add clear value.",
 ]
 
+const specialists = [
+  "- Default to specialist execution for every non-small engineering task. Use the classification above: Direct path stays local; Planning, Design, and Specialist paths activate relevant agents by default. Orchestrator commands, integrates, and verifies; it should not be the main construction worker unless the task is tiny/local.",
+  "- If user-facing UI, UX, frontend behavior, layout, styling, accessibility, or visual polish is involved, dispatch @designer with explicit frontend file ownership.",
+  "- If backend, services, CLI, config, data flow, fixtures, tests, or non-UI implementation is involved, dispatch @fixer with explicit backend/test file ownership.",
+  "- If a task spans frontend and backend, split it into separate @designer and @fixer tasks with non-overlapping files, then integrate the results.",
+  "- If relevant code paths, ownership, or architecture are not already known, dispatch @explorer before implementation instead of guessing.",
+  "- If current external docs, SDK/API behavior, versions, or provider details matter, dispatch @librarian before implementation.",
+  "- After meaningful implementation, dispatch @oracle for acceptance review when the change is user-facing, cross-module, risky, or previously failed.",
+]
+
 const parallel = [
   "- @architect and @explorer only when design depends on broad code discovery and their scopes are independent.",
   "- @planner after discovery/design inputs are available, not in parallel with blockers it must consume.",
@@ -196,7 +203,7 @@ function roleBrief(cfg: Config | undefined) {
 }
 
 function capabilityRoles(cfg: Config | undefined) {
-  const base: CapabilityRole[] = cfg?.secretary?.enabled === true ? ["secretary", "orchestrator"] : ["orchestrator"]
+  const base: CapabilityRole[] = ["orchestrator"]
   return [...base, ...available(cfg)] as CapabilityRole[]
 }
 
@@ -217,15 +224,18 @@ ${capabilitySummary(capabilityRoles(cfg))}
 1. Understand explicit requirements, implicit needs, constraints, and missing critical inputs.
 2. Classify the task before acting:
    - Direct path: simple answers, tiny edits, obvious reads, or quick fixes where delegation overhead is larger than the work.
-   - Planning path: medium work with 2+ meaningful steps, unclear file ownership, or explicit user request for a plan -> use @planner unless the plan would be trivial.
+   - Planning path: medium work with 2+ meaningful steps, unclear file ownership, or user asks for a plan -> normally decide whether @planner adds execution value; use @planner when, for example: execution would become confusing without a listed plan.
    - Design path: large, architectural, cross-module, product/system, data/API/plugin boundary, permission, concurrency, migration, or long-term tradeoff -> use @architect before @planner.
-   - Specialist path: non-trivial implementation, broad discovery, UI work, backend/test/config work, external docs, visual evidence, or final review.
+   - Specialist path: any non-small implementation, broad discovery, UI work, backend/test/config work, external docs, visual evidence, or final review.
 3. Keep simple work fast. Do not route tiny/local edits through @architect or @planner.
-4. Prefer delegation for substantial work. Do not personally do broad implementation when an enabled implementation specialist can own it with clear file boundaries.
+4. Prefer delegation for every non-small task. Do not personally do broad implementation when an enabled specialist can own it with clear file boundaries.
 5. Split independent work into parallel branches only when dependencies and file ownership are clear.
 6. Execute directly or through specialists, then integrate results yourself. Never blindly paste specialist output.
 7. After meaningful specialist implementation, run or delegate final acceptance review when risk, size, or user impact justifies it.
 8. Verify with the smallest relevant checks after code changes.
+
+Specialist-first routing:
+${filtered(specialists, cfg)}
 
 Design and planning handoff:
 - @architect decides direction, tradeoffs, and minimum viable design. It does not write code and does not produce detailed implementation tickets unless needed to guide @planner.

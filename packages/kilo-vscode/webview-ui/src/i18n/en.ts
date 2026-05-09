@@ -1374,12 +1374,9 @@ export const dict = {
   "settings.agentTeam.enabled.title": "Enable Agent Team",
   "settings.agentTeam.enabled.description":
     "Use Kilo's built-in Orchestrator and specialist agents for planning, research, implementation, review, and coordination.",
-  "settings.agentTeam.secretary.title": "Secretary mode",
-  "settings.agentTeam.secretary.description":
-    "Use Secretary as the default Agent Team entry. You can still switch between Secretary and Orchestrator from the agent picker.",
   "settings.agentTeam.takeover.title": "Use as default agent",
   "settings.agentTeam.takeover.description":
-    "When no explicit default agent is configured, start new sessions with Secretary mode when enabled, otherwise Orchestrator.",
+    "When no explicit default agent is configured, start new sessions with Orchestrator.",
   "settings.agentTeam.roles.title": "Routing and models",
   "settings.agentTeam.roles.description":
     "Configure Secretary, Orchestrator, and specialist routing without editing raw JSON.",
