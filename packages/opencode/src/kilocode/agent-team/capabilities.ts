@@ -95,15 +95,15 @@ export const profiles = {
     title: "Oracle",
     category: "review",
     description:
-      "Final acceptance and technical review. Validates architecture, implementation quality, risk, maintainability, security, data integrity, and YAGNI tradeoffs.",
-    skills: ["review-work", "ai-slop-remover", "kilo-config"],
+      "Tiered acceptance review. Scales from quick validation to deep audit based on change size, risk, and failure history.",
+    skills: ["review-work", "kilo-config"],
     mcps: [],
-    triggers: ["final review", "acceptance", "security", "maintainability", "YAGNI", "persistent bug"],
+    triggers: ["final review", "acceptance", "quick review", "security", "data integrity", "persistent bug"],
     use: [
-      "Meaningful specialist implementation needs acceptance.",
-      "Risk or repeated failure justifies deeper review.",
+      "Meaningful specialist implementation needs appropriately sized acceptance.",
+      "Deep review is justified by high risk, broad surface area, or repeated failure.",
     ],
-    avoid: ["This is a first routine fix attempt.", "Speed matters more than extra confidence."],
+    avoid: ["This is a tiny/local change.", "Orchestrator can verify faster than delegating."],
   },
   designer: {
     title: "Designer",

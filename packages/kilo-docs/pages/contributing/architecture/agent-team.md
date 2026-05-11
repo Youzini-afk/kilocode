@@ -106,7 +106,7 @@ The user-facing config key is `agentTeam`:
         "skills": ["openai-docs"],
         "mcps": ["websearch", "context7", "grep_app"]
       },
-      "oracle": { "enabled": true, "variant": "xhigh" },
+      "oracle": { "enabled": true, "variant": "medium" },
       "fixer": { "enabled": true, "temperature": 0.2 }
     },
     "sessionReuse": {
@@ -155,7 +155,7 @@ Agent Team roles are capability-driven. Profiles define what each role is good a
 | `planner` | `kilo-config`, `review-work` | none |
 | `explorer` | `kilo-config` | none |
 | `librarian` | `kilo-config` | `websearch`, `context7`, `grep_app` |
-| `oracle` | `review-work`, `ai-slop-remover`, `kilo-config` | none |
+| `oracle` | `review-work`, `kilo-config` | none |
 | `designer` | `frontend-ui-ux`, `browser-verification` | `kilo-playwright` |
 | `fixer` | `kilo-config`, `git-master` | none |
 | `observer` | none | none |
@@ -173,7 +173,7 @@ The VS Code settings UI renders these as selectable options rather than raw comm
 | `planner` | subagent | Read/search/web/docs, no question/edit/shell/delegation | Implementation planner. Converts settled goals or architecture into task breakdowns, ownership boundaries, dependencies, specialist lanes, and verification steps. |
 | `explorer` | subagent | Read/search/code discovery | Finds files, symbols, call sites, and architectural entry points quickly. |
 | `librarian` | subagent | Read/search/web/docs | Looks up current external documentation and source examples. |
-| `oracle` | subagent | Read/search | Reviews architecture, debugging strategy, maintainability, and high-risk decisions. |
+| `oracle` | subagent | Read/search | Runs tiered acceptance review, from quick validation to deep audit for high-risk changes. |
 | `designer` | subagent | Edit allowed, no delegation | Implements or reviews user-facing UI and UX. |
 | `fixer` | subagent | Edit allowed, no delegation | Executes bounded backend, service, CLI, config, fixture, test, and non-UI implementation changes. |
 | `observer` | subagent | Read only | Analyzes images, screenshots, PDFs, and diagrams. |

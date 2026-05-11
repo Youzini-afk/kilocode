@@ -1462,7 +1462,7 @@ export const dict = {
     "Searches the codebase, docs, history, and references before changes.",
   "settings.agentTeam.role.oracle.title": "Oracle",
   "settings.agentTeam.role.oracle.description":
-    "Performs final acceptance review for architecture, implementation quality, risk, and maintainability.",
+    "Runs tiered acceptance review, from quick checks to deep audits only when risk warrants it.",
   "settings.agentTeam.role.designer.title": "Designer",
   "settings.agentTeam.role.designer.description":
     "Improves UI/UX and front-end implementation with responsive, accessible interaction polish.",

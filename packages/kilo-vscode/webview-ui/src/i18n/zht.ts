@@ -1375,7 +1375,7 @@ const local = {
   "settings.agentTeam.role.librarian.title": "Librarian",
   "settings.agentTeam.role.librarian.description": "修改前檢索程式碼庫、文件、歷史和相關引用。",
   "settings.agentTeam.role.oracle.title": "Oracle",
-  "settings.agentTeam.role.oracle.description": "回答聚焦的技術問題，並驗證架構取捨。",
+  "settings.agentTeam.role.oracle.description": "按風險分級驗收：普通改動快速檢查，高風險改動才深度審計。",
   "settings.agentTeam.role.designer.title": "Designer",
   "settings.agentTeam.role.designer.description": "UI/UX 與前端工程專家，改進介面、響應式體驗、可存取性和互動細節。",
   "settings.agentTeam.role.fixer.title": "Fixer",

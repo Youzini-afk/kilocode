@@ -1415,7 +1415,7 @@ const local = {
   "settings.agentTeam.role.librarian.title": "Librarian",
   "settings.agentTeam.role.librarian.description": "修改前检索代码库、文档、历史和相关引用。",
   "settings.agentTeam.role.oracle.title": "Oracle",
-  "settings.agentTeam.role.oracle.description": "对架构、实现质量、风险和可维护性做最终验收审查。",
+  "settings.agentTeam.role.oracle.description": "按风险分级验收：普通改动快速检查，高风险改动才深度审计。",
   "settings.agentTeam.role.designer.title": "Designer",
   "settings.agentTeam.role.designer.description": "UI/UX 与前端工程专家，改进界面、响应式体验、可访问性和交互细节。",
   "settings.agentTeam.role.fixer.title": "Fixer",

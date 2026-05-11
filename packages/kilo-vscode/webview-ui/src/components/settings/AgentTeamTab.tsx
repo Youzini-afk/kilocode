@@ -58,7 +58,7 @@ const roleCapabilities: Record<Role, { skills: string[]; mcps: string[] }> = {
   planner: { skills: ["kilo-config", "review-work"], mcps: [] },
   explorer: { skills: ["kilo-config"], mcps: [] },
   librarian: { skills: ["kilo-config"], mcps: ["websearch", "context7", "grep_app"] },
-  oracle: { skills: ["review-work", "ai-slop-remover", "kilo-config"], mcps: [] },
+  oracle: { skills: ["review-work", "kilo-config"], mcps: [] },
   designer: { skills: ["frontend-ui-ux", "browser-verification"], mcps: ["kilo-playwright"] },
   fixer: { skills: ["kilo-config", "git-master"], mcps: [] },
   observer: { skills: [], mcps: [] },
