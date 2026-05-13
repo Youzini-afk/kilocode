@@ -93,6 +93,10 @@ export type QuestionOption = {
    * Optional i18n key for the description
    */
   descriptionKey?: string
+  /**
+   * Optional agent/mode name to pre-select in the UI when this option is picked
+   */
+  mode?: string
 }
 
 export type QuestionInfo = {

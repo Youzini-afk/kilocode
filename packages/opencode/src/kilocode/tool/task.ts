@@ -74,6 +74,11 @@ export namespace KiloTask {
     return rules.filter((_, index) => !skip.has(index))
   }
 
+  /** Kilo keeps delegation one level deep to avoid recursive subagent chains. */
+  export function nestedTask(): false {
+    return false
+  }
+
   /**
    * Build inherited permission rules from the calling agent.
    * Merges the static agent definition with the session's accumulated permissions

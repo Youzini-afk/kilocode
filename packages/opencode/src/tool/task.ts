@@ -70,7 +70,7 @@ export const TaskTool = Tool.define(
         })
       }
 
-      const canTask = next.permission.some((rule) => rule.permission === id)
+      const canTask = handoff && next.permission.some((rule) => rule.permission === id) // kilocode_change
       const canTodo = next.permission.some((rule) => rule.permission === "todowrite")
 
       const reuse = AgentTeamSessionReuse.resolve({
