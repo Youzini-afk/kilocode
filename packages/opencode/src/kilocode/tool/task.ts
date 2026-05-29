@@ -14,6 +14,7 @@ import z from "zod"
 
 const log = Log.create({ service: "kilocode-task-model" })
 const DEFAULT_SUBTASK_TIMEOUT_MS = 300_000
+const DEFAULT_SUBTASK_MAX_DEPTH = 3
 
 // RATIONALE: Mirror narrow state slice Task tool consumes and ignore unrelated TUI fields.
 const ModelState = z
@@ -53,15 +54,58 @@ export namespace KiloTask {
     validate(input.next, input.name, { handoff: input.handoff })
   }
 
-  function marked(session: Session.Info) {
-    return session.permission?.some((rule) => rule.permission === HANDOFF && rule.action === "allow") === true
+  export type Budget = {
+    depth: number
+    childDepth: number
+    maxDepth: number
   }
 
-  /** Reject nested delegation except Orchestrator sessions created by Secretary handoff. */
-  export function validateCaller(input: { caller: Agent.Info; session: Session.Info }) {
-    if (!input.session.parentID) return
-    if (input.caller.name === "team" && marked(input.session)) return
-    throw new Error(`Agent "${input.caller.name}" is already running as a subagent and cannot delegate again`)
+  export const depth: (input: {
+    sessions: Session.Interface
+    session: Session.Info
+    seen?: Set<string>
+  }) => Effect.Effect<number, Error> = Effect.fn("KiloTask.depth")(function* (input) {
+    const seen = new Set(input.seen ?? [])
+    if (seen.has(input.session.id)) return yield* Effect.fail(new Error(`Session parent cycle detected: ${input.session.id}`))
+    if (!input.session.parentID) return 0
+    seen.add(input.session.id)
+    const parent = yield* input.sessions.get(input.session.parentID)
+    return 1 + (yield* depth({ sessions: input.sessions, session: parent, seen }))
+  })
+
+  /** Enforce bounded nested delegation for Agent Team while preserving legacy one-level safety elsewhere. */
+  export const validateCaller: (input: {
+    cfg: Config.Info
+    caller: Agent.Info
+    session: Session.Info
+    sessions: Session.Interface
+  }) => Effect.Effect<Budget, Error> = Effect.fn("KiloTask.validateCaller")(function* (input) {
+    const current = yield* depth({ sessions: input.sessions, session: input.session })
+    if (input.cfg.agentTeam?.enabled !== true) {
+      if (current === 0) return { depth: current, childDepth: current + 1, maxDepth: 1 }
+      if (
+        input.caller.name === "team" &&
+        input.session.permission?.some((rule) => rule.permission === HANDOFF && rule.action === "allow")
+      ) {
+        return { depth: current, childDepth: current + 1, maxDepth: current + 1 }
+      }
+      return yield* Effect.fail(
+        new Error(`Agent "${input.caller.name}" is already running as a subagent and cannot delegate again`),
+      )
+    }
+
+    const max = subtaskMaxDepth(input.cfg)
+    const child = current + 1
+    if (child <= max) return { depth: current, childDepth: child, maxDepth: max }
+    return yield* Effect.fail(
+      new Error(`Agent "${input.caller.name}" cannot delegate from current depth ${current}; maxDepth is ${max}`),
+    )
+  })
+
+  export function validateDepth(input: { cfg: Config.Info; depth: number; maxDepth: number }) {
+    if (input.cfg.agentTeam?.enabled !== true) return
+    if (input.depth <= input.maxDepth) return
+    throw new Error(`Cannot resume task session at delegation depth ${input.depth}; maxDepth is ${input.maxDepth}`)
   }
 
   export function marker(): Permission.Ruleset {
@@ -79,9 +123,22 @@ export namespace KiloTask {
     return rules.filter((_, index) => !skip.has(index))
   }
 
-  /** Kilo keeps delegation one level deep to avoid recursive subagent chains. */
-  export function nestedTask(): false {
-    return false
+  function taskPermission(info: Agent.Info) {
+    return info.permission.some((rule) => rule.permission === "task" && rule.action !== "deny")
+  }
+
+  /** Kilo allows Agent Team nested delegation only within the configured depth budget. */
+  export function nestedTask(input: {
+    cfg: Config.Info
+    next: Agent.Info
+    depth: number
+    maxDepth: number
+    handoff?: boolean
+  }) {
+    if (!taskPermission(input.next)) return false
+    if (input.handoff) return true
+    if (input.cfg.agentTeam?.enabled !== true) return false
+    return input.depth < input.maxDepth
   }
 
   /**
@@ -118,6 +175,12 @@ export namespace KiloTask {
     const value = cfg.agentTeam?.subtask?.timeoutMs
     if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_SUBTASK_TIMEOUT_MS
     return Math.max(0, Math.floor(value))
+  }
+
+  export function subtaskMaxDepth(cfg: Pick<Config.Info, "agentTeam">) {
+    const value = cfg.agentTeam?.subtask?.maxDepth
+    if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_SUBTASK_MAX_DEPTH
+    return Math.max(1, Math.floor(value))
   }
 
   export function timeoutError(name: string, timeout: number) {

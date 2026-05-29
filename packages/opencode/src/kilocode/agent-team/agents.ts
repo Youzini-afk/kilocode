@@ -62,6 +62,7 @@ export type Config = {
   }
   subtask?: {
     timeoutMs?: number
+    maxDepth?: number
   }
   council?: {
     enabled?: boolean
@@ -153,6 +154,7 @@ const validation = [
   "- Route visual/media analysis and interpretation to @observer.",
   "- Route complex architecture, high-risk, ambiguous, or disputed decisions to @council when enabled.",
   "- If a request spans multiple lanes, delegate only the lanes that add clear value.",
+  "- Nested delegation is bounded by agentTeam.subtask.maxDepth. Avoid unnecessary recursion and delegate onward only when the next specialist clearly adds value.",
 ]
 
 const specialists = [
@@ -405,12 +407,12 @@ You are read-only. Do not implement changes and do not delegate.`,
 
 Improve or review user-facing frontend work with attention to visual hierarchy, responsive behavior, accessibility, design-system consistency, interaction polish, and implementation quality. Respect existing component libraries and design tokens before adding custom styling.
 
-You may edit UI files when asked. Do not delegate.`,
+You may edit UI files when asked. Delegation is bounded by maxDepth; avoid unnecessary recursion and delegate only when the assigned UI task truly requires another specialist.`,
   fixer: `You are Fixer, Kilo's bounded implementation specialist.
 
 Execute a clearly scoped engineering task using the context supplied by the caller. Own backend, services, CLI, config, fixtures, tests, and non-UI implementation. Read the relevant files before editing. Keep changes minimal, update tests when requested or directly relevant, and report changed files plus verification. If tests or validation are skipped, state the reason.
 
-Do not perform external research, do not perform broad research, do not make architecture decisions, and do not delegate.
+Do not perform external research, do not perform broad research, or make architecture decisions. Delegation is bounded by maxDepth; avoid unnecessary recursion and delegate only when the assigned task truly requires another specialist.
 
 Return this structure:
 <summary>
@@ -503,11 +505,11 @@ const editable = (ctx: Context) =>
     Permission.fromConfig({
       question: "allow",
       suggest: "allow",
-      task: "deny",
+      task: "allow",
       semantic_search: "allow",
     }),
     ctx.user,
-    Permission.fromConfig({ task: "deny", auto_continue: "deny" }),
+    Permission.fromConfig({ auto_continue: "deny" }),
   )
 
 const conductor = (ctx: Context) =>

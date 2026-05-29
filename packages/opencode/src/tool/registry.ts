@@ -290,7 +290,7 @@ export const layer: Layer.Layer<
     })
 
     const describeTask = Effect.fn("ToolRegistry.describeTask")(function* (agent: Agent.Info) {
-      // kilocode_change start - hidden agents are internal and subagents are one level deep
+      // kilocode_change start - hidden agents are internal; Agent Team subagent chains are max-depth bounded
       const items = (yield* agents.list()).filter((item) => item.mode !== "primary" && item.hidden !== true)
       // kilocode_change end
       const filtered = items.filter(
@@ -307,7 +307,7 @@ export const layer: Layer.Layer<
         "Available subagent types:",
         description || "No subagents are available for the current agent.",
         "",
-        "Delegation is one level deep: subagents cannot launch additional subagents.",
+        "Delegation is bounded by the configured maximum depth; subagents should avoid unnecessary recursive delegation.", // kilocode_change
       ].join("\n")
     })
 

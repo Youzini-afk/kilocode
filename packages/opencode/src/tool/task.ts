@@ -57,7 +57,7 @@ export const TaskTool = Tool.define(
       const caller = yield* agent.get(ctx.agent)
       const handoff = KiloTask.handoff({ cfg, caller, next, name: params.subagent_type })
       KiloTask.validateRoute({ cfg, caller, next, name: params.subagent_type, handoff })
-      KiloTask.validateCaller({ caller, session: parent })
+      const budget = yield* KiloTask.validateCaller({ cfg, caller, session: parent, sessions })
       const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp, handoff })
       // kilocode_change end
 
@@ -73,8 +73,39 @@ export const TaskTool = Tool.define(
         })
       }
 
-      const canTask = handoff && next.permission.some((rule) => rule.permission === id) // kilocode_change
+      const canTask = KiloTask.nestedTask({ cfg, next, depth: budget.childDepth, maxDepth: budget.maxDepth, handoff }) // kilocode_change
       const canTodo = next.permission.some((rule) => rule.permission === "todowrite")
+
+      // kilocode_change start - build hardened child permissions once so reused sessions are refreshed too
+      const childPermission = [
+        ...(parent.permission ?? []).filter((rule) => rule.permission === "external_directory" || rule.action === "deny"),
+        ...(canTodo
+          ? []
+          : [
+              {
+                permission: "todowrite" as const,
+                pattern: "*" as const,
+                action: "deny" as const,
+              },
+            ]),
+        ...(canTask
+          ? []
+          : [
+              {
+                permission: id,
+                pattern: "*" as const,
+                action: "deny" as const,
+              },
+            ]),
+        ...(cfg.experimental?.primary_tools?.map((item) => ({
+          pattern: "*",
+          action: "allow" as const,
+          permission: item,
+        })) ?? []),
+        ...(handoff ? KiloTask.marker() : []),
+        ...KiloTask.permissions(rules, { task: canTask }),
+      ]
+      // kilocode_change end
 
       const reuse = AgentTeamSessionReuse.resolve({
         cfg,
@@ -100,44 +131,31 @@ export const TaskTool = Tool.define(
             ),
           )
         : undefined
-      const nextSession =
-        session ??
-        (yield* sessions.create({
-          parentID: ctx.sessionID,
-          title: params.description + ` (@${next.name} subagent)`,
-          permission: [
-            ...(parent.permission ?? []).filter(
-              (rule) => rule.permission === "external_directory" || rule.action === "deny",
-            ),
-            ...(canTodo
-              ? []
-              : [
-                  {
-                    permission: "todowrite" as const,
-                    pattern: "*" as const,
-                    action: "deny" as const,
-                  },
-                ]),
-            ...(canTask
-              ? []
-              : [
-                  {
-                    permission: id,
-                    pattern: "*" as const,
-                    action: "deny" as const,
-                  },
-                ]),
-            ...(cfg.experimental?.primary_tools?.map((item) => ({
-              pattern: "*",
-              action: "allow" as const,
-              permission: item,
-            })) ?? []),
-            // kilocode_change start — deny task + propagate caller restrictions, except Secretary -> Orchestrator handoff
-            ...(handoff ? KiloTask.marker() : []),
-            ...KiloTask.permissions(rules, { task: handoff }),
-            // kilocode_change end
-          ],
-        }))
+      // kilocode_change start - raw task_id reuse must stay scoped to the current parent session
+      if (session && session.parentID !== ctx.sessionID) {
+        if (reuse.entry) {
+          AgentTeamSessionReuse.drop({
+            parent: ctx.sessionID,
+            agent: params.subagent_type,
+            taskID: reuse.entry.taskID,
+          })
+        }
+        return yield* Effect.fail(new Error(`Task session ${session.id} is not a child of the current session`))
+      }
+      // kilocode_change end
+      const nextSession = session
+        ? yield* sessions
+            .setPermission({ sessionID: session.id, permission: childPermission })
+            .pipe(Effect.as({ ...session, permission: childPermission }))
+        : yield* sessions.create({
+            parentID: ctx.sessionID,
+            title: params.description + ` (@${next.name} subagent)`,
+            permission: childPermission,
+          })
+      // kilocode_change start - enforce Agent Team max-depth even when reusing child sessions
+      const depth = yield* KiloTask.depth({ sessions, session: nextSession })
+      KiloTask.validateDepth({ cfg, depth, maxDepth: budget.maxDepth })
+      // kilocode_change end
 
       const msg = yield* Effect.sync(() => MessageV2.get({ sessionID: ctx.sessionID, messageID: ctx.messageID }))
       if (msg.info.role !== "assistant") return yield* Effect.fail(new Error("Not an assistant message"))
@@ -169,6 +187,10 @@ export const TaskTool = Tool.define(
           sessionId: nextSession.id,
           model,
           variant, // kilocode_change
+          // kilocode_change start - expose Agent Team delegation depth
+          delegationDepth: depth,
+          delegationMaxDepth: budget.maxDepth,
+          // kilocode_change end
         },
       })
 
@@ -266,6 +288,10 @@ export const TaskTool = Tool.define(
                 sessionId: nextSession.id,
                 model: attempt.pick.model, // kilocode_change
                 variant: attempt.pick.variant, // kilocode_change
+                // kilocode_change start - expose Agent Team delegation depth
+                delegationDepth: depth,
+                delegationMaxDepth: budget.maxDepth,
+                // kilocode_change end
               },
               output: [
                 `task_id: ${nextSession.id} (for resuming to continue this task if needed)`,

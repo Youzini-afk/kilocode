@@ -14,6 +14,8 @@ type TaskMeta = {
     providerID: ProviderID
   }
   variant?: string
+  delegationDepth?: number
+  delegationMaxDepth?: number
   failed?: boolean
   subagent_type?: string
 }

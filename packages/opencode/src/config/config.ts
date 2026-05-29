@@ -212,6 +212,9 @@ const AgentTeamSubtask = Schema.Struct({
   timeoutMs: Schema.optional(NonNegativeInt).annotate({
     description: "Task-tool subagent timeout in milliseconds. 0 disables the timeout.",
   }),
+  maxDepth: Schema.optional(PositiveInt).annotate({
+    description: "Maximum Agent Team task delegation depth. Defaults to 3.",
+  }),
 })
 
 const AgentTeamSecretary = Schema.Struct({

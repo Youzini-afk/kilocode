@@ -1,5 +1,5 @@
 import { afterEach, describe, expect } from "bun:test"
-import { Effect, Layer } from "effect"
+import { Cause, Effect, Layer } from "effect"
 import { Agent } from "../../src/agent/agent"
 import { Config } from "../../src/config/config"
 import * as CrossSpawnSpawner from "@opencode-ai/core/cross-spawn-spawner"
@@ -140,7 +140,7 @@ describe("Kilo task nesting", () => {
     ),
   )
 
-  it.live("disables nested task tool even when global task permission allows it", () =>
+  it.live("keeps nested task disabled outside Agent Team even when global task permission allows it", () =>
     provideTmpdirInstance(
       () =>
         Effect.gen(function* () {
@@ -186,6 +186,136 @@ describe("Kilo task nesting", () => {
           permission: {
             task: "allow",
           },
+        },
+      },
+    ),
+  )
+
+  it.live("allows Agent Team child delegation when max-depth budget remains", () =>
+    provideTmpdirInstance(
+      () =>
+        Effect.gen(function* () {
+          const sessions = yield* Session.Service
+          const { chat, assistant } = yield* seed()
+          const child = yield* sessions.create({ parentID: chat.id, title: "child" })
+          const user = yield* sessions.updateMessage({
+            id: MessageID.ascending(),
+            role: "user",
+            sessionID: child.id,
+            agent: "fixer",
+            model: ref,
+            time: { created: Date.now() },
+          })
+          const msg: MessageV2.Assistant = {
+            ...assistant,
+            id: MessageID.ascending(),
+            parentID: user.id,
+            sessionID: child.id,
+            mode: "fixer",
+            agent: "fixer",
+          }
+          yield* sessions.updateMessage(msg)
+          const tool = yield* TaskTool
+          const def = yield* tool.init()
+          let seen: SessionPrompt.PromptInput | undefined
+          const promptOps = stubOps({ onPrompt: (input) => (seen = input) })
+
+          const result = yield* def.execute(
+            {
+              description: "fix nested",
+              prompt: "continue implementation",
+              subagent_type: "fixer",
+            },
+            {
+              sessionID: child.id,
+              messageID: msg.id,
+              agent: "fixer",
+              abort: new AbortController().signal,
+              extra: { promptOps },
+              messages: [],
+              metadata: () => Effect.void,
+              ask: () => Effect.void,
+            },
+          )
+
+          const grandchild = yield* sessions.get(result.metadata.sessionId)
+          expect(grandchild.parentID).toBe(child.id)
+          expect(result.metadata.delegationDepth).toBe(2)
+          expect(result.metadata.delegationMaxDepth).toBe(3)
+          expect(seen?.tools?.task).toBeUndefined()
+          expect(grandchild.permission).not.toEqual(
+            expect.arrayContaining([
+              {
+                permission: "task",
+                pattern: "*",
+                action: "deny",
+              },
+            ]),
+          )
+        }),
+      {
+        config: {
+          agentTeam: { enabled: true, subtask: { maxDepth: 3 } },
+        },
+      },
+    ),
+  )
+
+  it.live("blocks Agent Team delegation beyond max-depth", () =>
+    provideTmpdirInstance(
+      () =>
+        Effect.gen(function* () {
+          const sessions = yield* Session.Service
+          const { chat, assistant } = yield* seed()
+          const child = yield* sessions.create({ parentID: chat.id, title: "child" })
+          const grandchild = yield* sessions.create({ parentID: child.id, title: "grandchild" })
+          const user = yield* sessions.updateMessage({
+            id: MessageID.ascending(),
+            role: "user",
+            sessionID: grandchild.id,
+            agent: "fixer",
+            model: ref,
+            time: { created: Date.now() },
+          })
+          const msg: MessageV2.Assistant = {
+            ...assistant,
+            id: MessageID.ascending(),
+            parentID: user.id,
+            sessionID: grandchild.id,
+            mode: "fixer",
+            agent: "fixer",
+          }
+          yield* sessions.updateMessage(msg)
+          const tool = yield* TaskTool
+          const def = yield* tool.init()
+          const promptOps = stubOps()
+
+          const exit = yield* def
+            .execute(
+              {
+                description: "fix nested",
+                prompt: "continue implementation",
+                subagent_type: "fixer",
+              },
+              {
+                sessionID: grandchild.id,
+                messageID: msg.id,
+                agent: "fixer",
+                abort: new AbortController().signal,
+                extra: { promptOps },
+                messages: [],
+                metadata: () => Effect.void,
+                ask: () => Effect.void,
+              },
+            )
+            .pipe(Effect.exit)
+
+          expect(exit._tag).toBe("Failure")
+          if (exit._tag === "Failure") expect(Cause.pretty(exit.cause)).toContain("current depth 2; maxDepth is 2")
+        }),
+      {
+        config: {
+          agentTeam: { enabled: true, subtask: { maxDepth: 2 } },
         },
       },
     ),

@@ -189,3 +189,15 @@ describe("kilocode indexing config", () => {
     expect(input.modelDimension).toBeUndefined()
   })
 })
+
+describe("Agent Team config", () => {
+  test("accepts positive integer subtask maxDepth", () => {
+    const parsed = Config.Info.zod.parse({ agentTeam: { enabled: true, subtask: { maxDepth: 3 } } })
+
+    expect(parsed.agentTeam?.subtask?.maxDepth).toBe(3)
+  })
+
+  test("rejects non-positive subtask maxDepth", () => {
+    expect(() => Config.Info.zod.parse({ agentTeam: { enabled: true, subtask: { maxDepth: 0 } } })).toThrow()
+  })
+})

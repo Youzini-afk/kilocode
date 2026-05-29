@@ -1,5 +1,5 @@
 import { afterEach, describe, expect } from "bun:test"
-import { Effect, Exit, Fiber, Layer } from "effect"
+import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import { Agent } from "../../src/agent/agent"
 import { Config } from "@/config/config"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
@@ -240,6 +240,89 @@ describe("tool.task", () => {
     }),
   )
 
+  it.instance("execute rejects task_id sessions outside the current parent", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Session.Service
+      const { chat, assistant } = yield* seed()
+      const other = yield* sessions.create({ title: "Other parent" })
+      const child = yield* sessions.create({ parentID: other.id, title: "Other child" })
+      const tool = yield* TaskTool
+      const def = yield* tool.init()
+      const promptOps = stubOps()
+
+      const exit = yield* def
+        .execute(
+          {
+            description: "inspect bug",
+            prompt: "look into the cache key path",
+            subagent_type: "general",
+            task_id: child.id,
+          },
+          {
+            sessionID: chat.id,
+            messageID: assistant.id,
+            agent: "build",
+            abort: new AbortController().signal,
+            extra: { promptOps },
+            messages: [],
+            metadata: () => Effect.void,
+            ask: () => Effect.void,
+          },
+        )
+        .pipe(Effect.exit)
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      const failure = exit as { _tag: "Failure"; cause: Cause.Cause<unknown> }
+      expect(Cause.pretty(failure.cause)).toContain("is not a child of the current session")
+    }),
+  )
+
+  it.instance("execute refreshes inherited permissions on reused task sessions", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Session.Service
+      const { chat, assistant } = yield* seed()
+      const child = yield* sessions.create({
+        parentID: chat.id,
+        title: "Existing child",
+        permission: [{ permission: "bash", pattern: "*", action: "allow" }],
+      })
+      yield* sessions.setPermission({
+        sessionID: chat.id,
+        permission: [{ permission: "bash", pattern: "*", action: "deny" }],
+      })
+      const tool = yield* TaskTool
+      const def = yield* tool.init()
+      const promptOps = stubOps()
+
+      yield* def.execute(
+        {
+          description: "inspect bug",
+          prompt: "look into the cache key path",
+          subagent_type: "general",
+          task_id: child.id,
+        },
+        {
+          sessionID: chat.id,
+          messageID: assistant.id,
+          agent: "build",
+          abort: new AbortController().signal,
+          extra: { promptOps },
+          messages: [],
+          metadata: () => Effect.void,
+          ask: () => Effect.void,
+        },
+      )
+
+      const refreshed = yield* sessions.get(child.id)
+      expect(refreshed.permission).toEqual(
+        expect.arrayContaining([{ permission: "bash", pattern: "*", action: "deny" }]),
+      )
+      expect(refreshed.permission).not.toEqual(
+        expect.arrayContaining([{ permission: "bash", pattern: "*", action: "allow" }]),
+      )
+    }),
+  )
+
   it.instance("execute asks by default and skips checks when bypassed", () =>
     Effect.gen(function* () {
       const { chat, assistant } = yield* seed()
@@ -432,7 +515,7 @@ describe("tool.task", () => {
         // kilocode_change end
         expect(seen?.tools).toEqual({
           todowrite: false,
-          task: false, // kilocode_change - Kilo disallows nested subagents
+          task: false, // kilocode_change - Kilo disallows nested subagents outside Agent Team
           bash: false,
           read: false,
         })

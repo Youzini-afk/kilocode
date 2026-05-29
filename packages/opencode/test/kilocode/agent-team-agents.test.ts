@@ -253,6 +253,7 @@ describe("Agent Team agents", () => {
 
     expect(map.fixer?.description).toContain("backend")
     expect(map.fixer?.prompt).toContain("CLI, config, fixtures, tests")
+    expect(map.fixer?.prompt).toContain("Delegation is bounded by maxDepth")
     expect(map.oracle?.description).toContain("Tiered acceptance")
     expect(map.oracle?.prompt).toContain("Tier 1 quick acceptance")
     expect(map.oracle?.prompt).toContain("Tier 3 deep audit")
