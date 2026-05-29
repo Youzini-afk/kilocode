@@ -7,6 +7,12 @@ import { CTX_MEMORY_DREAMER_ACTIONS } from "./types";
 
 mock.module("../../features/magic-context/memory/embedding", () => ({
     embedText: async (_text: string) => null,
+    embedTextForProject: async (_project: string, _text: string) => ({
+        vector: new Float32Array([1, 2, 3]),
+        modelId: "project:model",
+        generation: 1,
+    }),
+    getProjectEmbeddingSnapshot: () => null,
     isEmbeddingEnabled: () => true,
     getEmbeddingModelId: () => "mock:model",
 }));
@@ -185,6 +191,30 @@ describe("createCtxMemoryTools", () => {
 
             expect(memories).toHaveLength(1);
             expect(memories[0]?.projectPath).toBe("/repo/project");
+        });
+
+        it("ensures project registration before writing", async () => {
+            const calls: string[] = [];
+            const scoped = createCtxMemoryTools({
+                db,
+                resolveProjectPath: () => "/repo/project",
+                ensureProjectRegistered: async (directory) => {
+                    calls.push(directory);
+                },
+                memoryEnabled: true,
+                embeddingEnabled: false,
+            });
+
+            await scoped.ctx_memory.execute(
+                {
+                    action: "write",
+                    category: "USER_PREFERENCES",
+                    content: "Keep answers dense.",
+                },
+                toolContext(),
+            );
+
+            expect(calls).toEqual(["/repo/project"]);
         });
     });
 

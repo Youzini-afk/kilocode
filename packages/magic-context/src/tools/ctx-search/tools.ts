@@ -1,5 +1,9 @@
 import { type ToolDefinition, tool } from "@kilocode/plugin";
 import { getLastCompartmentEndMessage } from "../../features/magic-context/compartment-storage";
+import {
+    embedTextForProject,
+    getProjectEmbeddingSnapshot,
+} from "../../features/magic-context/memory/embedding";
 import { type UnifiedSearchResult, unifiedSearch } from "../../features/magic-context/search";
 import { getVisibleMemoryIds } from "../../hooks/magic-context/inject-compartments";
 import {
@@ -132,6 +136,13 @@ function createCtxSearchTool(deps: CtxSearchToolDeps): ToolDefinition {
             // can differ from the session's working directory when the user
             // runs `opencode -s <id>` from outside the project.
             const projectPath = deps.resolveProjectPath(toolContext.directory);
+            await deps.ensureProjectRegistered?.(toolContext.directory, deps.db);
+            const snapshot = getProjectEmbeddingSnapshot(projectPath);
+            const memoryEnabled = snapshot?.features.memoryEnabled ?? deps.memoryEnabled;
+            const embeddingEnabled = snapshot
+                ? snapshot.enabled || snapshot.gitCommitEnabled
+                : deps.embeddingEnabled;
+            const gitCommitsEnabled = snapshot?.gitCommitEnabled ?? deps.gitCommitsEnabled ?? false;
 
             const results = await unifiedSearch(
                 deps.db,
@@ -140,11 +151,16 @@ function createCtxSearchTool(deps: CtxSearchToolDeps): ToolDefinition {
                 query,
                 {
                     limit: normalizeLimit(args.limit),
-                    memoryEnabled: deps.memoryEnabled,
-                    embeddingEnabled: deps.embeddingEnabled,
+                    memoryEnabled,
+                    embeddingEnabled,
+                    embedQuery: async (text, signal) => {
+                        const result = await embedTextForProject(projectPath, text, signal);
+                        return result?.vector ?? null;
+                    },
+                    isEmbeddingRuntimeEnabled: () => embeddingEnabled === true,
                     readMessages: deps.readMessages,
                     maxMessageOrdinal: lastCompartmentEnd >= 0 ? lastCompartmentEnd : undefined,
-                    gitCommitsEnabled: deps.gitCommitsEnabled ?? false,
+                    gitCommitsEnabled,
                     sources: normalizeSources(args.sources),
                     visibleMemoryIds,
                 },

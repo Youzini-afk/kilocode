@@ -37,6 +37,7 @@ export interface CtxMemoryToolDeps {
      * directory's project.
      */
     resolveProjectPath: (directory: string) => string;
+    ensureProjectRegistered?: (directory: string, db: Database) => Promise<void>;
     memoryEnabled: boolean;
     embeddingEnabled: boolean;
     allowedActions?: CtxMemoryAction[];

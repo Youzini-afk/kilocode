@@ -20,6 +20,7 @@ import {
 } from "../../features/magic-context/storage";
 import type { Tagger } from "../../features/magic-context/tagger";
 import type { ContextUsage } from "../../features/magic-context/types";
+import { ensureProjectRegisteredFromOpenCodeDirectory } from "../../plugin/embedding-bootstrap";
 import type { PluginContext } from "../../plugin/types";
 import { getErrorMessage } from "../../shared/error-message";
 import { log } from "../../shared/logger";
@@ -273,6 +274,7 @@ export function createMagicContextHook(deps: MagicContextDeps) {
         commitSeenLastPass,
         client: deps.client,
         directory: deps.directory,
+        ensureProjectRegistered: ensureProjectRegisteredFromOpenCodeDirectory,
         memoryConfig: deps.config.memory
             ? {
                   enabled: deps.config.memory.enabled,

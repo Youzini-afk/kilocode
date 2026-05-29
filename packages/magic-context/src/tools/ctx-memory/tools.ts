@@ -16,7 +16,12 @@ import {
     updateMemoryContent,
     updateMemorySeenCount,
 } from "../../features/magic-context/memory";
-import { embedText, getEmbeddingModelId } from "../../features/magic-context/memory/embedding";
+import {
+    embedText,
+    embedTextForProject,
+    getEmbeddingModelId,
+    getProjectEmbeddingSnapshot,
+} from "../../features/magic-context/memory/embedding";
 import { computeNormalizedHash } from "../../features/magic-context/memory/normalize-hash";
 import { sessionLog } from "../../shared/logger";
 import { CTX_MEMORY_DESCRIPTION, CTX_MEMORY_TOOL_NAME, DEFAULT_SEARCH_LIMIT } from "./constants";
@@ -121,15 +126,27 @@ function filterByCategory(memories: Memory[], category?: string): Memory[] {
 function queueMemoryEmbedding(args: {
     deps: CtxMemoryToolDeps;
     sessionId: string;
+    projectPath: string;
     memoryId: number;
     content: string;
 }): void {
-    if (!args.deps.embeddingEnabled) {
+    const snapshot = getProjectEmbeddingSnapshot(args.projectPath);
+    if (snapshot ? !snapshot.enabled : !args.deps.embeddingEnabled) {
         return;
     }
 
     void (async () => {
-        const embedding = await embedText(args.content);
+        const result = snapshot?.enabled
+            ? await embedTextForProject(args.projectPath, args.content)
+            : null;
+        if (snapshot && !result) {
+            sessionLog(
+                args.sessionId,
+                `memory embedding skipped for memory ${args.memoryId}: project embedding provider unavailable or registration changed.`,
+            );
+            return;
+        }
+        const embedding = result?.vector ?? (await embedText(args.content));
         if (!embedding) {
             sessionLog(
                 args.sessionId,
@@ -138,7 +155,7 @@ function queueMemoryEmbedding(args: {
             return;
         }
 
-        const modelId = getEmbeddingModelId();
+        const modelId = result?.modelId ?? getEmbeddingModelId();
         if (modelId === "off") {
             sessionLog(
                 args.sessionId,
@@ -217,15 +234,16 @@ function createCtxMemoryTool(deps: CtxMemoryToolDeps): ToolDefinition {
                 return `Error: Action '${args.action}' is not allowed in this context.`;
             }
 
-            if (!deps.memoryEnabled) {
-                return getDisabledMessage();
-            }
-
             // Resolve the session's actual project from `toolContext.directory`
             // each call. OpenCode's top-level `ctx.directory` (the launch dir)
             // can differ from the session's working directory when the user
             // runs `opencode -s <id>` from outside the project.
             const projectPath = deps.resolveProjectPath(toolContext.directory);
+            await deps.ensureProjectRegistered?.(toolContext.directory, deps.db);
+            const embeddingSnapshot = getProjectEmbeddingSnapshot(projectPath);
+            if (embeddingSnapshot ? !embeddingSnapshot.features.memoryEnabled : !deps.memoryEnabled) {
+                return getDisabledMessage();
+            }
 
             if (args.action === "write") {
                 const content = args.content?.trim();
@@ -266,6 +284,7 @@ function createCtxMemoryTool(deps: CtxMemoryToolDeps): ToolDefinition {
                 queueMemoryEmbedding({
                     deps,
                     sessionId: toolContext.sessionID,
+                    projectPath,
                     memoryId: memory.id,
                     content,
                 });
@@ -330,6 +349,7 @@ function createCtxMemoryTool(deps: CtxMemoryToolDeps): ToolDefinition {
                 queueMemoryEmbedding({
                     deps,
                     sessionId: toolContext.sessionID,
+                    projectPath,
                     memoryId: memory.id,
                     content,
                 });
@@ -458,6 +478,7 @@ function createCtxMemoryTool(deps: CtxMemoryToolDeps): ToolDefinition {
                 queueMemoryEmbedding({
                     deps,
                     sessionId: toolContext.sessionID,
+                    projectPath,
                     memoryId: canonicalMemory.id,
                     content,
                 });

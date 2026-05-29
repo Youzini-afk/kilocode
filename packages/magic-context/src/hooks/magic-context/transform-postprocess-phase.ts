@@ -32,6 +32,7 @@ import { hasVisibleNoteReadCall } from "./note-visibility";
 import { reinjectNudgeAtAnchor } from "./nudge-injection";
 import type { NudgePlacementStore } from "./nudge-placement-store";
 import type { ContextNudge } from "./nudger";
+import type { Database } from "../../shared/sqlite";
 import { replaySentinelByMessageIds } from "./sentinel";
 import {
     clearOldReasoning,
@@ -111,6 +112,8 @@ interface RunPostTransformPhaseArgs {
      */
     skipTypedReasoningCleanup: boolean;
     projectPath?: string;
+    directory?: string;
+    ensureProjectRegistered?: (directory: string, db: Database) => Promise<void>;
     /** Experimental auto-search: when enabled, runs ctx_search on the latest
      *  user prompt and appends a compact fragment hint. */
     autoSearch?: {
@@ -720,9 +723,11 @@ export async function runPostTransformPhase(args: RunPostTransformPhaseArgs): Pr
                     scoreThreshold: args.autoSearch.scoreThreshold,
                     minPromptChars: args.autoSearch.minPromptChars,
                     projectPath: args.projectPath,
+                    directory: args.directory,
                     memoryEnabled: args.autoSearch.memoryEnabled,
                     embeddingEnabled: args.autoSearch.embeddingEnabled,
                     gitCommitsEnabled: args.autoSearch.gitCommitsEnabled,
+                    ensureProjectRegistered: args.ensureProjectRegistered,
                     visibleMemoryIds,
                 },
             });

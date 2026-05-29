@@ -1,6 +1,7 @@
 import { getLastCompartmentEndMessage } from "../../features/magic-context/compartment-storage";
 import { resolveProjectIdentity } from "../../features/magic-context/memory/project-identity";
 import type { Scheduler } from "../../features/magic-context/scheduler";
+import type { Database } from "../../shared/sqlite";
 
 import {
     type ContextDatabase,
@@ -203,6 +204,7 @@ export interface TransformDeps {
     getModelKey?: (sessionId: string) => string | undefined;
     getFallbackModelId?: (sessionId: string) => string | undefined;
     projectPath?: string;
+    ensureProjectRegistered?: (directory: string, db: Database) => Promise<void>;
     experimentalCompactionMarkers?: boolean;
     experimentalUserMemories?: boolean;
     /** When true, inject wall-clock gap markers (<!-- +Xm -->) on user messages and
@@ -606,7 +608,11 @@ export function createTransform(deps: TransformDeps) {
         // twice per turn is wasteful — resolveProjectIdentity caches by
         // directory but still does a cache lookup on each call, and the
         // first call per directory in a new process spawns `git rev-parse`.
-        const projectIdentity = deps.memoryConfig?.enabled
+        const needsProjectIdentity =
+            deps.memoryConfig?.enabled ||
+            deps.autoSearch?.enabled ||
+            deps.autoSearch?.gitCommitsEnabled;
+        const projectIdentity = needsProjectIdentity
             ? resolveProjectIdentity(compartmentDirectory || process.cwd())
             : undefined;
 
@@ -969,7 +975,9 @@ export function createTransform(deps: TransformDeps) {
             forceMaterializationPercentage: FORCE_MATERIALIZE_PERCENTAGE,
             hasRecentReduceCall,
             skipTypedReasoningCleanup,
-            projectPath: deps.projectPath,
+            projectPath: projectIdentity,
+            directory: compartmentDirectory || deps.directory,
+            ensureProjectRegistered: deps.ensureProjectRegistered,
             autoSearch: deps.autoSearch,
             // Only forward caveman config when ctx_reduce is disabled — the
             // feature replaces manual ctx_reduce text-dropping for users

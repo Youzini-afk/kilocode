@@ -49,6 +49,26 @@ interface LoadedConfigFile {
     /** Warnings from {env:} / {file:} substitution, with config-path prefix applied. */
     warnings: string[];
     path: string;
+    rawConfig: Record<string, unknown>;
+}
+
+export type ConfigLoadOutcome = "ok" | "missing" | "load-error";
+
+export interface PluginConfigLoadDetails {
+    config: MagicContextPluginConfig & { configWarnings?: string[] };
+    sources: {
+        userConfig: ConfigLoadOutcome;
+        projectConfig: ConfigLoadOutcome;
+    };
+    warnings: string[];
+    embeddingSubstitutionFailure: boolean;
+}
+
+function hasEmbeddingApiKeyToken(config: Record<string, unknown>): boolean {
+    const embedding = config.embedding;
+    if (!embedding || typeof embedding !== "object") return false;
+    const apiKey = (embedding as Record<string, unknown>).api_key;
+    return typeof apiKey === "string" && /\{(?:env|file):[^}]+\}/.test(apiKey);
 }
 
 function loadConfigFile(configPath: string): LoadedConfigFile | null {
@@ -66,6 +86,7 @@ function loadConfigFile(configPath: string): LoadedConfigFile | null {
             config: parseJsonc<Record<string, unknown>>(substituted.text),
             warnings: substituted.warnings.map((w) => `${configPath}: ${w}`),
             path: configPath,
+            rawConfig: parseJsonc<Record<string, unknown>>(rawText),
         };
     } catch (error) {
         console.warn(
@@ -73,6 +94,32 @@ function loadConfigFile(configPath: string): LoadedConfigFile | null {
             error instanceof Error ? error.message : String(error),
         );
         return null;
+    }
+}
+
+function tryLoadConfigFile(configPath: string): { loaded: LoadedConfigFile | null; outcome: ConfigLoadOutcome } {
+    try {
+        if (!existsSync(configPath)) {
+            return { loaded: null, outcome: "missing" };
+        }
+        const rawText = readFileSync(configPath, "utf-8");
+        const substituted = substituteConfigVariables({ text: rawText, configPath });
+        const rawConfig = parseJsonc<Record<string, unknown>>(rawText);
+        return {
+            loaded: {
+                config: parseJsonc<Record<string, unknown>>(substituted.text),
+                warnings: substituted.warnings.map((w) => `${configPath}: ${w}`),
+                path: configPath,
+                rawConfig,
+            },
+            outcome: "ok",
+        };
+    } catch (error) {
+        console.warn(
+            `[magic-context] failed to load config from ${configPath}:`,
+            error instanceof Error ? error.message : String(error),
+        );
+        return { loaded: null, outcome: "load-error" };
     }
 }
 
@@ -343,6 +390,10 @@ function parsePluginConfig(
 export function loadPluginConfig(
     directory: string,
 ): MagicContextPluginConfig & { configWarnings?: string[] } {
+    return loadPluginConfigDetailed(directory).config;
+}
+
+export function loadPluginConfigDetailed(directory: string): PluginConfigLoadDetails {
     const userDetected = (() => {
         const preferred = detectConfigFile(getUserConfigBasePath());
         if (preferred.format !== "none") return preferred;
@@ -353,9 +404,16 @@ export function loadPluginConfig(
             .map((basePath) => detectConfigFile(basePath))
             .find((detected) => detected.format !== "none") ?? detectConfigFile(join(directory, CONFIG_FILE_BASENAME));
 
-    const userLoaded = userDetected.format === "none" ? null : loadConfigFile(userDetected.path);
-    const projectLoaded =
-        projectDetected.format === "none" ? null : loadConfigFile(projectDetected.path);
+    const userResult =
+        userDetected.format === "none"
+            ? { loaded: null, outcome: "missing" as const }
+            : tryLoadConfigFile(userDetected.path);
+    const projectResult =
+        projectDetected.format === "none"
+            ? { loaded: null, outcome: "missing" as const }
+            : tryLoadConfigFile(projectDetected.path);
+    const userLoaded = userResult.loaded;
+    const projectLoaded = projectResult.loaded;
 
     let config: MagicContextPluginConfig & { configWarnings?: string[] } = parsePluginConfig({});
     const allWarnings: string[] = [];
@@ -392,7 +450,17 @@ export function loadPluginConfig(
         config.configWarnings = allWarnings;
     }
 
-    return config;
+    return {
+        config,
+        sources: {
+            userConfig: userResult.outcome,
+            projectConfig: projectResult.outcome,
+        },
+        warnings: allWarnings,
+        embeddingSubstitutionFailure:
+            Boolean(userLoaded?.warnings.length && hasEmbeddingApiKeyToken(userLoaded.rawConfig)) ||
+            Boolean(projectLoaded?.warnings.length && hasEmbeddingApiKeyToken(projectLoaded.rawConfig)),
+    };
 }
 
 function readRawConfigFile(configPath: string): Record<string, unknown> {

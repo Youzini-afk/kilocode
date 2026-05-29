@@ -6,7 +6,7 @@ import { Database } from "../../shared/sqlite";
 import { closeQuietly } from "../../shared/sqlite-helpers";
 import { createCtxSearchTools } from "./tools";
 
-const toolContext = (sessionID = "ses-search") => ({ sessionID }) as never;
+const toolContext = (sessionID = "ses-search") => ({ sessionID, directory: "/repo/project" }) as never;
 const EXPAND_HINT =
     "Use ctx_expand(start, end) with the range from any message result above to read the full conversation context.";
 
@@ -53,6 +53,24 @@ describe("createCtxSearchTools", () => {
         const result = await tools.ctx_search.execute({ query: "missing" }, toolContext());
 
         expect(result).toContain("No results found");
+    });
+
+    it("ensures project registration before searching", async () => {
+        const calls: string[] = [];
+        const tools = createCtxSearchTools({
+            db,
+            resolveProjectPath: () => "/repo/project",
+            ensureProjectRegistered: async (directory) => {
+                calls.push(directory);
+            },
+            memoryEnabled: false,
+            embeddingEnabled: false,
+            readMessages: () => [],
+        });
+
+        await tools.ctx_search.execute({ query: "missing" }, toolContext());
+
+        expect(calls).toEqual(["/repo/project"]);
     });
 
     it("formats message results with inline ranges and one trailing expand hint", async () => {

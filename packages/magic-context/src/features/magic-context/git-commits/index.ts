@@ -15,6 +15,7 @@ export {
 export {
     clearProjectCommitEmbeddings,
     countEmbeddedCommits,
+    getDistinctCommitEmbeddingModelIds,
     loadProjectCommitEmbeddings,
     loadUnembeddedCommits,
     saveCommitEmbedding,

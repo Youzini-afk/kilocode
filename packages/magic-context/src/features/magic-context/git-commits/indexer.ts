@@ -14,6 +14,7 @@ import type { EmbeddingConfig } from "../../../config/schema/magic-context";
 import { log } from "../../../shared/logger";
 import type { Database } from "../../../shared/sqlite";
 import { embedBatch, getEmbeddingModelId, isEmbeddingEnabled } from "../memory/embedding";
+import { embedBatchForProject, getProjectEmbeddingSnapshot } from "../project-embedding-registry";
 import { readGitCommits } from "./git-log-reader";
 import {
     countEmbeddedCommits,
@@ -99,8 +100,13 @@ export async function indexCommitsForProject(
         if (commits.length === 0) {
             // No new commits. Still enforce the cap in case prior runs overflowed.
             result.evicted = enforceProjectCap(db, projectPath, options.maxCommits);
+            const snapshot = getProjectEmbeddingSnapshot(projectPath);
+            const enabled = snapshot?.gitCommitEnabled ?? isEmbeddingEnabled();
+            if (!options.skipEmbed && enabled) {
+                result.embedded = await embedUnembeddedCommits(db, projectPath, embeddingConfig);
+            }
             log(
-                `[git-commits] no new commits for ${projectPath} (sinceMs=${sinceMs} latestIndexed=${latestIndexed ?? "none"} evicted=${result.evicted})`,
+                `[git-commits] no new commits for ${projectPath} (sinceMs=${sinceMs} latestIndexed=${latestIndexed ?? "none"} evicted=${result.evicted} embedded=${result.embedded})`,
             );
             return result;
         }
@@ -114,9 +120,11 @@ export async function indexCommitsForProject(
         result.updated = upsert.updated;
         result.evicted = enforceProjectCap(db, projectPath, options.maxCommits);
 
-        if (options.skipEmbed || !isEmbeddingEnabled()) {
+        const snapshot = getProjectEmbeddingSnapshot(projectPath);
+        const enabled = snapshot?.gitCommitEnabled ?? isEmbeddingEnabled();
+        if (options.skipEmbed || !enabled) {
             log(
-                `[git-commits] indexed ${projectPath}: scanned=${result.scanned} inserted=${result.inserted} updated=${result.updated} evicted=${result.evicted} embedded=0 (embedding skipped: skipEmbed=${options.skipEmbed === true} embeddingEnabled=${isEmbeddingEnabled()})`,
+                `[git-commits] indexed ${projectPath}: scanned=${result.scanned} inserted=${result.inserted} updated=${result.updated} evicted=${result.evicted} embedded=0 (embedding skipped: skipEmbed=${options.skipEmbed === true} embeddingEnabled=${enabled})`,
             );
             return result;
         }
@@ -144,7 +152,9 @@ export async function embedUnembeddedCommits(
     if (embedInProgress.has(projectPath)) {
         return 0;
     }
-    if (!isEmbeddingEnabled()) {
+    const snapshot = getProjectEmbeddingSnapshot(projectPath);
+    const enabled = snapshot?.gitCommitEnabled ?? isEmbeddingEnabled();
+    if (!enabled) {
         return 0;
     }
 
@@ -160,8 +170,13 @@ export async function embedUnembeddedCommits(
 
             let embeddedThisBatch = 0;
             try {
-                const embeddings = await embedBatch(rows.map((row) => row.message));
-                const modelId = getEmbeddingModelId();
+                const texts = rows.map((row) => row.message);
+                const result = snapshot?.gitCommitEnabled
+                    ? await embedBatchForProject(projectPath, texts)
+                    : null;
+                if (snapshot && !result) break;
+                const embeddings = result?.vectors ?? (await embedBatch(texts));
+                const modelId = result?.modelId ?? getEmbeddingModelId();
                 if (modelId === "off") break;
 
                 db.transaction(() => {

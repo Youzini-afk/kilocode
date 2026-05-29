@@ -21,6 +21,7 @@ export interface CtxSearchToolDeps {
      * session's working directory.
      */
     resolveProjectPath: (directory: string) => string;
+    ensureProjectRegistered?: (directory: string, db: Database) => Promise<void>;
     memoryEnabled: boolean;
     embeddingEnabled: boolean;
     /** When true, ctx_search surfaces indexed git commits as a 3rd source. */

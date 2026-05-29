@@ -13,6 +13,7 @@ const saveEmbeddingStatements = new WeakMap<Database, PreparedStatement>();
 const loadAllEmbeddingsStatements = new WeakMap<Database, PreparedStatement>();
 const deleteEmbeddingStatements = new WeakMap<Database, PreparedStatement>();
 const getStoredModelIdStatements = new WeakMap<Database, PreparedStatement>();
+const getDistinctStoredModelIdStatements = new WeakMap<Database, PreparedStatement>();
 const clearAllEmbeddingsStatements = new WeakMap<Database, PreparedStatement>();
 
 function isEmbeddingBlob(value: unknown): value is Uint8Array | ArrayBuffer {
@@ -76,6 +77,17 @@ function getStoredModelIdStatement(db: Database): PreparedStatement {
     return stmt;
 }
 
+function getDistinctStoredModelIdStatement(db: Database): PreparedStatement {
+    let stmt = getDistinctStoredModelIdStatements.get(db);
+    if (!stmt) {
+        stmt = db.prepare(
+            "SELECT DISTINCT memory_embeddings.model_id AS modelId FROM memory_embeddings INNER JOIN memories ON memories.id = memory_embeddings.memory_id WHERE memories.project_path = ?",
+        );
+        getDistinctStoredModelIdStatements.set(db, stmt);
+    }
+    return stmt;
+}
+
 function getClearAllEmbeddingsStatement(db: Database): PreparedStatement {
     let stmt = clearAllEmbeddingsStatements.get(db);
     if (!stmt) {
@@ -115,6 +127,14 @@ export function deleteEmbedding(db: Database, memoryId: number): void {
 export function getStoredModelId(db: Database, projectPath: string): string | null {
     const row = getStoredModelIdStatement(db).get(projectPath) as StoredModelIdRow | undefined;
     return typeof row?.modelId === "string" ? row.modelId : null;
+}
+
+export function getDistinctStoredModelIds(
+    db: Database,
+    projectPath: string,
+): Set<string | null> {
+    const rows = getDistinctStoredModelIdStatement(db).all(projectPath) as StoredModelIdRow[];
+    return new Set(rows.map((row) => (typeof row.modelId === "string" ? row.modelId : null)));
 }
 
 export function clearEmbeddingsForProject(db: Database, projectPath: string): void {

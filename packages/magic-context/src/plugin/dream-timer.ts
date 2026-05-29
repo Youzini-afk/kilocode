@@ -4,7 +4,7 @@ import {
     embedUnembeddedCommits,
     indexCommitsForProject,
 } from "../features/magic-context/git-commits";
-import { embedAllUnembeddedMemories } from "../features/magic-context/memory/embedding";
+import { sweepAllRegisteredProjects } from "../features/magic-context/memory/embedding";
 import { resolveProjectIdentity } from "../features/magic-context/memory/project-identity";
 import { openDatabase } from "../features/magic-context/storage";
 import { log } from "../shared/logger";
@@ -119,29 +119,25 @@ export function startDreamScheduleTimer(args: ProjectRegistration): (() => void)
 function runTick(origin: "startup" | "interval"): void {
     log(`[dreamer] timer tick (${origin}) — projects=${registeredProjects.size}`);
     try {
-        // Memory embedding sweep is global (iterates all projects in DB),
-        // so we only need to call it once per tick — not per registered
-        // project.
+        // Project embedding sweep is registry-scoped, so we only need to call
+        // it once per tick — not per registered project.
         const anyEmbeddingEnabled = Array.from(registeredProjects.values()).some(
-            (r) => r.memoryEnabled && r.embeddingConfig.provider !== "off",
+            (r) =>
+                r.embeddingConfig.provider !== "off" &&
+                (r.memoryEnabled || r.gitCommitIndexing?.enabled === true),
         );
         if (anyEmbeddingEnabled) {
-            // Use the first registered project's embeddingConfig — they
-            // should all match (it's a top-level user config).
-            const first = registeredProjects.values().next().value;
-            if (first) {
-                void embedAllUnembeddedMemories(openDatabase(), first.embeddingConfig)
-                    .then((embeddedCount) => {
-                        if (embeddedCount > 0) {
-                            log(
-                                `[magic-context] proactively embedded ${embeddedCount} ${embeddedCount === 1 ? "memory" : "memories"} across all projects`,
-                            );
-                        }
-                    })
-                    .catch((error: unknown) => {
-                        log("[magic-context] periodic memory embedding sweep failed:", error);
-                    });
-            }
+            void sweepAllRegisteredProjects(openDatabase())
+                .then((result) => {
+                    if (result.memoriesEmbedded > 0 || result.commitsEmbedded > 0) {
+                        log(
+                            `[magic-context] proactively embedded ${result.memoriesEmbedded} memories and ${result.commitsEmbedded} commits across registered projects`,
+                        );
+                    }
+                })
+                .catch((error: unknown) => {
+                    log("[magic-context] periodic memory embedding sweep failed:", error);
+                });
         }
 
         // Per-project work — git commit indexing, dream schedule check,
@@ -232,7 +228,7 @@ async function sweepGitCommits(args: {
         });
         // Drain any remaining embedding backlog (indexer caps per run).
         let drainedEmbeddings = 0;
-        if (embeddingConfig.provider !== "off" && result.embedded > 0) {
+        if (embeddingConfig.provider !== "off") {
             drainedEmbeddings = await embedUnembeddedCommits(db, projectPath, embeddingConfig);
         }
         const elapsedMs = Date.now() - startedAt;

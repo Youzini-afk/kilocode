@@ -23,6 +23,10 @@ import type {
     UnifiedSearchOptions,
     UnifiedSearchResult,
 } from "../../features/magic-context/search";
+import {
+    embedTextForProject,
+    getProjectEmbeddingSnapshot,
+} from "../../features/magic-context/memory/embedding";
 import { unifiedSearch } from "../../features/magic-context/search";
 import { log, sessionLog } from "../../shared/logger";
 import type { Database } from "../../shared/sqlite";
@@ -84,9 +88,11 @@ export interface AutoSearchRunnerOptions {
     scoreThreshold: number;
     minPromptChars: number;
     projectPath: string;
+    directory?: string;
     memoryEnabled: boolean;
     embeddingEnabled: boolean;
     gitCommitsEnabled: boolean;
+    ensureProjectRegistered?: (directory: string, db: Database) => Promise<void>;
     /** Memory ids already rendered in the injected <session-history> block —
      *  skip fragments that just duplicate visible memories. */
     visibleMemoryIds?: Set<number>;
@@ -206,11 +212,31 @@ export async function runAutoSearchHint(args: {
 
     let results: UnifiedSearchResult[] | null;
     try {
+        if (options.directory) {
+            await options.ensureProjectRegistered?.(options.directory, db);
+        }
+        const snapshot = getProjectEmbeddingSnapshot(options.projectPath);
+        const embeddingEnabled = snapshot
+            ? snapshot.enabled || snapshot.gitCommitEnabled
+            : options.embeddingEnabled;
         const searchOptions: UnifiedSearchOptions = {
             limit: 10,
             memoryEnabled: options.memoryEnabled,
-            embeddingEnabled: options.embeddingEnabled,
-            gitCommitsEnabled: options.gitCommitsEnabled,
+            embeddingEnabled,
+            gitCommitsEnabled: snapshot ? snapshot.gitCommitEnabled : options.gitCommitsEnabled,
+            ...(snapshot
+                ? {
+                      embedQuery: async (text: string, signal?: AbortSignal) => {
+                          const result = await embedTextForProject(
+                              options.projectPath,
+                              text,
+                              signal,
+                          );
+                          return result?.vector ?? null;
+                      },
+                      isEmbeddingRuntimeEnabled: () => embeddingEnabled,
+                  }
+                : {}),
             // Hard-filter memories already rendered in <session-history>.
             // unifiedSearch applies this during memory merging so ranking
             // can't be distorted by already-visible hits.
