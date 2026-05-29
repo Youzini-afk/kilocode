@@ -136,7 +136,7 @@ function createCtxNoteTool(deps: CtxNoteToolDeps): ToolDefinition {
                 .string()
                 .optional()
                 .describe(
-                    "Open-ended condition for smart notes. When provided, creates a project-scoped smart note that the dreamer evaluates nightly. The note surfaces when the condition is met.",
+                    "Externally verifiable condition for smart notes. A separate background agent (dreamer) checks this using gh CLI, web fetches, file reads, git, etc. — NOT your conversation history. Use only for things like GitHub PR/issue state, release tags, file contents, or workflow runs. DO NOT use for 'when the user mentions X' / 'when we revisit Y' / 'when relevant to current task' — dreamer has no access to session context. For session-relative reminders, omit this and write a regular note.",
                 ),
             filter: tool.schema
                 .enum(["all", "active", "pending", "ready", "dismissed"])
@@ -168,7 +168,7 @@ function createCtxNoteTool(deps: CtxNoteToolDeps): ToolDefinition {
                 // Smart note — project-scoped with condition evaluation by dreamer
                 if (args.surface_condition?.trim()) {
                     if (!deps.dreamerEnabled) {
-                        return "Error: Smart notes require dreamer to be enabled. Enable dreamer in magic-context.jsonc to use surface_condition.";
+                        return "Error: Smart notes require dreamer to be enabled. Enable dreamer in kilo-magic-context.jsonc to use surface_condition.";
                     }
                     if (!projectIdentity) {
                         return "Error: Could not resolve project identity for smart note.";
@@ -192,10 +192,16 @@ function createCtxNoteTool(deps: CtxNoteToolDeps): ToolDefinition {
                 if (typeof noteId !== "number") {
                     return "Error: 'note_id' is required when action is 'dismiss'.";
                 }
-                const dismissed = dismissNote(deps.db, noteId);
+                if (!projectIdentity) {
+                    return "Error: Could not resolve project identity for note dismiss.";
+                }
+                const dismissed = dismissNote(deps.db, noteId, {
+                    projectPath: projectIdentity,
+                    sessionId,
+                });
                 return dismissed
                     ? `Note #${noteId} dismissed.`
-                    : `Note #${noteId} not found or already dismissed.`;
+                    : `Error: Note #${noteId} not found in your session/project or already dismissed.`;
             }
 
             if (action === "update") {
@@ -211,9 +217,15 @@ function createCtxNoteTool(deps: CtxNoteToolDeps): ToolDefinition {
                 if (!updates.content && !updates.surfaceCondition) {
                     return "Error: Provide 'content' and/or 'surface_condition' to update.";
                 }
-                const updated = updateNote(deps.db, noteId, updates);
+                if (!projectIdentity) {
+                    return "Error: Could not resolve project identity for note update.";
+                }
+                const updated = updateNote(deps.db, noteId, updates, {
+                    projectPath: projectIdentity,
+                    sessionId,
+                });
                 if (!updated) {
-                    return `Note #${noteId} not found or has no compatible fields to update.`;
+                    return `Error: Note #${noteId} not found in your session/project or has no compatible fields to update.`;
                 }
                 const parts: string[] = [];
                 if (updates.content) parts.push(`Content: ${updates.content}`);

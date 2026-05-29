@@ -215,6 +215,9 @@ describe("magic-context storage", () => {
         const updated = updateNote(db, smartNote.id, {
             content: "Surface the release checklist when release CI stabilizes.",
             surfaceCondition: "When release CI is green on main",
+        }, {
+            projectPath: "git:test-project",
+            sessionId: "ses-smart",
         });
         markNoteReady(db, smartNote.id, "release CI is green on main");
 
@@ -225,7 +228,24 @@ describe("magic-context storage", () => {
         );
 
         //#when
-        dismissNote(db, smartNote.id);
+        const reparented = updateNote(db, smartNote.id, {
+            projectPath: "git:other-project",
+        }, {
+            projectPath: "git:test-project",
+            sessionId: "ses-smart",
+        });
+
+        //#then
+        expect(reparented).toBeNull();
+        expect(getSmartNotes(db, "git:test-project", "ready").map((note) => note.id)).toEqual([
+            smartNote.id,
+        ]);
+
+        //#when
+        dismissNote(db, smartNote.id, {
+            projectPath: "git:test-project",
+            sessionId: "ses-smart",
+        });
 
         //#then
         expect(getSmartNotes(db, "git:test-project")).toEqual([]);
