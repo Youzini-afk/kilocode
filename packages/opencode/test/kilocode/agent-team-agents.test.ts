@@ -118,6 +118,39 @@ describe("Agent Team agents", () => {
     expect(map.team?.prompt).toContain("native question UI")
   })
 
+  test("allows auto_continue only for primary agents", () => {
+    const map = agents({ enabled: true, council: { enabled: true } })
+
+    expect(Permission.evaluate("auto_continue", "*", map.team.permission).action).toBe("allow")
+    expect(Permission.evaluate("auto_continue", "*", map.secretary.permission).action).toBe("allow")
+    for (const item of [map.explorer!, map.fixer!, map.observer!, map.council!]) {
+      expect(Permission.disabled(["auto_continue"], item.permission).has("auto_continue")).toBe(true)
+    }
+  })
+
+  test("includes OMO prompt structures for specialist and council roles", () => {
+    const map = agents({ enabled: true, council: { enabled: true } })
+
+    expect(map.explorer?.prompt).toContain("Use glob for file discovery")
+    expect(map.explorer?.prompt).toContain("grep for regex/text searches")
+    expect(map.explorer?.prompt).toContain("ast_grep_search")
+    expect(map.explorer?.prompt).toContain("<results>")
+    expect(map.explorer?.prompt).toContain("<files>")
+    expect(map.fixer?.prompt).toContain("<summary>")
+    expect(map.fixer?.prompt).toContain("<changes>")
+    expect(map.fixer?.prompt).toContain("<verification>")
+    expect(map.fixer?.prompt).toContain("If tests or validation are skipped, state the reason")
+    expect(map.observer?.prompt).toContain("Preserve exact visible error text")
+    expect(map.observer?.prompt).toContain("do not guess")
+    expect(map.council?.prompt).toContain("## Council Response")
+    expect(map.council?.prompt).toContain("## Councillor Details")
+    expect(map.council?.prompt).toContain("## Council Summary")
+    expect(map.council?.prompt).toContain("consensus confidence")
+    expect(map.team?.prompt).toContain("Use the auto_continue tool")
+    expect(map.team?.prompt).toContain("Todo hygiene")
+    expect(map.team?.prompt).toContain("do not leave any todo in_progress")
+  })
+
   test("respects explicit user bash deny for the primary team agent", () => {
     const map = agents({ enabled: true }, {}, shell, Permission.fromConfig({ bash: "deny" }))
     const disabled = Permission.disabled(["bash"], map.team.permission)

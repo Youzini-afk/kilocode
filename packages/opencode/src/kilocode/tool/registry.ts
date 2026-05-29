@@ -4,6 +4,7 @@ import { RecallTool } from "../../tool/recall"
 import { AgentManagerTool } from "./agent-manager"
 import { CouncilTool } from "@/kilocode/agent-team/council"
 import { BackgroundProcessTool } from "./background-process"
+import { AutoContinueTool } from "./auto-continue"
 import * as Tool from "../../tool/tool"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Effect } from "effect"
@@ -33,14 +34,15 @@ export namespace KiloToolRegistry {
       const recall = yield* RecallTool
       const manager = yield* AgentManagerTool
       const process = yield* BackgroundProcessTool
-      return { codebase, recall, manager, process }
+      const auto = yield* AutoContinueTool
+      return { codebase, recall, manager, process, auto }
     })
   }
 
   /** Finalize Kilo-specific tools into Tool.Defs. Call this inside the InstanceState state Effect —
    * it has no Service deps beyond what Tool.init itself needs. */
   export function build(
-    tools: { codebase: Tool.Info; recall: Tool.Info; manager: Tool.Info; process: Tool.Info },
+    tools: { codebase: Tool.Info; recall: Tool.Info; manager: Tool.Info; process: Tool.Info; auto: Tool.Info },
     deps: Deps,
   ) {
     return Effect.gen(function* () {
@@ -56,6 +58,7 @@ export namespace KiloToolRegistry {
         manager: Tool.init(tools.manager),
         council: Tool.init(council),
         process: Tool.init(tools.process),
+        auto: Tool.init(tools.auto),
       })
       const semantic = yield* semanticTool(deps)
       return { ...base, semantic }
@@ -104,6 +107,7 @@ export namespace KiloToolRegistry {
       manager: Tool.Def
       council: Tool.Def
       process: Tool.Def
+      auto: Tool.Def
     },
     cfg: {
       experimental?: { codebase_search?: boolean; agent_manager_tool?: boolean }
@@ -115,6 +119,7 @@ export namespace KiloToolRegistry {
       ...(tools.semantic ? [tools.semantic] : []),
       tools.recall,
       ...(Flag.KILO_CLIENT === "cli" || Flag.KILO_CLIENT === "vscode" ? [tools.process] : []),
+      ...(cfg.agentTeam?.enabled === true ? [tools.auto] : []),
       ...(cfg.agentTeam?.enabled === true && cfg.agentTeam.council?.enabled === true ? [tools.council] : []),
       // The extension is the only client that can consume the Agent Manager start event.
       ...(Flag.KILO_CLIENT === "vscode" ? [tools.manager] : []),

@@ -73,7 +73,7 @@ export const profiles = {
     title: "Explorer",
     category: "discovery",
     description:
-      "Parallel codebase discovery. Finds files, symbols, call sites, architecture seams, and unknown implementation paths quickly.",
+      "Parallel codebase discovery. Finds files with glob, text with grep, structural patterns with ast_grep_search, and reports XML-ish file findings quickly.",
     skills: ["kilo-config"],
     mcps: [],
     triggers: ["unknown code path", "symbol search", "call sites", "repo map"],
@@ -120,7 +120,7 @@ export const profiles = {
     title: "Fixer",
     category: "execution",
     description:
-      "General implementation specialist for backend, services, CLI, config, tests, fixtures, and bounded non-UI code changes after discovery and decisions are settled.",
+      "General implementation specialist for backend, services, CLI, config, tests, fixtures, and bounded non-UI code changes with summary/changes/verification output.",
     skills: ["kilo-config", "git-master"],
     mcps: [],
     triggers: ["backend", "service", "CLI", "config", "tests", "fixtures", "non-UI implementation"],
@@ -131,7 +131,7 @@ export const profiles = {
     title: "Observer",
     category: "discovery",
     description:
-      "Visual analysis specialist. Reads screenshots, images, PDFs, diagrams, and exact visible errors without pulling raw media into the coordinator context.",
+      "Visual analysis specialist. Reads screenshots, images, PDFs, diagrams, exact visible text/OCR, and errors without guessing or paraphrasing.",
     skills: [],
     mcps: [],
     triggers: ["screenshot", "image", "PDF", "diagram", "visible error"],
@@ -142,7 +142,7 @@ export const profiles = {
     title: "Council",
     category: "review",
     description:
-      "Optional technical council. Uses independent councillors for complex, high-risk, ambiguous, or architectural decisions where disagreement improves quality.",
+      "Optional technical council. Uses independent councillors for complex, high-risk, ambiguous, or architectural decisions with structured consensus confidence.",
     skills: ["review-work"],
     mcps: [],
     triggers: ["consensus", "high risk", "ambiguous architecture", "disagreement"],

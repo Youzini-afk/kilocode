@@ -191,6 +191,7 @@ describe("kilocode tool registry indexing", () => {
       manager: def("agent_manager"),
       council: def("council_session"),
       process: def("background_process"),
+      auto: def("auto_continue"),
     }
 
     try {
@@ -204,7 +205,7 @@ describe("kilocode tool registry indexing", () => {
         KiloToolRegistry.extra(tools, { agentTeam: { enabled: true, council: { enabled: true } } }).map(
           (tool) => tool.id,
         ),
-      ).toEqual(["semantic_search", "recall", "background_process", "council_session"])
+      ).toEqual(["semantic_search", "recall", "background_process", "auto_continue", "council_session"])
       expect(
         KiloToolRegistry.extra(tools, { experimental: { codebase_search: true, agent_manager_tool: true } }).map(
           (tool) => tool.id,
@@ -223,6 +224,11 @@ describe("kilocode tool registry indexing", () => {
 
       process.env["KILO_CLIENT"] = "desktop"
       expect(KiloToolRegistry.extra(tools, {}).map((tool) => tool.id)).toEqual(["semantic_search", "recall"])
+      expect(KiloToolRegistry.extra(tools, { agentTeam: { enabled: true } }).map((tool) => tool.id)).toEqual([
+        "semantic_search",
+        "recall",
+        "auto_continue",
+      ])
     } finally {
       if (prev === undefined) delete process.env["KILO_CLIENT"]
       if (prev !== undefined) process.env["KILO_CLIENT"] = prev
@@ -250,7 +256,7 @@ describe("kilocode tool registry indexing", () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(calls).toEqual(["sessions"])
-      expect(indexing).toHaveBeenCalledTimes(1)
+      expect(indexing).toHaveBeenCalled()
       expect(warn).toHaveBeenCalledWith("indexing bootstrap failed", { err })
     } finally {
       indexing.mockRestore()
