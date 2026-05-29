@@ -1,7 +1,9 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { DREAMER_AGENT } from "../../agents/dreamer";
 import { getMemoriesByProject, getMemoryById, insertMemory } from "../../features/magic-context";
 import { Database } from "../../shared/sqlite";
 import { closeQuietly } from "../../shared/sqlite-helpers";
+import { CTX_MEMORY_DREAMER_ACTIONS } from "./types";
 
 mock.module("../../features/magic-context/memory/embedding", () => ({
     embedText: async (_text: string) => null,
@@ -81,6 +83,8 @@ function createTestDb(): Database {
 const toolContext = (sessionID = "ses-memory", agent = "general") =>
     ({ sessionID, agent, directory: "/repo/project" }) as never;
 
+const dreamerContext = (sessionID = "ses-dream") => toolContext(sessionID, DREAMER_AGENT);
+
 afterAll(() => {
     mock.restore();
 });
@@ -101,6 +105,10 @@ describe("createCtxMemoryTools", () => {
 
     afterEach(() => {
         closeQuietly(db);
+    });
+
+    it("exposes all dreamer actions in the shared action schema", () => {
+        expect(tools.ctx_memory.args.action.options).toEqual([...CTX_MEMORY_DREAMER_ACTIONS]);
     });
 
     describe("#given write action", () => {
@@ -231,7 +239,7 @@ describe("createCtxMemoryTools", () => {
 
             const result = await tools.ctx_memory.execute(
                 { action: "list", limit: 10 },
-                toolContext(),
+                dreamerContext(),
             );
 
             expect(result).toContain("Found 2 active memories");
@@ -255,7 +263,7 @@ describe("createCtxMemoryTools", () => {
                     id: memory.id,
                     content: "cache_ttl=10m",
                 },
-                toolContext(),
+                dreamerContext(),
             );
 
             expect(result).toContain(`Updated memory [ID: ${memory.id}]`);
@@ -282,7 +290,7 @@ describe("createCtxMemoryTools", () => {
                     ids: [first.id, second.id],
                     content: "Use bun for all scripts in this repository.",
                 },
-                toolContext("ses-dreamer"),
+                dreamerContext("ses-dreamer"),
             );
 
             expect(result).toContain("Merged memories");
@@ -308,7 +316,7 @@ describe("createCtxMemoryTools", () => {
                     id: memory.id,
                     reason: "Removed subsystem no longer exists",
                 },
-                toolContext(),
+                dreamerContext(),
             );
 
             expect(result).toContain("Archived memory");
@@ -319,7 +327,7 @@ describe("createCtxMemoryTools", () => {
     });
 
     describe("#given disabled memory", () => {
-        it("returns disabled message for all actions", async () => {
+        it("returns disabled message for allowed primary actions", async () => {
             const disabledTools = createCtxMemoryTools({
                 db,
                 resolveProjectPath: () => "/repo/project",
@@ -340,10 +348,34 @@ describe("createCtxMemoryTools", () => {
                 "Cross-session memory is disabled for this project.",
             ]);
         });
+
+        it("keeps authorization checks ahead of disabled-memory responses", async () => {
+            const disabledTools = createCtxMemoryTools({
+                db,
+                resolveProjectPath: () => "/repo/project",
+                memoryEnabled: false,
+                embeddingEnabled: false,
+            });
+
+            expect(await disabledTools.ctx_memory.execute({ action: "list" }, toolContext())).toContain(
+                "Action 'list' is not allowed",
+            );
+            expect(await disabledTools.ctx_memory.execute({ action: "list" }, dreamerContext())).toBe(
+                "Cross-session memory is disabled for this project.",
+            );
+        });
     });
 
     describe("#given restricted actions", () => {
-        it("rejects dreamer-only actions for primary-agent tool instances", async () => {
+        it("fails closed for primary dreamer-only actions when allowedActions is omitted", async () => {
+            for (const action of ["list", "update", "merge", "archive"] as const) {
+                const result = await tools.ctx_memory.execute({ action }, toolContext());
+
+                expect(result).toContain(`Action '${action}' is not allowed`);
+            }
+        });
+
+        it("rejects dreamer-only actions for primary-agent restricted tool instances", async () => {
             const primaryTools = createCtxMemoryTools({
                 db,
                 resolveProjectPath: () => "/repo/project",
@@ -373,7 +405,7 @@ describe("createCtxMemoryTools", () => {
 
             const result = await primaryTools.ctx_memory.execute(
                 { action: "list" },
-                toolContext("ses-dream", "dreamer"),
+                dreamerContext(),
             );
 
             expect(result).toContain("Found 1 active memory");

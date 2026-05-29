@@ -44,7 +44,7 @@ function normalizeLimit(limit?: number): number {
 function getAllowedActions(deps: CtxMemoryToolDeps): [CtxMemoryAction, ...CtxMemoryAction[]] {
     const allowed = deps.allowedActions?.length
         ? deps.allowedActions
-        : [...CTX_MEMORY_DREAMER_ACTIONS];
+        : (["write", "delete"] as const);
     return [...allowed] as [CtxMemoryAction, ...CtxMemoryAction[]];
 }
 
@@ -182,7 +182,9 @@ function createCtxMemoryTool(deps: CtxMemoryToolDeps): ToolDefinition {
     return tool({
         description: CTX_MEMORY_DESCRIPTION,
         args: {
-            action: tool.schema.enum(allowedActions).describe("Action to perform on memories"),
+            action: tool.schema
+                .enum([...CTX_MEMORY_DREAMER_ACTIONS])
+                .describe("Action to perform on memories"),
             content: tool.schema
                 .string()
                 .optional()
@@ -211,12 +213,12 @@ function createCtxMemoryTool(deps: CtxMemoryToolDeps): ToolDefinition {
                 .describe("Archive reason (optional for archive)"),
         },
         async execute(args: CtxMemoryArgs, toolContext) {
-            if (!deps.memoryEnabled) {
-                return getDisabledMessage();
-            }
-
             if (toolContext.agent !== DREAMER_AGENT && !allowedActions.includes(args.action)) {
                 return `Error: Action '${args.action}' is not allowed in this context.`;
+            }
+
+            if (!deps.memoryEnabled) {
+                return getDisabledMessage();
             }
 
             // Resolve the session's actual project from `toolContext.directory`
