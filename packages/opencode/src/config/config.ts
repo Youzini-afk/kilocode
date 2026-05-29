@@ -234,6 +234,15 @@ const AgentTeamCouncil = Schema.Struct({
   enabled: Schema.optional(Schema.Boolean).annotate({
     description: "Enable multi-model council consensus for Agent Team",
   }),
+  executionMode: Schema.optional(Schema.Literals(["parallel", "serial"])).annotate({
+    description: "Run council councillors in parallel or serial order. Defaults to parallel.",
+  }),
+  maxConcurrency: Schema.optional(PositiveInt).annotate({
+    description: "Maximum parallel councillors when executionMode is parallel. Omit for unbounded concurrency.",
+  }),
+  councillorRetries: Schema.optional(NonNegativeInt).annotate({
+    description: "Retry attempts for empty councillor responses. Defaults to 0.",
+  }),
   defaultPreset: Schema.optional(Schema.String).annotate({
     description: "Default council preset name",
   }),

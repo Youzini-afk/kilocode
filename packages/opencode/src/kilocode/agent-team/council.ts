@@ -1,14 +1,15 @@
 import { Config } from "@/config/config"
+import { EffectBridge } from "@/effect/bridge"
 import { MessageID, SessionID } from "@/session/schema"
 import { Session } from "@/session/session"
 import type { MessageV2 } from "@/session/message-v2"
 import type { SessionPrompt } from "@/session/prompt"
 import { Provider } from "@/provider/provider"
 import * as Tool from "@/tool/tool"
-import { Cause, Effect, Schema } from "effect"
+import { Cause, Effect, Exit, Schema } from "effect"
 
 type PromptOps = {
-  cancel(sessionID: SessionID): void
+  cancel(sessionID: SessionID): Effect.Effect<void>
   resolvePromptParts(template: string): Effect.Effect<SessionPrompt.PromptInput["parts"]>
   prompt(input: SessionPrompt.PromptInput): Effect.Effect<MessageV2.WithParts>
 }
@@ -22,9 +23,15 @@ type Member = {
 type Result = {
   name: string
   model: string
-  status: "completed" | "failed"
+  status: "completed" | "failed" | "timed_out"
   text?: string
   error?: string
+}
+
+class TimeoutError extends Error {}
+
+function timed(cause: Cause.Cause<unknown>) {
+  return cause.reasons.some((reason) => Cause.isFailReason(reason) && reason.error instanceof TimeoutError)
 }
 
 const id = "council_session"
@@ -97,7 +104,13 @@ export const CouncilTool = Tool.define(
     const sessions = yield* Session.Service
 
     const run = Effect.fn("CouncilTool.run")(function* (
-      input: { name: string; member: Member; params: Schema.Schema.Type<typeof Parameters>; timeout: number },
+      input: {
+        name: string
+        member: Member
+        params: Schema.Schema.Type<typeof Parameters>
+        timeout: number
+        retries: number
+      },
       ctx: Tool.Context,
       ops: PromptOps,
     ) {
@@ -108,52 +121,71 @@ export const CouncilTool = Tool.define(
       })
       const model = Provider.parseModel(input.member.model)
       const variant = input.member.variant ?? undefined
-      const messageID = MessageID.ascending()
+      const bridge = yield* EffectBridge.make()
+      const cancelEffect = ops.cancel(child.id).pipe(Effect.ignore)
 
-      function cancel() {
-        ops.cancel(child.id)
+      function onAbort() {
+        bridge.fork(cancelEffect)
       }
 
       return yield* Effect.acquireUseRelease(
-        Effect.sync(() => ctx.abort.addEventListener("abort", cancel)),
+        Effect.gen(function* () {
+          ctx.abort.addEventListener("abort", onAbort)
+          if (ctx.abort.aborted) yield* cancelEffect
+        }),
         () =>
           Effect.gen(function* () {
             const parts = yield* ops.resolvePromptParts(
               prompt({ name: input.name, base: input.params.prompt, extra: input.member.prompt }),
             )
-            const result = yield* ops
-              .prompt({
-                messageID,
-                sessionID: child.id,
-                model,
-                variant,
-                agent: "councillor",
-                tools: { task: false },
-                parts,
-              })
-              .pipe(
-                Effect.timeoutOrElse({
-                  duration: input.timeout,
-                  orElse: () => Effect.fail(new Error("Council councillor timed out")),
-                }),
-              )
+            const runAttempt = (attempt: number): Effect.Effect<{ result: MessageV2.WithParts; attempts: number }, Error> =>
+              ops
+                .prompt({
+                  messageID: MessageID.ascending(),
+                  sessionID: child.id,
+                  model,
+                  variant,
+                  agent: "councillor",
+                  tools: { task: false },
+                  parts,
+                })
+                .pipe(
+                  Effect.timeoutOrElse({
+                    duration: input.timeout,
+                    orElse: () =>
+                      Effect.gen(function* () {
+                        yield* cancelEffect
+                        return yield* Effect.fail(new TimeoutError("Council councillor timed out"))
+                      }),
+                  }),
+                  Effect.flatMap((result) => {
+                    if (text(result).trim() !== "" || attempt > input.retries) {
+                      return Effect.succeed({ result, attempts: attempt })
+                    }
+                    return runAttempt(attempt + 1)
+                  }),
+                )
+            const attempt = yield* runAttempt(1)
             return {
               name: input.name,
               model: input.member.model,
               status: "completed" as const,
-              text: text(result),
+              text: text(attempt.result),
             }
           }).pipe(
             Effect.catchCause((cause) =>
               Effect.succeed({
                 name: input.name,
                 model: input.member.model,
-                status: "failed" as const,
+                status: timed(cause) ? ("timed_out" as const) : ("failed" as const),
                 error: Cause.pretty(cause),
               }),
             ),
           ),
-        () => Effect.sync(() => ctx.abort.removeEventListener("abort", cancel)),
+        (_, exit) =>
+          Effect.gen(function* () {
+            if (Exit.hasInterrupts(exit)) yield* cancelEffect
+          }).pipe(Effect.ensuring(Effect.sync(() => ctx.abort.removeEventListener("abort", onAbort)))),
       )
     })
 
@@ -182,18 +214,24 @@ export const CouncilTool = Tool.define(
           }
 
           const entries = Object.entries(selected)
-          yield* ctx.metadata({ title: "Council", metadata: { preset, total: entries.length } })
+          const mode = cfg.agentTeam.council.executionMode ?? "parallel"
+          const retries = cfg.agentTeam.council.councillorRetries ?? 0
+          const concurrency = mode === "serial" ? 1 : (cfg.agentTeam.council.maxConcurrency ?? "unbounded")
+          yield* ctx.metadata({
+            title: "Council",
+            metadata: { preset, total: entries.length, executionMode: mode, maxConcurrency: concurrency, retries },
+          })
           const timeout = cfg.agentTeam.council.timeoutMs ?? 180000
           const results = yield* Effect.forEach(
             entries,
-            ([name, member]) => run({ name, member, params, timeout }, ctx, ops),
-            { concurrency: "unbounded" },
+            ([name, member]) => run({ name, member, params, timeout, retries }, ctx, ops),
+            { concurrency },
           )
           const completed = results.filter((item) => item.status === "completed").length
 
           return {
             title: "Council",
-            metadata: { preset, total: results.length, completed },
+            metadata: { preset, total: results.length, completed, executionMode: mode, maxConcurrency: concurrency, retries },
             output: format(results, preset, params.prompt),
           }
         }).pipe(Effect.orDie),
