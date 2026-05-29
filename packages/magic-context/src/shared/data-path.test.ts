@@ -9,6 +9,7 @@ import {
     getKiloCacheDir,
     getKiloStorageDir,
     getMagicContextStorageDir,
+    getUpstreamMagicContextStorageDir,
 } from "./data-path";
 
 const savedEnv = {
@@ -106,16 +107,48 @@ describe("data-path", () => {
         );
     });
 
-    test("legacy helpers point at old OpenCode locations for explicit import", () => {
-        expect(getLegacyOpenCodeMagicContextStorageDir()).toBe(
-            path.join(os.homedir(), ".local", "share", "cortexkit", "magic-context"),
-        );
-        expect(getLegacyOpenCodeStoragePluginDir()).toBe(
-            path.join(os.homedir(), ".local", "share", "opencode", "storage", "plugin", "magic-context"),
+    test("upstream helper points at the shared cortexkit location", () => {
+        process.env.KILO_TEST_HOME = "/tmp/magic-context-home";
+        expect(getUpstreamMagicContextStorageDir()).toBe(
+            path.join("/tmp/magic-context-home", ".local", "share", "cortexkit", "magic-context"),
         );
     });
 
-    test("legacy storage dir distinct from new shared dir even with same XDG override", () => {
+    test("upstream helper ignores LOCALAPPDATA when XDG_DATA_HOME is unset", () => {
+        process.env.LOCALAPPDATA = "C:\\Users\\Test\\AppData\\Local";
+        process.env.KILO_TEST_HOME = "/tmp/magic-context-home";
+        expect(getUpstreamMagicContextStorageDir()).toBe(
+            path.join("/tmp/magic-context-home", ".local", "share", "cortexkit", "magic-context"),
+        );
+    });
+
+    test("upstream helper honors XDG_DATA_HOME exactly", () => {
+        process.env.XDG_DATA_HOME = "/tmp/upstream-data";
+        process.env.LOCALAPPDATA = "C:\\Users\\Test\\AppData\\Local";
+        expect(getUpstreamMagicContextStorageDir()).toBe(
+            path.join("/tmp/upstream-data", "cortexkit", "magic-context"),
+        );
+    });
+
+    test("legacy helpers point at upstream and old OpenCode locations", () => {
+        process.env.KILO_TEST_HOME = "/tmp/magic-context-home";
+        expect(getLegacyOpenCodeMagicContextStorageDir()).toBe(
+            path.join("/tmp/magic-context-home", ".local", "share", "cortexkit", "magic-context"),
+        );
+        expect(getLegacyOpenCodeStoragePluginDir()).toBe(
+            path.join(
+                "/tmp/magic-context-home",
+                ".local",
+                "share",
+                "opencode",
+                "storage",
+                "plugin",
+                "magic-context",
+            ),
+        );
+    });
+
+    test("upstream storage dir distinct from Kilo dir even with same XDG override", () => {
         // Sanity check: even when XDG_DATA_HOME points the same place, the two
         // resolvers must return different paths so the migration copy doesn't
         // self-overwrite.

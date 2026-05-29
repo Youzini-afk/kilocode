@@ -39,6 +39,10 @@ export function getDataDir(): string {
     );
 }
 
+function getUpstreamDataDir(): string {
+    return cleanPath(process.env.XDG_DATA_HOME) ?? path.join(homeDir(), ".local", "share");
+}
+
 export function getConfigDir(): string {
     return (
         cleanPath(process.env.XDG_CONFIG_HOME) ??
@@ -95,9 +99,9 @@ export function getKiloStorageDir(): string {
 /**
  * Resolve Kilo Magic Context's storage directory.
  *
- * Kilo data intentionally does not share the original OpenCode/Pi
- * cortexkit/magic-context database. Users can run the explicit migration CLI
- * when they want to import an older OpenCode database.
+ * Kilo writes to its own plugin storage. On first open, Magic Context may copy
+ * an upstream/legacy database into this directory, but it never live-shares the
+ * upstream database.
  *
  * Layout: <Kilo data>/storage/plugin/kilocode-magic-context/
  */
@@ -105,17 +109,19 @@ export function getMagicContextStorageDir(): string {
     return path.join(getKiloStorageDir(), "plugin", "kilocode-magic-context");
 }
 
-/**
- * Legacy magic-context storage directory used by the OpenCode plugin before the
- * shared cortexkit path. Used only for one-time migration of existing data into
- * the new shared location. The legacy directory is left in place after copy so
- * users can roll back if needed; manual cleanup is safe after one stable
- * release.
- */
-export function getLegacyOpenCodeMagicContextStorageDir(): string {
-    return path.join(getDataDir(), "cortexkit", "magic-context");
+export function getUpstreamMagicContextStorageDir(): string {
+    return path.join(getUpstreamDataDir(), "cortexkit", "magic-context");
 }
 
+/**
+ * Back-compat alias for callers/tests that still use the old helper name for
+ * the upstream shared cortexkit path.
+ */
+export function getLegacyOpenCodeMagicContextStorageDir(): string {
+    return getUpstreamMagicContextStorageDir();
+}
+
+/** Legacy OpenCode plugin storage path used before the shared cortexkit path. */
 export function getLegacyOpenCodeStoragePluginDir(): string {
-    return path.join(getDataDir(), "opencode", "storage", "plugin", "magic-context");
+    return path.join(getUpstreamDataDir(), "opencode", "storage", "plugin", "magic-context");
 }

@@ -1,6 +1,10 @@
-import { mkdirSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { getMagicContextStorageDir } from "../../shared/data-path";
+import {
+    getLegacyOpenCodeStoragePluginDir,
+    getMagicContextStorageDir,
+    getUpstreamMagicContextStorageDir,
+} from "../../shared/data-path";
 import { getErrorMessage } from "../../shared/error-message";
 import { log } from "../../shared/logger";
 import { Database } from "../../shared/sqlite";
@@ -14,6 +18,61 @@ const persistenceErrorByDatabase = new WeakMap<Database, string>();
 function resolveDatabasePath(): { dbDir: string; dbPath: string } {
     const dbDir = getMagicContextStorageDir();
     return { dbDir, dbPath: join(dbDir, "context.db") };
+}
+
+function copyPath(src: string, dst: string, label: string): boolean {
+    if (!existsSync(src)) return false;
+    try {
+        copyFileSync(src, dst);
+        return true;
+    } catch (error) {
+        log(
+            `[magic-context] storage import: failed to copy ${label} from ${src}: ${getErrorMessage(error)}`,
+        );
+        return false;
+    }
+}
+
+function copyModels(src: string, dst: string): void {
+    const from = join(src, "models");
+    const to = join(dst, "models");
+    if (!existsSync(from) || existsSync(to)) return;
+    try {
+        cpSync(from, to, { recursive: true });
+    } catch (error) {
+        log(
+            `[magic-context] storage import: failed to copy models from ${from}: ${getErrorMessage(error)}`,
+        );
+    }
+}
+
+function copyStorage(src: string, dst: string): boolean {
+    const ok = copyPath(join(src, "context.db"), join(dst, "context.db"), "context.db");
+    if (!ok) return false;
+    const files = ["context.db-wal", "context.db-shm"];
+    for (const file of files) {
+        copyPath(join(src, file), join(dst, file), file);
+    }
+    copyModels(src, dst);
+    return true;
+}
+
+function importStorage(dbDir: string, dbPath: string): void {
+    if (existsSync(dbPath)) return;
+    mkdirSync(dbDir, { recursive: true });
+
+    // Best-effort one-time import only: Kilo keeps writing its own storage path,
+    // and the source DB is retained so users can delete the Kilo target and retry
+    // if a live upstream writer produced an incomplete snapshot. Future Kilo
+    // schema migrations must account for imported upstream schema_migrations
+    // rows, which may already be ahead of Kilo's local migration numbers.
+    const sources = [getUpstreamMagicContextStorageDir(), getLegacyOpenCodeStoragePluginDir()];
+    for (const src of sources) {
+        if (!existsSync(join(src, "context.db"))) continue;
+        if (!copyStorage(src, dbDir)) continue;
+        log(`[magic-context] storage import: copied database from ${src} to ${dbDir}`);
+        return;
+    }
 }
 
 export function initializeDatabase(db: Database): void {
@@ -532,8 +591,7 @@ export function openDatabase(): Database {
     }
 
     try {
-        // Kilo storage is intentionally isolated from OpenCode/Pi data. Use the
-        // CLI `migrate-from-opencode` command for an explicit import.
+        importStorage(dbDir, dbPath);
         mkdirSync(dbDir, { recursive: true });
 
         const db = new Database(dbPath);
