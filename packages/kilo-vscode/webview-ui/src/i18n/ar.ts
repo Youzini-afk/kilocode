@@ -96,6 +96,7 @@ const local = {
   "command.session.share.description": "مشاركة هذه الجلسة ونسخ الرابط إلى الحافظة",
   "command.session.unshare": "إلغاء مشاركة الجلسة",
   "command.session.unshare.description": "إيقاف مشاركة هذه الجلسة",
+  "command.session.export": "تصدير سجل الجلسة",
 
   "palette.search.placeholder": "البحث في الملفات والأوامر والجلسات",
   "palette.empty": "لا توجد نتائج",
@@ -109,6 +110,7 @@ const local = {
   "dialog.provider.tag.recommended": "موصى به",
   "dialog.provider.opencode.note": "نماذج مختارة تشمل Claude وGPT وGemini والمزيد",
   "dialog.provider.anthropic.note": "اتصل باستخدام Claude Pro/Max أو مفتاح API",
+  "dialog.provider.deepseek.note": "نماذج DeepSeek لمهام الاستدلال والبرمجة",
   "dialog.provider.openai.note": "اتصل باستخدام ChatGPT Pro/Plus أو مفتاح API",
   "dialog.provider.google.note": "نماذج Gemini للاستجابات السريعة والمنظمة",
   "dialog.provider.openrouter.note": "الوصول إلى جميع النماذج المدعومة من موفر واحد",
@@ -179,6 +181,8 @@ const local = {
   "model.tag.latest": "الأحدث",
   "model.group.recommended": "موصى به",
   "model.group.favorites": "المفضلة",
+  "model.group.collapse": "طي {{group}}",
+  "model.group.expand": "توسيع {{group}}",
   "model.favorite.add": "إضافة إلى المفضلة",
   "model.favorite.remove": "إزالة من المفضلة",
   "model.provider.anthropic": "Anthropic",
@@ -272,6 +276,7 @@ const local = {
   "prompt.attachment.remove": "إزالة المرفق",
   "prompt.action.send": "إرسال",
   "prompt.action.send.blocked": "أجب عن السؤال المعلق أو تجاهله أولاً",
+  "prompt.action.send.recording": "تفريغ وإرسال",
   "prompt.action.stop": "توقف",
   "prompt.action.enhance": "تحسين النص",
   "prompt.action.autoApprove.enable": "تفعيل الموافقة التلقائية",
@@ -281,6 +286,20 @@ const local = {
   "prompt.action.resetModel": "إعادة تعيين النموذج إلى الافتراضي",
   "prompt.action.enhanceDescription":
     "زر «حسّن الموجه» يطوّر موجهك بإضافة سياق أو توضيح أو إعادة صياغة. جرّب اكتب موجه هنا ثم اضغط الزر مرة ثانية وشوف النتيجة.",
+
+  "speechToText.tooltip.start": "بدء الإدخال الصوتي باستخدام Kilo Gateway",
+  "speechToText.tooltip.stop": "إيقاف التقاط الصوت",
+  "speechToText.tooltip.transcribing": "جاري تحويل الصوت إلى نص... انقر للإلغاء.",
+  "speechToText.tooltip.error": "فشل الإدخال الصوتي. انقر للمسح.",
+  "speechToText.error.title": "فشل الإدخال الصوتي",
+  "speechToText.error.loginRequired": "قم بتسجيل الدخول إلى Kilo لاستخدام الإدخال الصوتي.",
+  "speechToText.error.permission": "تم رفض إذن الوصول إلى الميكروفون.",
+  "speechToText.error.microphone": "تعذر بدء تشغيل الميكروفون.",
+  "speechToText.error.recording": "فشل التسجيل.",
+  "speechToText.error.emptyRecording": "لم يتم تسجيل أي صوت.",
+  "speechToText.error.emptyTranscript": "لم يتم اكتشاف أي كلام.",
+  "speechToText.error.encoding": "تعذر تشفير التسجيل.",
+  "speechToText.toast.transcribed": "تم إدراج النص المنسوخ",
 
   "prompt.toast.pasteUnsupported.title": "لصق غير مدعوم",
   "prompt.toast.pasteUnsupported.description": "يمكن لصق الصور أو ملفات PDF فقط هنا.",
@@ -433,6 +452,7 @@ const local = {
   "toast.session.unshare.failed.title": "فشل إلغاء مشاركة الجلسة",
   "toast.session.unshare.failed.description": "حدث خطأ أثناء إلغاء مشاركة الجلسة",
 
+  "toast.session.rename.invalid.title": "عنوان الجلسة غير صالح",
   "toast.session.listFailed.title": "فشل تحميل الجلسات لـ {{project}}",
 
   "toast.update.title": "تحديث متاح",
@@ -793,6 +813,9 @@ const local = {
   "settings.providers.connected.environmentDescription": "متصل من متغيرات البيئة الخاصة بك",
   "settings.providers.action.signInChatGPT": "تسجيل الدخول باستخدام ChatGPT",
   "settings.providers.custom.description": "أضف مزوداً متوافقاً مع OpenAI عبر عنوان URL الأساسي.",
+  "settings.providers.subagentModel.title": "نموذج الوكيل الفرعي",
+  "settings.providers.subagentModel.description":
+    "النموذج الافتراضي وجهد التفكير للوكلاء الفرعيين لـ task-tool. اتركه فارغًا ليرث نموذج الوكيل المستدعي.",
   "settings.providers.modeModels": "نموذج لكل وضع",
   "settings.providers.custom.note": "أضف موفرًا متوافقًا مع OpenAI عبر عنوان URL الأساسي.",
   "settings.providers.modeModels.description":
@@ -1090,6 +1113,14 @@ const local = {
   "session.status.retrying": "...إعادة المحاولة (المحاولة {{ attempt }})… {{ message }}",
   "session.status.working": "...جارٍ العمل",
   "session.status.offline": "انقطع الاتصال بالشبكة — جارٍ إعادة الاتصال...",
+  "session.outcome.incomplete": "انتهى الدور مع تبقي {{count}} مهام",
+  "session.outcome.limit": "تم الوصول إلى حد الاستجابة قبل الاكتمال",
+  "session.outcome.unknown": "انتهى الدور بدون سبب إنهاء من النموذج",
+  "session.outcome.filtered": "أوقف المزود هذه الاستجابة بسبب عامل تصفية المحتوى.",
+  "session.outcome.unexpected": "انتهت الاستجابة بشكل غير متوقع وقد تكون غير مكتملة.",
+  "session.outcome.interrupted": "تمت مقاطعة الدور",
+  "session.outcome.error": "فشل الدور",
+  "session.outcome.finish": "سبب الإنهاء: {{reason}}",
 
   "ui.sessionTurn.cancel": "إلغاء",
   "ui.sessionTurn.status.thinking": "...جارٍ التفكير",
@@ -1150,7 +1181,6 @@ const local = {
     'يتم التحكم في Telemetry بواسطة إعداد Telemetry المدمج في VS Code. لتعطيله، انتقل إلى الإعدادات > Telemetry > Telemetry Level واضبطه على "off". أعد تشغيل VS Code لتطبيق التغيير.',
   "settings.aboutKiloCode.telemetry.openSettings": "فتح إعدادات Telemetry",
 
-  "settings.agentBehaviour.subtab.modes": "الأوضاع",
   "settings.agentBehaviour.subtab.agents": "الوكلاء",
   "settings.agentBehaviour.subtab.mcpServers": "خوادم MCP",
   "settings.agentBehaviour.subtab.rules": "القواعد",
@@ -1213,9 +1243,13 @@ const local = {
     "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "بحث في قاعدة الكود",
   "settings.experimental.codebaseSearch.description": "تمكين البحث بالذكاء الاصطناعي باللغة الطبيعية عبر قاعدة الكود",
-  "settings.experimental.agentManagerTool.title": "أداة Agent Manager",
-  "settings.experimental.agentManagerTool.description":
-    "السماح للوكلاء ببدء جلسات Agent Manager المحلية وجلسات worktree من استدعاء أداة",
+  "settings.experimental.speechToText.title": "تحويل الصوت إلى نص",
+  "settings.experimental.speechToText.description":
+    "تمكين الإدخال الصوتي في حقول المطالبة باستخدام حساب Kilo الخاص بك من خلال Kilo Gateway.",
+  "settings.experimental.speechToText.disabledDescription":
+    "قم بتمكين وتسجيل الدخول إلى مزود Kilo لاستخدام Speech to Text. ميزة Speech to Text مدعومة حاليًا فقط مع Kilo Gateway.",
+  "settings.experimental.speechToTextModel.title": "نموذج تحويل الصوت إلى نص",
+  "settings.experimental.speechToTextModel.description": "اختر نموذج نسخ Kilo Gateway للإدخال الصوتي.",
   "settings.experimental.continueOnDeny.title": "المتابعة عند الرفض",
   "settings.experimental.continueOnDeny.description": "متابعة حلقة الوكيل عند رفض الإذن",
   "settings.experimental.mcpTimeout.title": "مهلة MCP (مللي ثانية)",
@@ -1237,6 +1271,8 @@ const local = {
   "settings.agentBehaviour.selectAgent.description": "اختر وكيلاً للتهيئة…",
   "settings.agentBehaviour.modelOverride.title": "تجاوز النموذج",
   "settings.agentBehaviour.modelOverride.description": "تجاوز النموذج الافتراضي لهذا الوكيل",
+  "settings.agentBehaviour.variantOverride.title": "تجاوز المتغير",
+  "settings.agentBehaviour.variantOverride.description": "تجاوز متغير النموذج لهذا الوكيل",
   "settings.agentBehaviour.prompt.title": "موجه مخصص",
   "settings.agentBehaviour.prompt.description": "موجه نظام إضافي لهذا الوكيل",
   "settings.agentBehaviour.temperature.title": "الحرارة",
@@ -1256,7 +1292,7 @@ const local = {
   "settings.agentBehaviour.noSkillsFound":
     "لم يتم العثور على مهارات. أضف مسارات مجلدات أو عناوين URL أدناه لإتاحة المهارات.",
   "settings.agentBehaviour.availableModes": "الأوضاع المخصصة المتاحة",
-  "settings.agentBehaviour.noModesFound": "لم يتم العثور على أوضاع.",
+  "settings.agentBehaviour.noAgentsFound": "لم يتم العثور على وكلاء.",
   "settings.agentBehaviour.createMode": "إنشاء وضع جديد",
   "settings.agentBehaviour.createMode.name": "الاسم",
   "settings.agentBehaviour.createMode.name.placeholder": "مثال: reviewer",
@@ -1299,10 +1335,10 @@ const local = {
   "settings.agentBehaviour.permissions.copy": "نسخ الأذونات كـ JSON",
   "settings.agentBehaviour.permissions.hint":
     "يتم تقييم القواعد بالترتيب — القاعدة المطابقة الأخيرة هي التي تُطبق. هذه هي مجموعة القواعد المحلولة من خلفية CLI.",
-  "settings.agentBehaviour.removeMode.title": "إزالة الوضع",
-  "settings.agentBehaviour.removeMode.confirm":
-    'هل تريد إزالة الوضع "{{name}}"؟ سيؤدي هذا إلى تعطيل الوضع عن طريق تحديث الإعدادات.',
-  "settings.agentBehaviour.removeMode.button": "إزالة",
+  "settings.agentBehaviour.removeAgent.title": "إزالة الوكيل",
+  "settings.agentBehaviour.removeAgent.confirm":
+    'هل تريد إزالة الوكيل "{{name}}"؟ سيؤدي هذا إلى تعطيله عن طريق تحديث الإعدادات.',
+  "settings.agentBehaviour.removeAgent.button": "إزالة",
   "settings.agentBehaviour.removeMcp.title": "إزالة خادم MCP",
   "settings.agentBehaviour.removeMcp.confirm": 'هل تريد إزالة خادم MCP "{{name}}"؟ سيؤدي هذا إلى إزالته من الإعدادات.',
   "settings.agentBehaviour.removeMcp.button": "إزالة",
@@ -1382,7 +1418,10 @@ const local = {
   "settings.checkpoints.enable.title": "تمكين اللقطات",
   "settings.checkpoints.enable.description": "إنشاء نقاط فحص قبل تحرير الملفات",
   "settings.context.autoCompaction.title": "ضغط تلقائي",
-  "settings.context.autoCompaction.description": "ضغط السياق تلقائياً عند امتلائه",
+  "settings.context.autoCompaction.description": "ضغط السياق تلقائياً قبل أن يصل إلى الحد",
+  "settings.context.compactionLimit.title": "حد الضغط التلقائي",
+  "settings.context.compactionLimit.description":
+    "اضغط عندما يصل السياق إلى هذه النسبة المئوية من نافذة النموذج. اتركه فارغاً لاستخدام هامش الأمان فقط.",
   "settings.context.prune.title": "تقليم المخرجات القديمة",
   "settings.context.prune.description": "إزالة مخرجات الأدوات القديمة أثناء الضغط",
   "settings.context.watcherPatterns": "أنماط تجاهل مراقب الملفات",
@@ -1564,6 +1603,7 @@ const local = {
   "diffViewer.baseBranch.empty": "لا توجد فروع مطابقة",
   "diffViewer.baseBranch.loading": "جارٍ تحميل الفروع…",
   "diffViewer.baseBranch.none": "—",
+  "plan.exit.ready": "الخطة جاهزة:",
 } satisfies Record<string, string>
 
 export const dict = { ...en, ...local } satisfies Record<Keys, string>

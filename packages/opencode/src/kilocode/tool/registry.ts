@@ -3,6 +3,7 @@ import { CodebaseSearchTool } from "../../tool/warpgrep"
 import { RecallTool } from "../../tool/recall"
 import { AgentManagerTool } from "./agent-manager"
 import { CouncilTool } from "@/kilocode/agent-team/council"
+import { BackgroundProcessTool } from "./background-process"
 import * as Tool from "../../tool/tool"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Effect } from "effect"
@@ -21,6 +22,9 @@ type Deps = {
 }
 
 export namespace KiloToolRegistry {
+  const hint =
+    "- When you are doing an open-ended search where you do not know the exact symbol name, use the `semantic_search` tool first to narrow down the search scope, then follow up with `Grep` and/or `Read`"
+
   /** Resolve Kilo-specific tool Infos outside any InstanceState, so their Truncate/Agent deps are
    * satisfied at the outer registry scope instead of leaking into InstanceState's Effect. */
   export function infos() {
@@ -28,13 +32,17 @@ export namespace KiloToolRegistry {
       const codebase = yield* CodebaseSearchTool
       const recall = yield* RecallTool
       const manager = yield* AgentManagerTool
-      return { codebase, recall, manager }
+      const process = yield* BackgroundProcessTool
+      return { codebase, recall, manager, process }
     })
   }
 
   /** Finalize Kilo-specific tools into Tool.Defs. Call this inside the InstanceState state Effect —
    * it has no Service deps beyond what Tool.init itself needs. */
-  export function build(tools: { codebase: Tool.Info; recall: Tool.Info; manager: Tool.Info }, deps: Deps) {
+  export function build(
+    tools: { codebase: Tool.Info; recall: Tool.Info; manager: Tool.Info; process: Tool.Info },
+    deps: Deps,
+  ) {
     return Effect.gen(function* () {
       const council = yield* CouncilTool.pipe(
         Effect.provideService(Agent.Service, deps.agent),
@@ -47,6 +55,7 @@ export namespace KiloToolRegistry {
         recall: Tool.init(tools.recall),
         manager: Tool.init(tools.manager),
         council: Tool.init(council),
+        process: Tool.init(tools.process),
       })
       const semantic = yield* semanticTool(deps)
       return { ...base, semantic }
@@ -88,7 +97,14 @@ export namespace KiloToolRegistry {
 
   /** Kilo-specific tools to append to the builtin list */
   export function extra(
-    tools: { codebase: Tool.Def; semantic?: Tool.Def; recall: Tool.Def; manager: Tool.Def; council: Tool.Def },
+    tools: {
+      codebase: Tool.Def
+      semantic?: Tool.Def
+      recall: Tool.Def
+      manager: Tool.Def
+      council: Tool.Def
+      process: Tool.Def
+    },
     cfg: {
       experimental?: { codebase_search?: boolean; agent_manager_tool?: boolean }
       agentTeam?: { enabled?: boolean; council?: { enabled?: boolean } }
@@ -98,9 +114,18 @@ export namespace KiloToolRegistry {
       ...(cfg.experimental?.codebase_search === true ? [tools.codebase] : []),
       ...(tools.semantic ? [tools.semantic] : []),
       tools.recall,
+      ...(Flag.KILO_CLIENT === "cli" || Flag.KILO_CLIENT === "vscode" ? [tools.process] : []),
       ...(cfg.agentTeam?.enabled === true && cfg.agentTeam.council?.enabled === true ? [tools.council] : []),
       // The extension is the only client that can consume the Agent Manager start event.
-      ...(Flag.KILO_CLIENT === "vscode" && cfg.experimental?.agent_manager_tool === true ? [tools.manager] : []),
+      ...(Flag.KILO_CLIENT === "vscode" ? [tools.manager] : []),
     ]
+  }
+
+  export function describe(tools: Tool.Def[], extra: { semantic?: Tool.Def }): Tool.Def[] {
+    if (!extra.semantic) return tools
+    return tools.map((tool) => {
+      if (tool.id !== "glob" && tool.id !== "grep") return tool
+      return { ...tool, description: `${tool.description}\n${hint}` }
+    })
   }
 }

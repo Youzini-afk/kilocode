@@ -96,6 +96,7 @@ const local = {
   "command.session.share.description": "Udostępnij tę sesję i skopiuj URL do schowka",
   "command.session.unshare": "Przestań udostępniać sesję",
   "command.session.unshare.description": "Zatrzymaj udostępnianie tej sesji",
+  "command.session.export": "Eksportuj transkrypcję sesji",
 
   "palette.search.placeholder": "Szukaj plików, poleceń i sesji",
   "palette.empty": "Brak wyników",
@@ -109,6 +110,7 @@ const local = {
   "dialog.provider.tag.recommended": "Zalecane",
   "dialog.provider.opencode.note": "Wybrane modele, w tym Claude, GPT, Gemini i więcej",
   "dialog.provider.anthropic.note": "Połącz z Claude Pro/Max lub kluczem API",
+  "dialog.provider.deepseek.note": "Modele DeepSeek do zadań wymagających rozumowania i kodowania",
   "dialog.provider.openai.note": "Połącz z ChatGPT Pro/Plus lub kluczem API",
   "dialog.provider.google.note": "Modele Gemini do szybkich, strukturalnych odpowiedzi",
   "dialog.provider.openrouter.note": "Dostęp do wszystkich obsługiwanych modeli od jednego dostawcy",
@@ -180,6 +182,8 @@ const local = {
   "model.tag.latest": "Najnowszy",
   "model.group.recommended": "Zalecane",
   "model.group.favorites": "Ulubione",
+  "model.group.collapse": "Zwiń {{group}}",
+  "model.group.expand": "Rozwiń {{group}}",
   "model.favorite.add": "Dodaj do ulubionych",
   "model.favorite.remove": "Usuń z ulubionych",
   "model.provider.anthropic": "Anthropic",
@@ -273,6 +277,7 @@ const local = {
   "prompt.attachment.remove": "Usuń załącznik",
   "prompt.action.send": "Wyślij",
   "prompt.action.send.blocked": "Najpierw odpowiedz na oczekujące pytanie lub je odrzuć",
+  "prompt.action.send.recording": "Transkrybuj i wyślij",
   "prompt.action.stop": "Zatrzymaj",
   "prompt.action.enhance": "Ulepsz prompt",
   "prompt.action.autoApprove.enable": "Włącz automatyczne zatwierdzanie",
@@ -285,6 +290,20 @@ const local = {
   "prompt.action.enhanceDescription":
     "Przycisk 'Ulepsz podpowiedź' pomaga ulepszyć Twoją prośbę, dostarczając dodatkowy kontekst, wyjaśnienia lub przeformułowania. Spróbuj wpisać prośbę tutaj i kliknij przycisk ponownie, aby zobaczyć, jak to działa.",
   "prompt.action.indexing": "Ustawienia indeksowania",
+
+  "speechToText.tooltip.start": "Rozpocznij wprowadzanie głosowe z Kilo Gateway",
+  "speechToText.tooltip.stop": "Zatrzymaj przechwytywanie dźwięku",
+  "speechToText.tooltip.transcribing": "Transkrybowanie... Kliknij, aby anulować.",
+  "speechToText.tooltip.error": "Wprowadzanie głosowe nie powiodło się. Kliknij, aby wyczyścić.",
+  "speechToText.error.title": "Wprowadzanie głosowe nie powiodło się",
+  "speechToText.error.loginRequired": "Zaloguj się do Kilo, aby korzystać z wprowadzania głosowego.",
+  "speechToText.error.permission": "Odmówiono dostępu do mikrofonu.",
+  "speechToText.error.microphone": "Nie udało się uruchomić mikrofonu.",
+  "speechToText.error.recording": "Nagrywanie nie powiodło się.",
+  "speechToText.error.emptyRecording": "Nie nagrano żadnego dźwięku.",
+  "speechToText.error.emptyTranscript": "Nie wykryto mowy.",
+  "speechToText.error.encoding": "Nie udało się zakodować nagrania.",
+  "speechToText.toast.transcribed": "Wstawiono transkrypcję",
 
   "prompt.toast.pasteUnsupported.title": "Nieobsługiwane wklejanie",
   "prompt.toast.pasteUnsupported.description": "Tylko obrazy lub pliki PDF mogą być tutaj wklejane.",
@@ -438,6 +457,7 @@ const local = {
   "toast.session.unshare.failed.title": "Nie udało się zatrzymać udostępniania sesji",
   "toast.session.unshare.failed.description": "Wystąpił błąd podczas zatrzymywania udostępniania sesji",
 
+  "toast.session.rename.invalid.title": "Nieprawidłowy tytuł sesji",
   "toast.session.listFailed.title": "Nie udało się załadować sesji dla {{project}}",
 
   "toast.update.title": "Dostępna aktualizacja",
@@ -805,6 +825,9 @@ const local = {
   "settings.providers.connected.environmentDescription": "Połączony z twoich zmiennych środowiskowych",
   "settings.providers.action.signInChatGPT": "Zaloguj przez ChatGPT",
   "settings.providers.custom.description": "Dodaj dostawcę kompatybilnego z OpenAI przez bazowy URL.",
+  "settings.providers.subagentModel.title": "Model podagenta",
+  "settings.providers.subagentModel.description":
+    "Domyślny model i wysiłek wnioskowania dla podagentów task-tool. Pozostaw puste, aby odziedziczyć model agenta wywołującego.",
   "settings.providers.modeModels": "Model na tryb",
   "settings.providers.custom.note": "Dodaj dostawcę kompatybilnego z OpenAI przez bazowy URL.",
   "settings.providers.modeModels.description":
@@ -1073,6 +1096,14 @@ const local = {
   "session.status.retrying": "Ponawiam próbę ({{ attempt }})… {{ message }}",
   "session.status.working": "Pracuję…",
   "session.status.offline": "Odłączono od sieci — ponowne łączenie...",
+  "session.outcome.incomplete": "Tura zakończona, pozostało {{count}} to-dos",
+  "session.outcome.limit": "Osiągnięto limit odpowiedzi przed ukończeniem",
+  "session.outcome.unknown": "Tura zakończona bez powodu zakończenia od modelu",
+  "session.outcome.filtered": "Dostawca zatrzymał tę odpowiedź z powodu filtru treści.",
+  "session.outcome.unexpected": "Odpowiedź zakończyła się nieoczekiwanie i może być niekompletna.",
+  "session.outcome.interrupted": "Tura przerwana",
+  "session.outcome.error": "Tura nie powiodła się",
+  "session.outcome.finish": "Powód zakończenia: {{reason}}",
 
   "ui.sessionTurn.cancel": "Anuluj",
   "ui.sessionTurn.status.thinking": "Myślę...",
@@ -1136,7 +1167,6 @@ const local = {
     'Telemetria jest kontrolowana przez wbudowane ustawienie telemetrii VS Code. Aby ją wyłączyć, przejdź do Ustawienia > Telemetria > Poziom telemetrii i ustaw na "off". Uruchom ponownie VS Code, aby zastosować zmianę.',
   "settings.aboutKiloCode.telemetry.openSettings": "Otwórz ustawienia telemetrii",
 
-  "settings.agentBehaviour.subtab.modes": "Tryby",
   "settings.agentBehaviour.subtab.agents": "Agenci",
   "settings.agentBehaviour.subtab.mcpServers": "Serwery MCP",
   "settings.agentBehaviour.subtab.rules": "Reguły",
@@ -1200,9 +1230,14 @@ const local = {
     "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Wyszukiwanie kodu",
   "settings.experimental.codebaseSearch.description": "Włącz wyszukiwanie w języku naturalnym z AI w całej bazie kodu",
-  "settings.experimental.agentManagerTool.title": "Narzędzie Agent Manager",
-  "settings.experimental.agentManagerTool.description":
-    "Zezwól agentom na uruchamianie lokalnych sesji Agent Manager i sesji worktree z wywołania narzędzia",
+  "settings.experimental.speechToText.title": "Mowa na tekst",
+  "settings.experimental.speechToText.description":
+    "Włącz wprowadzanie głosowe w polach promptów przy użyciu konta Kilo za pośrednictwem Kilo Gateway.",
+  "settings.experimental.speechToText.disabledDescription":
+    "Włącz i zaloguj się do dostawcy Kilo, aby korzystać ze Speech to Text. Speech to Text jest obecnie obsługiwane tylko z Kilo Gateway.",
+  "settings.experimental.speechToTextModel.title": "Model mowy na tekst",
+  "settings.experimental.speechToTextModel.description":
+    "Wybierz model transkrypcji Kilo Gateway dla wprowadzania głosowego.",
   "settings.experimental.continueOnDeny.title": "Kontynuuj przy odmowie",
   "settings.experimental.continueOnDeny.description": "Kontynuuj pętlę agenta po odmowie uprawnienia",
   "settings.experimental.mcpTimeout.title": "Limit czasu MCP (ms)",
@@ -1259,6 +1294,8 @@ const local = {
   "settings.agentBehaviour.selectAgent.description": "Wybierz agenta do konfiguracji…",
   "settings.agentBehaviour.modelOverride.title": "Nadpisanie modelu",
   "settings.agentBehaviour.modelOverride.description": "Nadpisz domyślny model dla tego agenta",
+  "settings.agentBehaviour.variantOverride.title": "Nadpisanie wariantu",
+  "settings.agentBehaviour.variantOverride.description": "Nadpisz wariant modelu dla tego agenta",
   "settings.agentBehaviour.prompt.title": "Niestandardowy prompt",
   "settings.agentBehaviour.prompt.description": "Dodatkowy prompt systemowy dla tego agenta",
   "settings.agentBehaviour.temperature.title": "Temperatura",
@@ -1278,7 +1315,7 @@ const local = {
   "settings.agentBehaviour.noSkillsFound":
     "Nie znaleziono umiejętności. Dodaj ścieżki folderów lub adresy URL poniżej, aby udostępnić umiejętności.",
   "settings.agentBehaviour.availableModes": "Dostępne tryby niestandardowe",
-  "settings.agentBehaviour.noModesFound": "Nie znaleziono trybów.",
+  "settings.agentBehaviour.noAgentsFound": "Nie znaleziono agentów.",
   "settings.agentBehaviour.createMode": "Utwórz nowy tryb",
   "settings.agentBehaviour.createMode.name": "Nazwa",
   "settings.agentBehaviour.createMode.name.placeholder": "np. reviewer",
@@ -1323,10 +1360,10 @@ const local = {
   "settings.agentBehaviour.permissions.copy": "Kopiuj uprawnienia jako JSON",
   "settings.agentBehaviour.permissions.hint":
     "Reguły są sprawdzane po kolei — ostatnia pasująca reguła wygrywa. To jest wynikowy zestaw reguł z backendu CLI.",
-  "settings.agentBehaviour.removeMode.title": "Usuń tryb",
-  "settings.agentBehaviour.removeMode.confirm":
-    'Usunąć tryb "{{name}}"? Spowoduje to wyłączenie trybu poprzez aktualizację konfiguracji.',
-  "settings.agentBehaviour.removeMode.button": "Usuń",
+  "settings.agentBehaviour.removeAgent.title": "Usuń agenta",
+  "settings.agentBehaviour.removeAgent.confirm":
+    'Usunąć agenta "{{name}}"? Spowoduje to jego wyłączenie przez aktualizację konfiguracji.',
+  "settings.agentBehaviour.removeAgent.button": "Usuń",
   "settings.agentBehaviour.removeMcp.title": "Usuń serwer MCP",
   "settings.agentBehaviour.removeMcp.confirm":
     'Usunąć serwer MCP "{{name}}"? Spowoduje to usunięcie go z konfiguracji.',
@@ -1415,7 +1452,10 @@ const local = {
   "settings.checkpoints.enable.title": "Włącz migawki",
   "settings.checkpoints.enable.description": "Twórz punkty kontrolne przed edycją plików",
   "settings.context.autoCompaction.title": "Automatyczna kompakcja",
-  "settings.context.autoCompaction.description": "Automatycznie kompaktuj kontekst, gdy jest pełny",
+  "settings.context.autoCompaction.description": "Automatycznie kompaktuj kontekst, zanim osiągnie limit",
+  "settings.context.compactionLimit.title": "Limit automatycznego kompaktowania",
+  "settings.context.compactionLimit.description":
+    "Kompaktuj, gdy kontekst osiągnie ten procent okna modelu. Pozostaw puste, aby używać tylko bufora bezpieczeństwa.",
   "settings.context.prune.title": "Przytnij stare wyjścia",
   "settings.context.prune.description": "Usuń stare wyjścia narzędzi podczas kompakcji",
   "settings.context.watcherPatterns": "Wzorce ignorowania obserwatora plików",
@@ -1596,6 +1636,7 @@ const local = {
   "diffViewer.baseBranch.empty": "No matching branches",
   "diffViewer.baseBranch.loading": "Loading branches…",
   "diffViewer.baseBranch.none": "—",
+  "plan.exit.ready": "Plan jest gotowy:",
 } satisfies Record<string, string>
 
 export const dict = { ...en, ...local } satisfies Record<Keys, string>

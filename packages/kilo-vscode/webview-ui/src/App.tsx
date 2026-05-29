@@ -145,6 +145,10 @@ export const DataBridge: Component<{ children: any }> = (props) => {
     vscode.postMessage({ type: "openExternal", url })
   }
 
+  const openContent = (content: string, language?: string) => {
+    vscode.postMessage({ type: "openContent", content, language })
+  }
+
   const directory = () => {
     const dir = server.workspaceDirectory()
     if (!dir) return ""
@@ -162,6 +166,7 @@ export const DataBridge: Component<{ children: any }> = (props) => {
       onOpenFile={open}
       onOpenDiff={openDiff}
       onOpenUrl={openUrl}
+      onOpenContent={openContent}
     >
       {props.children}
     </DataProvider>

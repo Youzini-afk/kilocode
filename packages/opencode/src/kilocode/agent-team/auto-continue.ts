@@ -1,6 +1,8 @@
 import { Config } from "@/config/config"
 import { makeRuntime } from "@/effect/run-service"
 import { Instance } from "@/project/instance"
+import { InstanceLayer } from "@/project/instance-layer"
+import { InstanceStore } from "@/project/instance-store"
 import { MessageV2 } from "@/session/message-v2"
 import { Session } from "@/session/session"
 import { SessionID } from "@/session/schema"
@@ -10,6 +12,7 @@ import * as Log from "@opencode-ai/core/util/log"
 type Reason = "completed" | "interrupted" | "error"
 
 const log = Log.create({ service: "agent-team-auto-continue" })
+const instances = makeRuntime(InstanceStore.Service, InstanceLayer.layer)
 const timers = new Map<SessionID, ReturnType<typeof setTimeout>>()
 const counts = new Map<SessionID, number>()
 const MARK = "<agent_team_auto_continue>"
@@ -93,47 +96,45 @@ export namespace AgentTeamAutoContinue {
 
   async function run(input: { sessionID: SessionID; cfg: Config.Info }) {
     const session = await Session.get(input.sessionID)
-    await Instance.provide({
-      directory: session.directory,
-      fn: async () => {
-        const messages = await Session.messages({ sessionID: input.sessionID, limit: 20 })
-        const user = messages.findLast((msg): msg is UserMessage => msg.info.role === "user")
-        if (!user || !primary(user.info.agent)) {
-          counts.delete(input.sessionID)
-          return
-        }
+    const ctx = await instances.runPromise((svc) => svc.load({ directory: session.directory }))
+    await Instance.restore(ctx, async () => {
+      const messages = await Session.messages({ sessionID: input.sessionID, limit: 20 })
+      const user = messages.findLast((msg): msg is UserMessage => msg.info.role === "user")
+      if (!user || !primary(user.info.agent)) {
+        counts.delete(input.sessionID)
+        return
+      }
 
-        const auto = text(user)?.includes(MARK) === true
-        if (!auto) counts.set(input.sessionID, 0)
+      const auto = text(user)?.includes(MARK) === true
+      if (!auto) counts.set(input.sessionID, 0)
 
-        const count = counts.get(input.sessionID) ?? 0
-        const max = input.cfg.agentTeam?.autoContinue?.maxContinuations ?? 5
-        if (count >= max) return
+      const count = counts.get(input.sessionID) ?? 0
+      const max = input.cfg.agentTeam?.autoContinue?.maxContinuations ?? 5
+      if (count >= max) return
 
-        const assistant = messages.findLast((msg) => msg.info.role === "assistant")
-        if (asksQuestion(text(assistant))) return
+      const assistant = messages.findLast((msg) => msg.info.role === "assistant")
+      if (asksQuestion(text(assistant))) return
 
-        const todo = makeRuntime(Todo.Service, Todo.defaultLayer)
-        const remaining = unfinished(await todo.runPromise((svc) => svc.get(input.sessionID)))
-        if (remaining.length === 0) {
-          counts.delete(input.sessionID)
-          return
-        }
-        if (!allowed(input.cfg, remaining)) return
+      const todo = makeRuntime(Todo.Service, Todo.defaultLayer)
+      const remaining = unfinished(await todo.runPromise((svc) => svc.get(input.sessionID)))
+      if (remaining.length === 0) {
+        counts.delete(input.sessionID)
+        return
+      }
+      if (!allowed(input.cfg, remaining)) return
 
-        counts.set(input.sessionID, count + 1)
-        const item = await import("@/session/prompt")
-        const runtime = makeRuntime(item.SessionPrompt.Service, item.SessionPrompt.defaultLayer)
-        await runtime.runPromise((svc) =>
-          svc.prompt({
-            sessionID: input.sessionID,
-            agent: user.info.agent,
-            model: user.info.model,
-            parts: [{ type: "text", text: prompt(remaining), synthetic: true }],
-          }),
-        )
-        await runtime.runPromise((svc) => svc.loop({ sessionID: input.sessionID }))
-      },
+      counts.set(input.sessionID, count + 1)
+      const item = await import("@/session/prompt")
+      const runtime = makeRuntime(item.SessionPrompt.Service, item.SessionPrompt.defaultLayer)
+      await runtime.runPromise((svc) =>
+        svc.prompt({
+          sessionID: input.sessionID,
+          agent: user.info.agent,
+          model: user.info.model,
+          parts: [{ type: "text", text: prompt(remaining), synthetic: true }],
+        }),
+      )
+      await runtime.runPromise((svc) => svc.loop({ sessionID: input.sessionID }))
     })
   }
 }

@@ -9,6 +9,7 @@ import { Plugin } from "@/plugin"
 import { PluginManager } from "@/plugin/manager"
 import { Provider } from "@/provider/provider"
 import { Instance } from "@/project/instance"
+import { InstanceStore } from "@/project/instance-store" // kilocode_change
 import { errors } from "../../error"
 import { jsonRequest, runRequest } from "./trace"
 
@@ -145,6 +146,14 @@ const SettingsRpcInput = z.object({
   params: z.unknown().optional(),
 })
 
+// kilocode_change start - plugin mutations require reloading active instances after config invalidation.
+const reload = Effect.fn("PluginRoutes.reload")(function* (cfg: Config.Interface) {
+  yield* cfg.invalidate()
+  const store = yield* InstanceStore.Service
+  yield* store.disposeAll()
+})
+// kilocode_change end
+
 function settingsModelOptions(providers: Record<string, Provider.Info>) {
   const options = []
   for (const provider of Object.values(providers)) {
@@ -231,7 +240,7 @@ export const PluginRoutes = () =>
               config: current,
             }),
           )
-          yield* cfg.invalidate(true)
+          yield* reload(cfg)
           return out
         }),
     )
@@ -259,7 +268,7 @@ export const PluginRoutes = () =>
           const cfg = yield* Config.Service
           const current = yield* cfg.get()
           yield* Effect.promise(() => PluginManager.setEnabled(current, { ...input, directory: Instance.directory }))
-          yield* cfg.invalidate(true)
+          yield* reload(cfg)
           return { ok: true as const }
         }),
     )
@@ -287,7 +296,7 @@ export const PluginRoutes = () =>
           const cfg = yield* Config.Service
           const current = yield* cfg.get()
           yield* Effect.promise(() => PluginManager.remove(current, { ...input, directory: Instance.directory }))
-          yield* cfg.invalidate(true)
+          yield* reload(cfg)
           return { ok: true as const }
         }),
     )
@@ -317,7 +326,7 @@ export const PluginRoutes = () =>
           const out = yield* Effect.promise(() =>
             PluginManager.update(current, { ...input, directory: Instance.directory, config: current }),
           )
-          yield* cfg.invalidate(true)
+          yield* reload(cfg)
           return out
         }),
     )
@@ -347,7 +356,7 @@ export const PluginRoutes = () =>
           const out = yield* Effect.promise(() =>
             PluginManager.resolveConflict(current, { ...input, directory: Instance.directory }),
           )
-          yield* cfg.invalidate(true)
+          yield* reload(cfg)
           return out
         }),
     )
