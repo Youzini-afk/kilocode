@@ -178,6 +178,7 @@ export const TaskTool = Tool.define(
 
       const messageID = MessageID.ascending()
       const cancel = ops.cancel(nextSession.id)
+      const timeout = KiloTask.subtaskTimeout(cfg) // kilocode_change
 
       function onAbort() {
         runCancel.fork(cancel)
@@ -226,7 +227,20 @@ export const TaskTool = Tool.define(
                   }),
                 )
             }
-            const attempt = yield* runChain(chain)
+            const active: Effect.Effect<{ result: MessageV2.WithParts; pick: (typeof chain)[number] }, Error> =
+              timeout > 0
+                ? runChain(chain).pipe(
+                    Effect.timeoutOrElse({
+                      duration: timeout,
+                      orElse: () =>
+                        Effect.gen(function* () {
+                          yield* cancel.pipe(Effect.ignore)
+                          return yield* Effect.fail(KiloTask.timeoutError(next.name, timeout))
+                        }),
+                    }),
+                  )
+                : runChain(chain)
+            const attempt = yield* active
             const result = attempt.result
             // kilocode_change end
 

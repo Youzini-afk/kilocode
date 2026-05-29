@@ -208,6 +208,12 @@ const AgentTeamSessionReuse = Schema.Struct({
   }),
 })
 
+const AgentTeamSubtask = Schema.Struct({
+  timeoutMs: Schema.optional(NonNegativeInt).annotate({
+    description: "Task-tool subagent timeout in milliseconds. 0 disables the timeout.",
+  }),
+})
+
 const AgentTeamSecretary = Schema.Struct({
   enabled: Schema.optional(Schema.Boolean).annotate({
     description:
@@ -272,6 +278,9 @@ const AgentTeam = Schema.Struct({
   }),
   sessionReuse: Schema.optional(AgentTeamSessionReuse).annotate({
     description: "Agent Team specialist session reuse configuration",
+  }),
+  subtask: Schema.optional(AgentTeamSubtask).annotate({
+    description: "Agent Team task-tool subagent runtime configuration",
   }),
   council: Schema.optional(AgentTeamCouncil).annotate({
     description: "Agent Team council configuration",

@@ -586,6 +586,10 @@ const AgentTeamTab: Component = () => {
     patch({ sessionReuse: next })
   }
 
+  function patchSubtask(next: NonNullable<AgentTeamConfig["subtask"]>) {
+    patch({ subtask: next })
+  }
+
   function patchCouncil(next: NonNullable<AgentTeamConfig["council"]>) {
     patch({ council: next })
   }
@@ -856,6 +860,16 @@ const AgentTeamTab: Component = () => {
         title={language.t("settings.agentTeam.advanced.title")}
         description={language.t("settings.agentTeam.advanced.description")}
       >
+        <SettingsRow
+          title={language.t("settings.agentTeam.subtask.timeout.title")}
+          description={language.t("settings.agentTeam.subtask.timeout.description")}
+        >
+          <TextField
+            type="number"
+            value={String(team().subtask?.timeoutMs ?? 300000)}
+            onChange={(value) => patchSubtask({ timeoutMs: int(value, 300000) })}
+          />
+        </SettingsRow>
         <Show when={team().council?.enabled === true}>
           <SettingsRow
             title={language.t("settings.agentTeam.council.timeout.title")}

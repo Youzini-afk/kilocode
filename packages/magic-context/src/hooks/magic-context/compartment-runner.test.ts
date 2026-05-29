@@ -1633,7 +1633,7 @@ describe("registerActiveCompartmentRun", () => {
         expect(getActiveCompartmentRun(sessionId)).toBeDefined();
 
         rejectCompressor?.(new Error("simulated compressor failure"));
-        await getActiveCompartmentRun(sessionId);
+        await getActiveCompartmentRun(sessionId)?.promise;
         await new Promise((r) => setTimeout(r, 0));
 
         expect(getActiveCompartmentRun(sessionId)).toBeUndefined();

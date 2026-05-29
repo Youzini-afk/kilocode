@@ -13,6 +13,7 @@ import { Provider } from "../../provider/provider"
 import z from "zod"
 
 const log = Log.create({ service: "kilocode-task-model" })
+const DEFAULT_SUBTASK_TIMEOUT_MS = 300_000
 
 // RATIONALE: Mirror narrow state slice Task tool consumes and ignore unrelated TUI fields.
 const ModelState = z
@@ -111,6 +112,16 @@ export namespace KiloTask {
   export function permissions(rules: Permission.Ruleset, opts?: { task?: boolean }): Permission.Ruleset {
     if (opts?.task) return rules
     return [{ permission: "task", pattern: "*", action: "deny" }, ...rules]
+  }
+
+  export function subtaskTimeout(cfg: Pick<Config.Info, "agentTeam">) {
+    const value = cfg.agentTeam?.subtask?.timeoutMs
+    if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_SUBTASK_TIMEOUT_MS
+    return Math.max(0, Math.floor(value))
+  }
+
+  export function timeoutError(name: string, timeout: number) {
+    return new Error(`Task subagent "${name}" timed out after ${timeout}ms`)
   }
 
   type Model = { providerID: ProviderID; modelID: ModelID }

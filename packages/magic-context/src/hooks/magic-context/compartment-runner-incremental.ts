@@ -4,6 +4,7 @@ import {
     getSessionFacts,
     replaceSessionFacts,
 } from "../../features/magic-context/compartment-storage";
+import { isCompartmentLeaseHeld } from "../../features/magic-context/compartment-lease";
 // Re-export the historian-state-file helpers so existing callers
 // (compartment-runner-recomp.ts, compartment-runner.ts, tests) keep working
 // unchanged. The implementation moved to ./historian-state-file.ts so Pi
@@ -231,10 +232,13 @@ export async function runCompartmentAgent(deps: CompartmentRunnerDeps): Promise<
             return;
         }
 
-        // Append new compartments (existing stay untouched in DB) and replace facts atomically
-        // Intentional: nested transaction — appendCompartments/replaceSessionFacts have their own
-        // transactions for standalone safety. SQLite SAVEPOINTs handle nesting correctly in Bun.
-        db.transaction(() => {
+        const holderId = deps.compartmentLeaseHolderId;
+        const published = db.transaction(() => {
+            if (holderId && !isCompartmentLeaseHeld(db, sessionId, holderId)) {
+                sessionLog(sessionId, "historian publish skipped: compartment lease is stale");
+                return false;
+            }
+
             appendCompartments(db, sessionId, newCompartments);
             replaceSessionFacts(db, sessionId, validatedPass.facts ?? []);
             clearHistorianFailureState(db, sessionId);
@@ -244,7 +248,10 @@ export async function runCompartmentAgent(deps: CompartmentRunnerDeps): Promise<
             // stays — it's the authoritative real limit and remains valuable
             // for pressure math going forward.
             clearEmergencyRecovery(db, sessionId);
-        })();
+            return true;
+        }).immediate();
+        if (!published) return;
+        deps.onCompartmentStatePublished?.(sessionId);
         // Invalidate in-memory injection cache so the next transform rebuilds <session-history>
         // with the new compartments/facts. Without this, cached stale content persists.
         clearInjectionCache(sessionId);
@@ -290,6 +297,7 @@ export async function runCompartmentAgent(deps: CompartmentRunnerDeps): Promise<
                 historianTimeoutMs,
                 minCompartmentRatio: deps.compressorMinCompartmentRatio,
                 maxMergeDepth: deps.compressorMaxMergeDepth,
+                compartmentLeaseHolderId: deps.compartmentLeaseHolderId,
             });
             // No marker update needed after compression — marker uses static placeholder text.
             // Compressor changes compartment content but not the boundary ordinal.

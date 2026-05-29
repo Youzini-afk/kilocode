@@ -52,6 +52,10 @@ export interface CompartmentRunnerDeps {
      * defer pass and silently bust provider cache. See council Finding #9.
      */
     onInjectionCacheCleared?: (sessionId: string) => void;
+    /** Called after durable compartment state is published. */
+    onCompartmentStatePublished?: (sessionId: string) => void;
+    /** Cross-process lease holder. Publish paths skip writes if this holder is stale. */
+    compartmentLeaseHolderId?: string;
 }
 
 export interface CandidateCompartment {

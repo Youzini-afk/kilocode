@@ -310,11 +310,12 @@ export async function executePartialRecompInternal(
             // Save a final staging pass containing prior + new + tail. Promote
             // replaces the real tables atomically with this set.
             saveRecompStagingPass(db, sessionId, passCount + 1, merged, currentFacts);
-            const promoted = promoteRecompStaging(db, sessionId);
+            const promoted = promoteRecompStaging(db, sessionId, deps.compartmentLeaseHolderId);
             if (!promoted) {
                 log("[magic-context] partial recomp promote returned null");
                 return null;
             }
+            deps.onCompartmentStatePublished?.(sessionId);
 
             // Clear partial-range marker — staging is now empty.
             setRecompPartialRange(db, sessionId, null);

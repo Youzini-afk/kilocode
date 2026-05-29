@@ -290,6 +290,10 @@ export interface AgentTeamSessionReuseConfig {
   maxSessionsPerAgent?: number
 }
 
+export interface AgentTeamSubtaskConfig {
+  timeoutMs?: number
+}
+
 export interface AgentTeamCouncilConfig {
   enabled?: boolean
   defaultPreset?: string
@@ -309,6 +313,7 @@ export interface AgentTeamConfig {
   takeoverDefault?: boolean
   roles?: Partial<Record<AgentTeamRole, AgentTeamRoleConfig>>
   sessionReuse?: AgentTeamSessionReuseConfig
+  subtask?: AgentTeamSubtaskConfig
   council?: AgentTeamCouncilConfig
   autoContinue?: AgentTeamAutoContinueConfig
 }

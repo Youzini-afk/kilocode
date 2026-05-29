@@ -54,6 +54,12 @@ describe("KiloTask Agent Team handoff rules", () => {
     expect(Permission.evaluate("task", "fixer", KiloTask.permissions([], { task: true })).action).toBe("ask")
   })
 
+  test("resolves configurable subtask timeout", () => {
+    expect(KiloTask.subtaskTimeout(cfg)).toBe(300_000)
+    expect(KiloTask.subtaskTimeout({ agentTeam: { enabled: true, subtask: { timeoutMs: 0 } } } as Config.Info)).toBe(0)
+    expect(KiloTask.subtaskTimeout({ agentTeam: { enabled: true, subtask: { timeoutMs: 42.8 } } } as Config.Info)).toBe(42)
+  })
+
   test("removes Secretary self-guards from Orchestrator handoff while preserving user denies", () => {
     const base = Permission.fromConfig({ bash: "allow", edit: "allow" })
     const user = Permission.fromConfig({ bash: "deny" })

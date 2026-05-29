@@ -6,6 +6,7 @@ import {
     DEFAULT_COMPRESSOR_MIN_COMPARTMENT_RATIO,
     DEFAULT_HISTORIAN_TIMEOUT_MS,
 } from "../../config/schema/magic-context";
+import { isCompartmentLeaseHeld } from "../../features/magic-context/compartment-lease";
 import type { Compartment } from "../../features/magic-context/compartment-storage";
 import {
     getAverageCompressionDepth,
@@ -48,6 +49,8 @@ export interface CompressorDeps {
     maxCompartmentsPerPass?: number;
     /** Newest compartments always excluded from compression. Default 10. */
     graceCompartments?: number;
+    /** Cross-process lease holder. Compression publish is skipped if this holder is stale. */
+    compartmentLeaseHolderId?: string;
 }
 
 /** Depth → caveman level mapping. Depth 1 = merge only (no caveman post-process).
@@ -212,6 +215,7 @@ export async function runCompressionPassIfNeeded(deps: CompressorDeps): Promise<
             originalEnd: selectedCompartments[selectedCompartments.length - 1].endMessage,
             facts,
             logLabel: `depth-5 title-only collapse (${selectedCompartments.length} → ${selectedCompartments.length})`,
+            holderId: deps.compartmentLeaseHolderId,
         });
     }
 
@@ -252,6 +256,7 @@ export async function runCompressionPassIfNeeded(deps: CompressorDeps): Promise<
             originalEnd: selectedCompartments[selectedCompartments.length - 1].endMessage,
             facts,
             logLabel: `depth-${outputDepth} (${selectedCompartments.length} → ${finalCompressed.length})`,
+            holderId: deps.compartmentLeaseHolderId,
         });
     } catch (error: unknown) {
         sessionLog(sessionId, "compressor: unexpected error:", getErrorMessage(error));
@@ -512,6 +517,7 @@ interface FinalizeArgs {
     originalEnd: number;
     facts: Array<{ category: string; content: string }>;
     logLabel: string;
+    holderId?: string;
 }
 
 function finalizeCompression(args: FinalizeArgs): boolean {
@@ -527,6 +533,7 @@ function finalizeCompression(args: FinalizeArgs): boolean {
         originalEnd,
         facts,
         logLabel,
+        holderId,
     } = args;
 
     const compressedStart = compressed[0].startMessage;
@@ -587,16 +594,24 @@ function finalizeCompression(args: FinalizeArgs): boolean {
         })),
     ];
 
-    replaceAllCompartmentState(
-        db,
-        sessionId,
-        allCompartments,
-        facts.map((f) => ({ category: f.category, content: f.content })),
-    );
+    const published = db.transaction(() => {
+        if (holderId && !isCompartmentLeaseHeld(db, sessionId, holderId)) return false;
+        replaceAllCompartmentState(
+            db,
+            sessionId,
+            allCompartments,
+            facts.map((f) => ({ category: f.category, content: f.content })),
+        );
+        incrementCompressionDepth(db, sessionId, originalStart, originalEnd);
+        return true;
+    }).immediate();
+    if (!published) {
+        sessionLog(sessionId, "compressor: publish skipped because compartment lease is stale");
+        return false;
+    }
     // Do NOT call clearInjectionCache here. See runCompressionPassIfNeeded call
     // sites — background compressor must not bust cache. Next cache-busting
     // pass (isCacheBusting=true) picks up the new state from DB.
-    incrementCompressionDepth(db, sessionId, originalStart, originalEnd);
 
     sessionLog(sessionId, `compressor: completed ${logLabel}`);
     return true;

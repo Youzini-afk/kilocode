@@ -1514,7 +1514,11 @@ export const dict = {
   "settings.agentTeam.sessionReuse.max.title": "Sessions per specialist",
   "settings.agentTeam.sessionReuse.max.description": "Maximum reusable sessions kept for each specialist role.",
   "settings.agentTeam.advanced.title": "Advanced",
-  "settings.agentTeam.advanced.description": "Tune council timing and automatic continuation behavior.",
+  "settings.agentTeam.advanced.description":
+    "Tune subagent runtime, council timing, and automatic continuation behavior.",
+  "settings.agentTeam.subtask.timeout.title": "Subagent timeout",
+  "settings.agentTeam.subtask.timeout.description":
+    "Maximum milliseconds to wait for delegated task agents. Use 0 to disable the timeout.",
   "settings.agentTeam.council.title": "Enable Council",
   "settings.agentTeam.council.description":
     "Expose the optional Council workflow for deliberate multi-agent decisions.",

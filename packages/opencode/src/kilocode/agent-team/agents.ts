@@ -60,6 +60,9 @@ export type Config = {
     enabled?: boolean
     maxSessionsPerAgent?: number
   }
+  subtask?: {
+    timeoutMs?: number
+  }
   council?: {
     enabled?: boolean
     defaultPreset?: string

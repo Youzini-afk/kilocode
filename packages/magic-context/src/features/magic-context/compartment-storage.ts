@@ -1,5 +1,6 @@
 import { getHarness } from "../../shared/harness";
 import type { Database, Statement as PreparedStatement } from "../../shared/sqlite";
+import { isCompartmentLeaseHeld } from "./compartment-lease";
 
 const insertCompartmentStatements = new WeakMap<Database, PreparedStatement>();
 const insertFactStatements = new WeakMap<Database, PreparedStatement>();
@@ -408,12 +409,15 @@ export function getRecompStaging(db: Database, sessionId: string): RecompStaging
 export function promoteRecompStaging(
     db: Database,
     sessionId: string,
+    holderId?: string,
 ): {
     compartments: CompartmentInput[];
     facts: Array<{ category: string; content: string }>;
 } | null {
     const now = Date.now();
     return db.transaction(() => {
+        if (holderId && !isCompartmentLeaseHeld(db, sessionId, holderId)) return null;
+
         const staging = getRecompStaging(db, sessionId);
         if (!staging || staging.compartments.length === 0) return null;
         // Replace real tables
@@ -433,7 +437,7 @@ export function promoteRecompStaging(
         );
 
         return { compartments: staging.compartments, facts: staging.facts };
-    })();
+    }).immediate();
 }
 
 /**

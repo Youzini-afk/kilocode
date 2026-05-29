@@ -107,8 +107,9 @@ export async function executeContextRecompInternal(deps: CompartmentRunnerDeps):
             // Ensure latest candidates are saved to staging before promoting
             saveRecompStagingPass(db, sessionId, passCount, candidateCompartments, candidateFacts);
 
-            const promoted = promoteRecompStaging(db, sessionId);
+            const promoted = promoteRecompStaging(db, sessionId, deps.compartmentLeaseHolderId);
             if (!promoted) return null;
+            deps.onCompartmentStatePublished?.(sessionId);
 
             // Full recomp rebuilds every compartment from message 1 onward, so
             // all pre-existing compression-depth rows are stale — the compressor
@@ -301,12 +302,16 @@ export async function executeContextRecompInternal(deps: CompartmentRunnerDeps):
 
         // Final success: promote staging → real tables
         saveRecompStagingPass(db, sessionId, passCount, candidateCompartments, candidateFacts);
-        const promoted = promoteRecompStaging(db, sessionId);
+        const promoted = promoteRecompStaging(db, sessionId, deps.compartmentLeaseHolderId);
         if (!promoted) {
+            if (deps.compartmentLeaseHolderId) {
+                return "## Magic Recomp — Failed\n\nRecomp could not publish because another process took over compartment state for this session. Staging data preserved for retry.";
+            }
             // Fallback: direct write if promotion somehow fails
             replaceAllCompartmentState(db, sessionId, candidateCompartments, candidateFacts);
             clearRecompStaging(db, sessionId);
         }
+        deps.onCompartmentStatePublished?.(sessionId);
         // Full recomp rebuilds every compartment, so all pre-existing depth
         // rows are stale. Matches partial recomp's behavior for rebuilt ranges.
         clearCompressionDepth(db, sessionId);
@@ -346,6 +351,7 @@ export async function executeContextRecompInternal(deps: CompartmentRunnerDeps):
                 historianTimeoutMs,
                 minCompartmentRatio: deps.compressorMinCompartmentRatio,
                 maxMergeDepth: deps.compressorMaxMergeDepth,
+                compartmentLeaseHolderId: deps.compartmentLeaseHolderId,
             });
         }
 

@@ -1,3 +1,9 @@
+import {
+    acquireCompartmentLease,
+    COMPARTMENT_LEASE_RENEWAL_MS,
+    releaseCompartmentLease,
+    renewCompartmentLease,
+} from "../../features/magic-context/compartment-lease";
 import { updateSessionMeta } from "../../features/magic-context/storage-meta";
 import { sessionLog } from "../../shared/logger";
 import { runCompartmentAgent } from "./compartment-runner-incremental";
@@ -8,10 +14,21 @@ import {
 import { executeContextRecompInternal } from "./compartment-runner-recomp";
 import type { CompartmentRunnerDeps } from "./compartment-runner-types";
 
-const activeRuns = new Map<string, Promise<void>>();
+export interface ActiveCompartmentRun {
+    promise: Promise<void>;
+    published: boolean;
+    notificationSent?: boolean;
+}
 
-export function getActiveCompartmentRun(sessionId: string): Promise<void> | undefined {
+const activeRuns = new Map<string, ActiveCompartmentRun>();
+
+export function getActiveCompartmentRun(sessionId: string): ActiveCompartmentRun | undefined {
     return activeRuns.get(sessionId);
+}
+
+export function markActiveCompartmentRunPublished(sessionId: string): void {
+    const activeRun = activeRuns.get(sessionId);
+    if (activeRun) activeRun.published = true;
 }
 
 /**
@@ -29,15 +46,52 @@ export function getActiveCompartmentRun(sessionId: string): Promise<void> | unde
  * bailed — this function will overwrite silently if called anyway, which is
  * the desired behavior for the retry path.
  */
-export function registerActiveCompartmentRun(sessionId: string, promise: Promise<void>): void {
+export function registerActiveCompartmentRun(
+    sessionId: string,
+    promise: Promise<void>,
+): ActiveCompartmentRun {
+    const activeRun: ActiveCompartmentRun = {
+        promise: Promise.resolve(),
+        published: false,
+    };
     const wrapped = promise.finally(() => {
         // Only clear if this is still the current entry (another run may have
         // replaced us if the caller overwrote; don't stomp the replacement).
-        if (activeRuns.get(sessionId) === wrapped) {
+        if (activeRuns.get(sessionId)?.promise === wrapped) {
             activeRuns.delete(sessionId);
         }
     });
-    activeRuns.set(sessionId, wrapped);
+    activeRun.promise = wrapped;
+    activeRuns.set(sessionId, activeRun);
+    return activeRun;
+}
+
+function withPublishedCallback(deps: CompartmentRunnerDeps): CompartmentRunnerDeps {
+    return {
+        ...deps,
+        onCompartmentStatePublished: (sessionId) => {
+            markActiveCompartmentRunPublished(sessionId);
+            deps.onCompartmentStatePublished?.(sessionId);
+        },
+    };
+}
+
+function startLeaseRenewal(
+    deps: CompartmentRunnerDeps,
+    holderId: string,
+): ReturnType<typeof setInterval> {
+    const timer = setInterval(() => {
+        if (!renewCompartmentLease(deps.db, deps.sessionId, holderId)) {
+            sessionLog(
+                deps.sessionId,
+                "compartment lease renewal failed; publish will be skipped if holder is stale",
+            );
+        }
+    }, COMPARTMENT_LEASE_RENEWAL_MS);
+    if (typeof timer === "object" && "unref" in timer) {
+        timer.unref();
+    }
+    return timer;
 }
 
 export function startCompartmentAgent(deps: CompartmentRunnerDeps): void {
@@ -49,23 +103,39 @@ export function startCompartmentAgent(deps: CompartmentRunnerDeps): void {
         return;
     }
 
+    const holderId = crypto.randomUUID();
+    const lease = acquireCompartmentLease(deps.db, deps.sessionId, holderId);
+    if (!lease) {
+        sessionLog(
+            deps.sessionId,
+            "compartment agent skipped: compartment lease held by another process",
+        );
+        return;
+    }
+    const renewal = startLeaseRenewal(deps, holderId);
+
     // Track the real underlying promise — NOT a raced wrapper.
     // This ensures activeRuns.has(sessionId) stays true until the historian run
     // actually completes, preventing duplicate runs even if an external await times out.
-    const promise = runCompartmentAgent(deps)
+    const runnerDeps = withPublishedCallback({ ...deps, compartmentLeaseHolderId: holderId });
+    const promise = runCompartmentAgent(runnerDeps)
         .catch((err) => {
             sessionLog(deps.sessionId, "compartment agent: unhandled rejection:", err);
             // Ensure compartmentInProgress is cleared on any failure
             try {
                 updateSessionMeta(deps.db, deps.sessionId, { compartmentInProgress: false });
-            } catch {
-                // best effort
+            } catch (error) {
+                sessionLog(deps.sessionId, "compartment agent: failed to clear progress flag:", error);
             }
         })
         .finally(() => {
-            activeRuns.delete(deps.sessionId);
+            clearInterval(renewal);
+            releaseCompartmentLease(deps.db, deps.sessionId, holderId);
+            if (activeRuns.get(deps.sessionId)?.promise === promise) {
+                activeRuns.delete(deps.sessionId);
+            }
         });
-    activeRuns.set(deps.sessionId, promise);
+    activeRuns.set(deps.sessionId, { promise, published: false });
 }
 
 export interface ExecuteContextRecompOptions {
@@ -90,21 +160,31 @@ export async function executeContextRecomp(
         return "## Magic Recomp\n\nHistorian is already running for this session. Wait for it to finish, then try `/ctx-recomp` again.";
     }
 
+    const holderId = crypto.randomUUID();
+    const lease = acquireCompartmentLease(deps.db, sessionId, holderId);
+    if (!lease) {
+        sessionLog(sessionId, "recomp skipped: compartment lease held by another process");
+        return "## Magic Recomp\n\nAnother process is already mutating compartment state for this session. Wait for it to finish, then try `/ctx-recomp` again.";
+    }
+    const renewal = startLeaseRenewal(deps, holderId);
+    const runnerDeps = withPublishedCallback({ ...deps, compartmentLeaseHolderId: holderId });
     const promise = options.range
-        ? executePartialRecompInternal(deps, options.range)
-        : executeContextRecompInternal(deps);
-    activeRuns.set(
-        sessionId,
-        promise
-            .then(() => undefined)
-            .catch((err) => {
-                sessionLog(sessionId, "compartment agent: recomp unhandled rejection:", err);
-            }),
-    );
+        ? executePartialRecompInternal(runnerDeps, options.range)
+        : executeContextRecompInternal(runnerDeps);
+    const wrapped = promise
+        .then(() => undefined)
+        .catch((err) => {
+            sessionLog(sessionId, "compartment agent: recomp unhandled rejection:", err);
+        });
+    activeRuns.set(sessionId, { promise: wrapped, published: false });
     try {
         return await promise;
     } finally {
-        activeRuns.delete(sessionId);
+        clearInterval(renewal);
+        releaseCompartmentLease(deps.db, sessionId, holderId);
+        if (activeRuns.get(sessionId)?.promise === wrapped) {
+            activeRuns.delete(sessionId);
+        }
     }
 }
 

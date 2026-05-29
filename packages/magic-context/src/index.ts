@@ -1,6 +1,12 @@
 import type { Plugin, PluginModule } from "@kilocode/plugin";
 import { DREAMER_AGENT } from "./agents/dreamer";
 import { HISTORIAN_AGENT, HISTORIAN_EDITOR_AGENT } from "./agents/historian";
+import {
+    buildAllowOnlyPermission,
+    DREAMER_ALLOWED_TOOLS,
+    HISTORIAN_ALLOWED_TOOLS,
+    SIDEKICK_ALLOWED_TOOLS,
+} from "./agents/permissions";
 import { SIDEKICK_AGENT } from "./agents/sidekick";
 import {
     getPluginConfigStatus,
@@ -448,16 +454,28 @@ const server: Plugin = async (ctx) => {
             const buildHiddenAgentConfig = (
                 agentId: string,
                 prompt: string,
+                allowedTools: readonly string[],
                 overrides?: Record<string, unknown>,
-            ) => ({
-                prompt,
-                ...(getAgentFallbackModels(agentId)
-                    ? { fallback_models: getAgentFallbackModels(agentId) }
-                    : {}),
-                ...(overrides ?? {}),
-                mode: "subagent" as const,
-                hidden: true,
-            });
+            ) => {
+                const { permission: overridePermission, ...restOverrides } = (overrides ?? {}) as {
+                    permission?: Record<string, unknown>;
+                    [key: string]: unknown;
+                };
+                const permission = buildAllowOnlyPermission(allowedTools);
+                return {
+                    prompt,
+                    ...(getAgentFallbackModels(agentId)
+                        ? { fallback_models: getAgentFallbackModels(agentId) }
+                        : {}),
+                    ...restOverrides,
+                    permission: {
+                        ...permission,
+                        ...(overridePermission ?? {}),
+                    },
+                    mode: "subagent" as const,
+                    hidden: true,
+                };
+            };
 
             const commandConfig = {
                 ...(config.command ?? {}),
@@ -506,6 +524,7 @@ const server: Plugin = async (ctx) => {
                 [DREAMER_AGENT]: buildHiddenAgentConfig(
                     DREAMER_AGENT,
                     DREAMER_SYSTEM_PROMPT,
+                    DREAMER_ALLOWED_TOOLS,
                     dreamerAgentOverrides,
                 ),
                 [HISTORIAN_AGENT]: buildHiddenAgentConfig(
@@ -513,16 +532,19 @@ const server: Plugin = async (ctx) => {
                     pluginConfig.dreamer?.user_memories?.enabled
                         ? COMPARTMENT_AGENT_SYSTEM_PROMPT + USER_OBSERVATIONS_APPENDIX
                         : COMPARTMENT_AGENT_SYSTEM_PROMPT,
+                    HISTORIAN_ALLOWED_TOOLS,
                     historianAgentOverrides,
                 ),
                 [HISTORIAN_EDITOR_AGENT]: buildHiddenAgentConfig(
                     HISTORIAN_EDITOR_AGENT,
                     HISTORIAN_EDITOR_SYSTEM_PROMPT,
+                    HISTORIAN_ALLOWED_TOOLS,
                     historianAgentOverrides,
                 ),
                 [SIDEKICK_AGENT]: buildHiddenAgentConfig(
                     SIDEKICK_AGENT,
                     SIDEKICK_SYSTEM_PROMPT,
+                    SIDEKICK_ALLOWED_TOOLS,
                     sidekickAgentOverrides,
                 ),
             };
