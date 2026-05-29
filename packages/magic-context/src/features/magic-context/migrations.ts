@@ -329,6 +329,31 @@ const MIGRATIONS: Migration[] = [
             `);
         },
     },
+    {
+        version: 9,
+        description: "Add todo state synthesis columns to session_meta",
+        up: (db: Database) => {
+            const cols = db.prepare("PRAGMA table_info(session_meta)").all() as Array<{
+                name?: string;
+            }>;
+            if (!cols.some((col) => col.name === "last_todo_state")) {
+                db.exec("ALTER TABLE session_meta ADD COLUMN last_todo_state TEXT DEFAULT ''");
+            }
+            if (!cols.some((col) => col.name === "todo_synthetic_call_id")) {
+                db.exec("ALTER TABLE session_meta ADD COLUMN todo_synthetic_call_id TEXT DEFAULT ''");
+            }
+            if (!cols.some((col) => col.name === "todo_synthetic_anchor_message_id")) {
+                db.exec(
+                    "ALTER TABLE session_meta ADD COLUMN todo_synthetic_anchor_message_id TEXT DEFAULT ''",
+                );
+            }
+            if (!cols.some((col) => col.name === "todo_synthetic_state_json")) {
+                db.exec(
+                    "ALTER TABLE session_meta ADD COLUMN todo_synthetic_state_json TEXT DEFAULT ''",
+                );
+            }
+        },
+    },
 ];
 
 function ensureMigrationsTable(db: Database): void {

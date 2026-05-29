@@ -30,6 +30,12 @@ interface PersistedNoteNudgeRow {
     note_nudge_sticky_message_id: string;
 }
 
+interface PersistedTodoSyntheticAnchorRow {
+    todo_synthetic_call_id: string;
+    todo_synthetic_anchor_message_id: string;
+    todo_synthetic_state_json: string;
+}
+
 interface PersistedHistorianFailureRow {
     historian_failure_count: number;
     historian_last_error: string | null;
@@ -46,6 +52,12 @@ export interface PersistedNoteNudge {
     triggerMessageId: string | null;
     stickyText: string | null;
     stickyMessageId: string | null;
+}
+
+export interface PersistedTodoSyntheticAnchor {
+    callId: string;
+    messageId: string;
+    stateJson: string;
 }
 
 export interface PersistedHistorianFailureState {
@@ -93,6 +105,16 @@ function isPersistedNoteNudgeRow(row: unknown): row is PersistedNoteNudgeRow {
         typeof r.note_nudge_trigger_message_id === "string" &&
         typeof r.note_nudge_sticky_text === "string" &&
         typeof r.note_nudge_sticky_message_id === "string"
+    );
+}
+
+function isPersistedTodoSyntheticAnchorRow(row: unknown): row is PersistedTodoSyntheticAnchorRow {
+    if (row === null || typeof row !== "object") return false;
+    const r = row as Record<string, unknown>;
+    return (
+        typeof r.todo_synthetic_call_id === "string" &&
+        typeof r.todo_synthetic_anchor_message_id === "string" &&
+        typeof r.todo_synthetic_state_json === "string"
     );
 }
 
@@ -339,6 +361,52 @@ export function setPersistedDeliveredNoteNudge(
 export function clearPersistedNoteNudge(db: Database, sessionId: string): void {
     db.prepare(
         "UPDATE session_meta SET note_nudge_trigger_pending = 0, note_nudge_trigger_message_id = '', note_nudge_sticky_text = '', note_nudge_sticky_message_id = '' WHERE session_id = ?",
+    ).run(sessionId);
+}
+
+export function getPersistedTodoSyntheticAnchor(
+    db: Database,
+    sessionId: string,
+): PersistedTodoSyntheticAnchor | null {
+    const result = db
+        .prepare(
+            "SELECT todo_synthetic_call_id, todo_synthetic_anchor_message_id, todo_synthetic_state_json FROM session_meta WHERE session_id = ?",
+        )
+        .get(sessionId);
+
+    if (!isPersistedTodoSyntheticAnchorRow(result)) return null;
+    if (
+        result.todo_synthetic_call_id.length === 0 ||
+        result.todo_synthetic_anchor_message_id.length === 0
+    ) {
+        return null;
+    }
+
+    return {
+        callId: result.todo_synthetic_call_id,
+        messageId: result.todo_synthetic_anchor_message_id,
+        stateJson: result.todo_synthetic_state_json,
+    };
+}
+
+export function setPersistedTodoSyntheticAnchor(
+    db: Database,
+    sessionId: string,
+    callId: string,
+    messageId: string,
+    stateJson: string,
+): void {
+    db.transaction(() => {
+        ensureSessionMetaRow(db, sessionId);
+        db.prepare(
+            "UPDATE session_meta SET todo_synthetic_call_id = ?, todo_synthetic_anchor_message_id = ?, todo_synthetic_state_json = ? WHERE session_id = ?",
+        ).run(callId, messageId, stateJson, sessionId);
+    })();
+}
+
+export function clearPersistedTodoSyntheticAnchor(db: Database, sessionId: string): void {
+    db.prepare(
+        "UPDATE session_meta SET todo_synthetic_call_id = '', todo_synthetic_anchor_message_id = '', todo_synthetic_state_json = '' WHERE session_id = ?",
     ).run(sessionId);
 }
 

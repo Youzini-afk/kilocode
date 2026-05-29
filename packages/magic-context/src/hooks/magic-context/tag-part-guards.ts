@@ -1,4 +1,5 @@
 import { stripTagPrefix } from "./tag-content-primitives";
+import { isSyntheticTodoPart } from "./todo-view";
 
 export { stripTagPrefix };
 
@@ -25,6 +26,7 @@ export function isTextPart(part: unknown): part is ValidTextPart {
 }
 
 export function isToolPartWithOutput(part: unknown): part is ValidToolPart {
+    if (isSyntheticTodoPart(part)) return false;
     if (part === null || typeof part !== "object") return false;
     const p = part as Record<string, unknown>;
     if (p.type !== "tool" || typeof p.callID !== "string") return false;

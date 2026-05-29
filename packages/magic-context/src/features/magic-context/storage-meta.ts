@@ -6,6 +6,7 @@ export {
     clearPersistedNudgePlacement,
     clearPersistedReasoningWatermark,
     clearPersistedStickyTurnReminder,
+    clearPersistedTodoSyntheticAnchor,
     getHistorianFailureState,
     getNoteLastReadAt,
     getOverflowState,
@@ -13,10 +14,12 @@ export {
     getPersistedNudgePlacement,
     getPersistedReasoningWatermark,
     getPersistedStickyTurnReminder,
+    getPersistedTodoSyntheticAnchor,
     getStrippedPlaceholderIds,
     incrementHistorianFailure,
     loadPersistedUsage,
     type PersistedOverflowState,
+    type PersistedTodoSyntheticAnchor,
     recordDetectedContextLimit,
     recordOverflowDetected,
     removeStrippedPlaceholderId,
@@ -24,6 +27,7 @@ export {
     setPersistedNudgePlacement,
     setPersistedReasoningWatermark,
     setPersistedStickyTurnReminder,
+    setPersistedTodoSyntheticAnchor,
     setStrippedPlaceholderIds,
 } from "./storage-meta-persisted";
 export {

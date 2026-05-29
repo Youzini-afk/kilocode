@@ -15,6 +15,7 @@ import { clearAutoSearchForSession } from "./auto-search-runner";
 import { getMessageUpdatedAssistantInfo, getSessionProperties } from "./event-payloads";
 import { resolveSessionId as resolveEventSessionId } from "./event-resolvers";
 import { clearNoteNudgeState, onNoteTrigger } from "./note-nudger";
+import { normalizeTodoStateJson } from "./todo-view";
 
 const TOOL_HEAVY_TURN_REMINDER_THRESHOLD = 5;
 const TOOL_HEAVY_TURN_REMINDER_TEXT =
@@ -335,17 +336,31 @@ export function createToolExecuteAfterHook(args: {
         if (typedInput.tool === "todowrite") {
             // Only trigger note nudge when ALL todo items are terminal (completed/cancelled).
             // Firing on every todowrite is too eager — agents call it repeatedly while working.
-            const todoArgs = typedInput.args as { todos?: Array<{ status?: string }> } | undefined;
+            const todoArgs = typedInput.args as { todos?: unknown } | undefined;
             const todos = todoArgs?.todos;
+            const sessionMeta = Array.isArray(todos)
+                ? getOrCreateSessionMeta(args.db, typedInput.sessionID)
+                : null;
+            if (sessionMeta && !sessionMeta.isSubagent) {
+                const state = normalizeTodoStateJson(todos);
+                if (state !== null) {
+                    updateSessionMeta(args.db, typedInput.sessionID, { lastTodoState: state });
+                }
+            }
             if (
                 Array.isArray(todos) &&
                 todos.length > 0 &&
-                todos.every((t) => t.status === "completed" || t.status === "cancelled")
+                todos.every(
+                    (todo) =>
+                        typeof todo === "object" &&
+                        todo !== null &&
+                        ((todo as { status?: unknown }).status === "completed" ||
+                            (todo as { status?: unknown }).status === "cancelled"),
+                )
             ) {
                 // Subagents never deliver note nudges (gated in postprocess), so don't
                 // accumulate orphan trigger state for them.
-                const sessionMeta = getOrCreateSessionMeta(args.db, typedInput.sessionID);
-                if (!sessionMeta.isSubagent) {
+                if (sessionMeta && !sessionMeta.isSubagent) {
                     onNoteTrigger(args.db, typedInput.sessionID, "todos_complete");
                 }
             }

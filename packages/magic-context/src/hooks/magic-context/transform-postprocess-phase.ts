@@ -1,10 +1,13 @@
 import {
     type ContextDatabase,
+    clearPersistedTodoSyntheticAnchor,
     clearPersistedStickyTurnReminder,
     getPendingOps,
     getPersistedStickyTurnReminder,
+    getPersistedTodoSyntheticAnchor,
     getStrippedPlaceholderIds,
     getTopNBySize,
+    setPersistedTodoSyntheticAnchor,
     setPersistedStickyTurnReminder,
     setStrippedPlaceholderIds,
     updateSessionMeta,
@@ -45,6 +48,8 @@ import {
     appendReminderToLatestUserMessage,
     appendReminderToUserMessageById,
     countMessagesSinceLastUser,
+    injectToolPartIntoAssistantById,
+    injectToolPartIntoLatestAssistant,
 } from "./transform-message-helpers";
 import {
     applyPendingOperations,
@@ -54,6 +59,7 @@ import {
     truncateErroredTools,
 } from "./transform-operations";
 import { logTransformTiming } from "./transform-stage-logger";
+import { buildSyntheticTodoPart } from "./todo-view";
 
 interface RunPostTransformPhaseArgs {
     sessionId: string;
@@ -695,6 +701,48 @@ export async function runPostTransformPhase(args: RunPostTransformPhaseArgs): Pr
         // If no user message exists, the nudge is lost for this cycle, but
         // triggerPending must still clear to prevent firing on every subsequent pass.
         markNoteNudgeDelivered(args.db, args.sessionId, noteInstruction, anchoredMessageId);
+    }
+
+    if (args.fullFeatureMode) {
+        const anchor = getPersistedTodoSyntheticAnchor(args.db, args.sessionId);
+        if (isCacheBustingPass) {
+            const part = buildSyntheticTodoPart(args.sessionMeta.lastTodoState);
+            if (part === null) {
+                if (anchor) clearPersistedTodoSyntheticAnchor(args.db, args.sessionId);
+            } else if (
+                anchor &&
+                anchor.callId === part.callID &&
+                injectToolPartIntoAssistantById(args.messages, anchor.messageId, part)
+            ) {
+                if (anchor.stateJson.length === 0) {
+                    setPersistedTodoSyntheticAnchor(
+                        args.db,
+                        args.sessionId,
+                        anchor.callId,
+                        anchor.messageId,
+                        args.sessionMeta.lastTodoState,
+                    );
+                }
+            } else {
+                const messageId = injectToolPartIntoLatestAssistant(args.messages, part);
+                if (messageId) {
+                    setPersistedTodoSyntheticAnchor(
+                        args.db,
+                        args.sessionId,
+                        part.callID,
+                        messageId,
+                        args.sessionMeta.lastTodoState,
+                    );
+                } else if (anchor) {
+                    clearPersistedTodoSyntheticAnchor(args.db, args.sessionId);
+                }
+            }
+        } else if (anchor && anchor.stateJson.length > 0) {
+            const part = buildSyntheticTodoPart(anchor.stateJson);
+            if (part !== null && part.callID === anchor.callId) {
+                injectToolPartIntoAssistantById(args.messages, anchor.messageId, part);
+            }
+        }
     }
 
     // Auto-search hint — append a vague-recall fragment hint to the latest

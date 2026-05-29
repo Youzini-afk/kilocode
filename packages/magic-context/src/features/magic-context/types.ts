@@ -45,6 +45,7 @@ export interface SessionMeta {
     conversationTokens: number;
     toolCallTokens: number;
     clearedReasoningThroughTag: number;
+    lastTodoState: string;
 }
 
 export type SchedulerDecision = "execute" | "defer";

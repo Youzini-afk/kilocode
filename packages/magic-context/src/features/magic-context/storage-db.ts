@@ -286,6 +286,10 @@ CREATE INDEX IF NOT EXISTS idx_dream_queue_pending ON dream_queue(started_at, en
       historian_last_error TEXT DEFAULT NULL,
       historian_last_failure_at INTEGER DEFAULT NULL,
       system_prompt_hash TEXT DEFAULT '',
+      last_todo_state TEXT DEFAULT '',
+      todo_synthetic_call_id TEXT DEFAULT '',
+      todo_synthetic_anchor_message_id TEXT DEFAULT '',
+      todo_synthetic_state_json TEXT DEFAULT '',
       memory_block_cache TEXT DEFAULT '',
       memory_block_count INTEGER DEFAULT 0,
       memory_block_ids TEXT DEFAULT ''
@@ -352,6 +356,10 @@ CREATE INDEX IF NOT EXISTS idx_dream_queue_pending ON dream_queue(started_at, en
     ensureColumn(db, "session_meta", "historian_last_error", "TEXT DEFAULT NULL");
     ensureColumn(db, "session_meta", "historian_last_failure_at", "INTEGER DEFAULT NULL");
     ensureColumn(db, "session_meta", "system_prompt_hash", "TEXT DEFAULT ''");
+    ensureColumn(db, "session_meta", "last_todo_state", "TEXT DEFAULT ''");
+    ensureColumn(db, "session_meta", "todo_synthetic_call_id", "TEXT DEFAULT ''");
+    ensureColumn(db, "session_meta", "todo_synthetic_anchor_message_id", "TEXT DEFAULT ''");
+    ensureColumn(db, "session_meta", "todo_synthetic_state_json", "TEXT DEFAULT ''");
     ensureColumn(db, "session_meta", "cleared_reasoning_through_tag", "INTEGER DEFAULT 0");
     ensureColumn(db, "session_meta", "stripped_placeholder_ids", "TEXT DEFAULT ''");
     ensureColumn(db, "compartments", "start_message_id", "TEXT DEFAULT ''");
@@ -501,6 +509,10 @@ function healNullTextColumns(db: Database): void {
         ["memory_block_ids", ""],
         ["compaction_marker_state", ""],
         ["key_files", ""],
+        ["last_todo_state", ""],
+        ["todo_synthetic_call_id", ""],
+        ["todo_synthetic_anchor_message_id", ""],
+        ["todo_synthetic_state_json", ""],
     ];
     for (const [column, fallback] of columns) {
         try {
