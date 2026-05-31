@@ -49,7 +49,7 @@ const roleGroups: RoleGroup[] = [
   { key: "execution", roles: ["designer", "fixer"] },
   { key: "review", roles: ["oracle", "council"] },
 ]
-const efforts = ["low", "medium", "high", "xhigh"]
+const efforts = ["low", "medium", "high", "xhigh", "max"]
 const maxFallbacks = 3
 const roleCapabilities: Record<Role, { skills: string[]; mcps: string[] }> = {
   secretary: { skills: ["kilo-config"], mcps: [] },

@@ -1429,6 +1429,7 @@ export const dict = {
   "settings.agentTeam.variant.medium": "Medium",
   "settings.agentTeam.variant.high": "High",
   "settings.agentTeam.variant.xhigh": "XHigh",
+  "settings.agentTeam.variant.max": "Max",
   "settings.agentTeam.temperature.default": "Default",
   "settings.agentTeam.displayName.title": "Display name",
   "settings.agentTeam.displayName.placeholder": "Display name",

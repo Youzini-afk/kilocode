@@ -1392,6 +1392,7 @@ const local = {
   "settings.agentTeam.variant.medium": "中",
   "settings.agentTeam.variant.high": "高",
   "settings.agentTeam.variant.xhigh": "超高",
+  "settings.agentTeam.variant.max": "最大",
   "settings.agentTeam.temperature.default": "默认",
   "settings.agentTeam.displayName.title": "显示名称",
   "settings.agentTeam.displayName.placeholder": "显示名称",

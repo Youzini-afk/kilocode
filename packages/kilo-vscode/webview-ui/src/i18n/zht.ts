@@ -1352,6 +1352,7 @@ const local = {
   "settings.agentTeam.variant.medium": "中",
   "settings.agentTeam.variant.high": "高",
   "settings.agentTeam.variant.xhigh": "超高",
+  "settings.agentTeam.variant.max": "最大",
   "settings.agentTeam.temperature.default": "預設",
   "settings.agentTeam.displayName.title": "顯示名稱",
   "settings.agentTeam.displayName.placeholder": "顯示名稱",
